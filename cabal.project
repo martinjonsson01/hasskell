@@ -1,0 +1,9 @@
+with-compiler: ghc-9.10.3
+
+packages:
+    hasskell-cli/
+  , hasskell-lib/
+
+
+allow-older: *
+allow-newer: *

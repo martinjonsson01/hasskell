@@ -1,0 +1,76 @@
+name:                hasskell-lib
+version:             0.1.0.0
+github:              martinjonsson01/hasskell
+license:             BSD-3-Clause
+author:              Martin Jonsson
+maintainer:          hasskell@jmartin.se
+copyright:           2025 Martin Jonsson
+
+dependencies:
+- base >= 4.7 && < 5
+
+default-extensions:
+- BangPatterns
+- BinaryLiterals
+- ConstraintKinds
+- DataKinds
+- DefaultSignatures
+- DeriveDataTypeable
+- DeriveFoldable
+- DeriveFunctor
+- DeriveGeneric
+- DeriveTraversable
+- DoAndIfThenElse
+- EmptyDataDecls
+- ExistentialQuantification
+- FlexibleContexts
+- FlexibleInstances
+- FunctionalDependencies
+- GADTs
+- GeneralizedNewtypeDeriving
+- InstanceSigs
+- KindSignatures
+- LambdaCase
+- MultiParamTypeClasses
+- MultiWayIf
+- NamedFieldPuns
+- OverloadedStrings
+- PartialTypeSignatures
+- PatternGuards
+- PolyKinds
+- RankNTypes
+- RecordWildCards
+- ScopedTypeVariables
+- StandaloneDeriving
+- TupleSections
+- TypeFamilies
+- TypeSynonymInstances
+- ViewPatterns
+
+ghc-options:
+- -Wall
+- -Wcompat
+- -Widentities
+- -Wincomplete-record-updates
+- -Wincomplete-uni-patterns
+- -Wmissing-export-lists
+- -Wmissing-home-modules
+- -Wpartial-fields
+- -Wredundant-constraints
+
+library:
+  source-dirs: src
+
+tests:
+  hasskell-lib-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - hasskell-lib
+    - sydtest
+    build-tools:
+      sydtest-discover:sydtest-discover

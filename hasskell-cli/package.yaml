@@ -1,0 +1,79 @@
+name:                hasskell-cli
+version:             0.1.0.0
+github:              martinjonsson01/hasskell
+license:             BSD-3-Clause
+author:              Martin Jonsson
+maintainer:          hasskell@jmartin.se
+copyright:           2025 Martin Jonsson
+
+dependencies:
+- base >= 4.11 && < 10
+- rio >= 0.1.12.0
+- hasskell-lib 
+
+default-extensions:
+- BangPatterns
+- BinaryLiterals
+- ConstraintKinds
+- DataKinds
+- DefaultSignatures
+- DeriveDataTypeable
+- DeriveFoldable
+- DeriveFunctor
+- DeriveGeneric
+- DeriveTraversable
+- DoAndIfThenElse
+- EmptyDataDecls
+- ExistentialQuantification
+- FlexibleContexts
+- FlexibleInstances
+- FunctionalDependencies
+- GADTs
+- GeneralizedNewtypeDeriving
+- InstanceSigs
+- KindSignatures
+- LambdaCase
+- MultiParamTypeClasses
+- MultiWayIf
+- NamedFieldPuns
+- NoImplicitPrelude
+- OverloadedStrings
+- PartialTypeSignatures
+- PatternGuards
+- PolyKinds
+- RankNTypes
+- RecordWildCards
+- ScopedTypeVariables
+- StandaloneDeriving
+- TupleSections
+- TypeFamilies
+- TypeSynonymInstances
+- ViewPatterns
+
+ghc-options:
+- -Wall
+- -Wcompat
+- -Widentities
+- -Wincomplete-record-updates
+- -Wincomplete-uni-patterns
+- -Wmissing-export-lists
+- -Wmissing-home-modules
+- -Wpartial-fields
+- -Wredundant-constraints
+
+library:
+  source-dirs: src
+
+executables:
+  hasskell:
+    main:                Main.hs
+    source-dirs:         app
+    dependencies:
+    - hasskell-cli
+    - optparse-simple
+
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+
