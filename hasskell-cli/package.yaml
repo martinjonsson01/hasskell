@@ -12,6 +12,7 @@ dependencies:
 - hasskell-lib 
 
 default-extensions:
+- ImportQualifiedPost
 - BangPatterns
 - BinaryLiterals
 - ConstraintKinds

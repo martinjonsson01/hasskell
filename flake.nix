@@ -40,7 +40,9 @@
     in {
       packages.hasskell = haskellPackages.callCabal2nix "hasskell" ./hasskell-cli {
         # Dependency overrides go here
-        hasskell-lib = haskellPackages.callCabal2nix "hasskell-lib" ./hasskell-lib {};
+        hasskell-lib = (haskellPackages.callCabal2nix "hasskell-lib" ./hasskell-lib {}).overrideAttrs (old: {
+          buildInputs = with pkgs; old.buildInputs ++ [zlib];
+        });
       };
 
       packages.default = self.packages.${system}.hasskell;
@@ -51,8 +53,12 @@
           haskellPackages.haskell-language-server
           haskellPackages.ghc
           stack-wrapped
+          pkgs.zlib
         ];
         inputsFrom = map (__getAttr "env") (__attrValues self.packages.${system});
+
+        NIX_CFLAGS_COMPILE = "-I${pkgs.zlib.dev}/include";
+        NIX_LDFLAGS = "-L${pkgs.zlib.dev}/lib";
         LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath buildInputs;
       };
       devShell = self.devShells.${system}.default;

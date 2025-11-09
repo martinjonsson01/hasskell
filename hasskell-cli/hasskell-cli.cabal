@@ -30,6 +30,7 @@ library
   hs-source-dirs:
       src
   default-extensions:
+      ImportQualifiedPost
       BangPatterns
       BinaryLiterals
       ConstraintKinds
@@ -83,6 +84,7 @@ executable hasskell
   hs-source-dirs:
       app
   default-extensions:
+      ImportQualifiedPost
       BangPatterns
       BinaryLiterals
       ConstraintKinds
