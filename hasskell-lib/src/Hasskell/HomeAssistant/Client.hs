@@ -10,7 +10,7 @@ import Data.ByteString.Lazy qualified as BL
 import Data.ByteString.Lazy.Char8 qualified as BL8
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Text.IO qualified as TIO
+import Data.Text.Encoding qualified as TE
 import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TLE
 import Deriving.Aeson
@@ -59,7 +59,9 @@ runClientThrowErrorAsIO config client = do
 
 app :: WS.Connection -> ClientM ()
 app connection = do
+  logDebug "authenticating..."
   authenticate connection
+  logDebug "authenticated!"
 
   liftIO $ WS.sendClose connection ("Bye!" :: Text)
 
@@ -68,20 +70,26 @@ authenticate connection = do
   initialMessage <- liftIO $ WS.receiveData connection
   case initialMessage of
     Left clientError -> throwError clientError
-    Right response -> liftIO $ print (response :: HASSAuthResponse)
+    Right (ResponseAuthRequired _) -> do
+      hassToken <- asks token
+      send connection $ MessageAuth hassToken
+      authMessage <- liftIO $ WS.receiveData connection
+      case authMessage of
+        Left clientError -> throwError clientError
+        Right (ResponseAuthInvalid errorMessage) -> throwError $ InvalidAuthentication errorMessage
+        Right (ResponseAuthOk _) -> pure ()
+        Right _ -> error "unknown message"
+    Right _ -> error "unknown message"
 
-  hassToken <- asks token
-  liftIO $ send connection $ MessageAuth hassToken
-  authMessage <- liftIO $ WS.receiveData connection
-  case authMessage of
-    Left clientError -> throwError clientError
-    Right (ResponseAuthInvalid errorMessage) -> throwError $ InvalidAuthentication errorMessage
-    Right response -> liftIO $ print (response :: HASSAuthResponse)
-
-send :: (WS.WebSocketsData a, ToJSON a) => WS.Connection -> a -> IO ()
+send :: (WS.WebSocketsData a, ToJSON a) => WS.Connection -> a -> ClientM ()
 send connection value = do
-  BL8.putStrLn $ BL8.concat ["sending: ", encode value]
-  WS.sendTextData connection value
+  logDebug $ T.concat ["sending: ", TE.decodeUtf8 $ BL.toStrict $ encode value]
+  liftIO $ WS.sendTextData connection value
+
+logDebug :: Text -> ClientM ()
+logDebug text = do
+  logging <- asks logging
+  liftIO $ (debugLogger logging) text
 
 parseEither :: BL.ByteString -> Either ClientError HASSAuthResponse
 parseEither s = case eitherDecode s of
