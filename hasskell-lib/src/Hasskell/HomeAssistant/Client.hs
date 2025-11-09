@@ -1,8 +1,9 @@
 {-# OPTIONS_GHC -Wno-partial-fields #-}
 
-module Hasskell.HomeAssistant.Client (run, HASSError, HASSAuthResponse) where
+module Hasskell.HomeAssistant.Client (startWebSocket, runClient, ClientError, HASSAuthResponse) where
 
-import Control.Exception (throwIO)
+import Control.Exception.Base
+import Control.Monad.Except
 import Control.Monad.Reader
 import Data.Aeson
 import Data.ByteString.Lazy qualified as BL
@@ -17,39 +18,64 @@ import Hasskell.Config
 import Hasskell.HomeAssistant.Types
 import Network.WebSockets qualified as WS
 
-data HASSError = ParserError Text Text
+type ClientM = ReaderT Config (ExceptT ClientError IO)
+
+data ClientError
+  = ParserError Text Text
+  | InvalidAuthentication Text
   deriving (Generic, Eq, Show)
 
-type HASS = ReaderT Config IO
+instance Exception ClientError
 
-run :: Config -> IO ()
-run config@(Config {baseUrl}) = WS.runClient (T.unpack baseUrl) 80 "/api/websocket" (app config)
+runClient :: Config -> ClientM a -> IO (Either ClientError a)
+runClient config client = runExceptT (runReaderT client config)
 
-app :: Config -> WS.ClientApp ()
-app config connection = do
-  putStrLn "connecting..."
-  runReaderT (connect connection) config
-  putStrLn "connected!"
+startWebSocket :: ClientM ()
+startWebSocket = do
+  socketUrl <- T.unpack <$> asks baseUrl
+  config <- ask
+  -- since `webSocketWithTimeout` throws the `ClientError`s, we need to convert them.
+  runClientConvertIOError $
+    WS.runClient socketUrl 80 "/api/websocket" (webSocketWithTimeout config)
 
-  putStrLn "exiting..."
-  WS.sendClose connection ("Bye!" :: Text)
+webSocketWithTimeout :: Config -> WS.ClientApp ()
+webSocketWithTimeout config connection =
+  -- `withPingPong` doesn't allow us to return `ClientError`s so we throw them instead.
+  WS.withPingPong WS.defaultPingPongOptions connection (runClientThrowErrorAsIO config . app)
 
-connect :: WS.Connection -> HASS ()
-connect connection = do
-  hassToken <- asks token
+runClientConvertIOError :: IO () -> ClientM ()
+runClientConvertIOError client = do
+  caughtResult <- liftIO $ try client
+  case caughtResult of
+    Left (clientError :: ClientError) -> throwError clientError
+    Right _ -> pure ()
+
+runClientThrowErrorAsIO :: Config -> ClientM () -> IO ()
+runClientThrowErrorAsIO config client = do
+  result <- runClient config client
+  case result of
+    Left clientError -> throwIO clientError
+    Right success -> pure success
+
+app :: WS.Connection -> ClientM ()
+app connection = do
+  authenticate connection
+
+  liftIO $ WS.sendClose connection ("Bye!" :: Text)
+
+authenticate :: WS.Connection -> ClientM ()
+authenticate connection = do
   initialMessage <- liftIO $ WS.receiveData connection
   case initialMessage of
-    Left (ParserError source errorMessage) -> do
-      liftIO $ TIO.putStrLn $ T.concat ["error: couldn't parse: ", source, "\ndue to: ", errorMessage]
-      liftIO $ throwIO $ userError "Parsing error"
+    Left clientError -> throwError clientError
     Right response -> liftIO $ print (response :: HASSAuthResponse)
 
+  hassToken <- asks token
   liftIO $ send connection $ MessageAuth hassToken
   authMessage <- liftIO $ WS.receiveData connection
   case authMessage of
-    Left (ParserError source errorMessage) -> do
-      liftIO $ TIO.putStrLn $ T.concat ["error: couldn't parse: ", source, "\ndue to: ", errorMessage]
-      liftIO $ throwIO $ userError "Parsing error"
+    Left clientError -> throwError clientError
+    Right (ResponseAuthInvalid errorMessage) -> throwError $ InvalidAuthentication errorMessage
     Right response -> liftIO $ print (response :: HASSAuthResponse)
 
 send :: (WS.WebSocketsData a, ToJSON a) => WS.Connection -> a -> IO ()
@@ -57,12 +83,12 @@ send connection value = do
   BL8.putStrLn $ BL8.concat ["sending: ", encode value]
   WS.sendTextData connection value
 
-parseEither :: BL.ByteString -> Either HASSError HASSAuthResponse
+parseEither :: BL.ByteString -> Either ClientError HASSAuthResponse
 parseEither s = case eitherDecode s of
   Left errorMessage -> Left . ParserError (TL.toStrict $ TLE.decodeUtf8 s) $ T.pack errorMessage
   Right response -> Right response
 
-instance WS.WebSocketsData (Either HASSError HASSAuthResponse) where
+instance WS.WebSocketsData (Either ClientError HASSAuthResponse) where
   fromLazyByteString = parseEither
   toLazyByteString = undefined
   fromDataMessage (WS.Text lbs _) = parseEither lbs
