@@ -6,7 +6,9 @@ module Run (run) where
 import Hasskell.Config
 import Hasskell.HomeAssistant.Client qualified as HASS
 import Import
+import RIO.Text qualified as T
 import System.IO.Error (userError)
+import Text.Show.Pretty (ppShow)
 
 run :: RIO App ()
 run = do
@@ -30,6 +32,6 @@ run = do
         )
         HASS.startWebSocket
   case result of
-    Left clientError -> logError $ displayShow clientError
+    Left clientError -> logError $ Utf8Builder $ encodeUtf8Builder $ T.pack $ ppShow clientError
     Right _ -> do
       logInfo "We're inside the application!"

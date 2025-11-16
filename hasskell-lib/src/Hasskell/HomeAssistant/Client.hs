@@ -2,7 +2,9 @@
 
 module Hasskell.HomeAssistant.Client (startWebSocket, runClient, ClientError, HASSAuthResponse) where
 
+import Control.Concurrent.STM
 import Control.Exception.Base
+import Control.Monad (unless)
 import Control.Monad.Except
 import Control.Monad.Reader
 import Data.Aeson
@@ -16,24 +18,38 @@ import Deriving.Aeson
 import Hasskell.Config
 import Hasskell.HomeAssistant.Types
 import Network.WebSockets qualified as WS
+import Text.Show.Pretty
 
-type ClientM = ReaderT Config (ExceptT ClientError IO)
+type ClientM = ReaderT ClientEnv (ExceptT ClientError IO)
+
+data ClientEnv = ClientEnv
+  { clientConfig :: Config,
+    clientMessageCounter :: TVar CorrelationId
+  }
 
 data ClientError
   = ParserError Text Text
   | InvalidAuthentication Text
   | UnknownResponse Text
+  | EnvelopeMismatch {mismatchedRequestId :: CorrelationId, mismatchedResponseId :: CorrelationId}
   deriving (Generic, Eq, Show)
 
 instance Exception ClientError
 
+makeEnv :: Config -> IO ClientEnv
+makeEnv config = do
+  counter <- newTVarIO 0
+  pure $ ClientEnv {clientConfig = config, clientMessageCounter = counter}
+
 runClient :: Config -> ClientM a -> IO (Either ClientError a)
-runClient config client = runExceptT (runReaderT client config)
+runClient config client = do
+  env <- makeEnv config
+  runExceptT (runReaderT client env)
 
 startWebSocket :: ClientM ()
 startWebSocket = do
-  socketUrl <- T.unpack <$> asks baseUrl
-  config <- ask
+  socketUrl <- T.unpack <$> asks (baseUrl . clientConfig)
+  config <- asks clientConfig
   -- since `webSocketWithTimeout` throws the `ClientError`s, we need to convert them.
   runClientConvertIOError $
     WS.runClient socketUrl 80 "/api/websocket" (webSocketWithTimeout config)
@@ -63,8 +79,15 @@ app connection = do
   authenticate connection
   logDebug "authenticated!"
 
+  configResult :: HASSResult HASSConfig <- sendCommand connection CommandGetConfig
+  logDebug $ T.pack $ ppShow configResult
+
+  statesResult :: HASSResult [HASSState] <- sendCommand connection CommandGetStates
+  logDebug $ T.pack $ ppShow statesResult
+
   liftIO $ WS.sendClose connection ("Bye!" :: Text)
 
+-- | Authenticates the Home Assistant websocket.
 authenticate :: WS.Connection -> ClientM ()
 authenticate connection = do
   let handleAuthResponse message = do
@@ -72,9 +95,9 @@ authenticate connection = do
         case message of
           Left clientError -> throwError clientError
           Right (ResponseAuthRequired _) -> do
-            hassToken <- asks token
+            hassToken <- asks (token . clientConfig)
             send connection $ MessageAuth hassToken
-            authMessage <- liftIO $ WS.receiveData connection
+            authMessage <- receive connection
             handleAuthResponse authMessage
           Right (ResponseAuthInvalid errorMessage) -> throwError $ InvalidAuthentication errorMessage
           Right (ResponseAuthOk _) -> pure ()
@@ -82,22 +105,51 @@ authenticate connection = do
   initialMessage <- liftIO $ WS.receiveData connection
   handleAuthResponse initialMessage
 
+-- | Sends data to Home Assistant.
 send :: (WS.WebSocketsData a, ToJSON a) => WS.Connection -> a -> ClientM ()
 send connection value = do
   logDebug $ T.concat ["sending: ", TE.decodeUtf8 $ BL.toStrict $ encode value]
   liftIO $ WS.sendTextData connection value
 
+receive :: (FromJSON a) => WS.Connection -> ClientM (Either ClientError a)
+receive connection = liftIO $ WS.receiveData connection
+
+-- | Sends a given envelope to Home Assistant.
+sendMessage :: (ToJSON a, FromJSON b) => WS.Connection -> Envelope a -> ClientM (Envelope (HASSResult b))
+sendMessage connection command = do
+  send connection command
+  result <- receive connection
+  case result of
+    Left clientError -> throwError clientError
+    Right response -> pure response
+
+-- | Sends a command to Home Assistant.
+sendCommand :: (ToJSON a, FromJSON b) => WS.Connection -> a -> ClientM (HASSResult b)
+sendCommand connection command = do
+  requestId <- incrementMessageCounter
+  Envelope responseId payload <- sendMessage connection (Envelope requestId command)
+  unless (requestId == responseId) (throwError $ EnvelopeMismatch requestId responseId)
+  pure payload
+
+incrementMessageCounter :: ClientM CorrelationId
+incrementMessageCounter = do
+  counter <- asks clientMessageCounter
+  liftIO $ atomically $ do
+    count <- readTVar counter
+    modifyTVar' counter (+ 1)
+    return count
+
 logDebug :: Text -> ClientM ()
 logDebug text = do
-  logging <- asks logging
+  logging <- asks (logging . clientConfig)
   liftIO $ (debugLogger logging) text
 
-parseEither :: BL.ByteString -> Either ClientError HASSAuthResponse
+parseEither :: (FromJSON a) => BL.ByteString -> Either ClientError a
 parseEither s = case eitherDecode s of
   Left errorMessage -> Left . ParserError (TL.toStrict $ TLE.decodeUtf8 s) $ T.pack errorMessage
   Right response -> Right response
 
-instance WS.WebSocketsData (Either ClientError HASSAuthResponse) where
+instance (FromJSON a) => WS.WebSocketsData (Either ClientError a) where
   fromLazyByteString = parseEither
   toLazyByteString = undefined
   fromDataMessage (WS.Text lbs _) = parseEither lbs

@@ -4,19 +4,28 @@
 module Hasskell.HomeAssistant.Types
   ( HASSAuthMessage (..),
     HASSAuthResponse (..),
-    UnitSystem (..),
+    Envelope (..),
+    CorrelationId,
+    HASSCommand (..),
+    HASSResult (..),
+    HASSFailure (..),
     HASSConfig (..),
-    Service (..),
-    ServiceDomain (..),
+    HASSState (..),
+    HASSUnitSystem (..),
+    HASSService (..),
+    HASSServiceDomain (..),
   )
 where
 
 --------------------------------------------------------------------------------
 
 import Data.Aeson
+import Data.Aeson.KeyMap (KeyMap)
+import Data.Aeson.KeyMap qualified as KeyMap
 import Data.Char (toLower)
 import Data.Map.Lazy qualified as M
 import Data.Text (Text)
+import Data.Time (UTCTime)
 import Deriving.Aeson
 import GHC.TypeLits
 import Network.WebSockets qualified as WS
@@ -32,50 +41,133 @@ instance StringModifier Decapitalize where
       decapitalize [] = []
       decapitalize (c : rest) = toLower c : rest
 
--- | The custom JSON encoding/decoding options for HA types.
+-- | The custom JSON encoding/decoding options for HASS message types.
 --
 -- HA does not like fields that are set to @null@ - they must be omitted.
-type JSONOptions (prefix :: Symbol) =
+type HASSMessageJSONOptions (prefix :: Symbol) =
   '[ OmitNothingFields,
      FieldLabelModifier '[StripPrefix prefix, CamelToSnake],
-     TagSingleConstructors,
+     TagSingleConstructors, -- Include tag field even for types with a single constructor.
+     NoAllNullaryToStringTag, -- Include tag field even for types with no fields.
      SumTaggedObject "type" "",
      ConstructorTagModifier '[Decapitalize, StripPrefix prefix, CamelToSnake]
    ]
 
+-- | Value data types are parsed differently than message data types, mainly due to them not being sum encoded.
+type HASSValueJSONOptions (prefix :: Symbol) =
+  '[ OmitNothingFields,
+     UnwrapUnaryRecords,
+     FieldLabelModifier '[StripPrefix prefix, CamelToSnake]
+   ]
+
 --------------------------------------------------------------------------------
 
--- | Initial authentication responses.
+-- | Responses sent from Home Assistant in the authentication phase.
 data HASSAuthResponse
   = ResponseAuthRequired {responseHaVersion :: Text}
   | ResponseAuthInvalid {responseMessage :: Text}
   | ResponseAuthOk {responseHaVersion :: Text}
   deriving (Generic, Eq, Show)
-  deriving (FromJSON, ToJSON) via CustomJSON (JSONOptions "response") HASSAuthResponse
+  deriving (FromJSON, ToJSON) via CustomJSON (HASSMessageJSONOptions "response") HASSAuthResponse
 
--- | Authentication message sent during initial handshake.
+-- | Messages to send to Home Assistant during the authentication phase.
 data HASSAuthMessage = MessageAuth {messageAccessToken :: Text}
   deriving (Generic, Eq, Show)
-  deriving (FromJSON, ToJSON) via CustomJSON (JSONOptions "message") HASSAuthMessage
+  deriving (FromJSON, ToJSON) via CustomJSON (HASSMessageJSONOptions "message") HASSAuthMessage
 
 instance WS.WebSocketsData HASSAuthMessage where
   fromLazyByteString = undefined
   fromDataMessage = undefined
   toLazyByteString = encode
 
--- | Represents units that Home Assistant is configured to use.
-data UnitSystem = MkUnitSystem
-  { -- | Identifies the unit used for distances.
-    unitSystemLength :: Text,
-    -- | Identifies the unit used for mass.
-    unitSystemMass :: Text,
-    -- | Identifies the unit used for temperatures.
-    unitSystemTemperature :: Text,
-    -- | Identifies the unit used for volumes.
-    unitSystemVolume :: Text
+-------------------------------------------------------------------------------
+
+-- | Unique ID associated with a sent message.
+newtype CorrelationId = CorrelationId Int
+  deriving (Eq, Show, Num)
+
+-- | A wrapper around a message, identifying it
+-- such that the response to the message will be easy to identify.
+data Envelope a = Envelope
+  { envelopeId :: CorrelationId,
+    envelopePayload :: a
+  }
+  deriving (Eq, Show)
+
+instance (FromJSON a) => FromJSON (Envelope a) where
+  parseJSON = withObject "Envelope" $ \o -> do
+    i <- CorrelationId <$> o .: "id"
+    -- parse the full object again as 'a'
+    payload <- parseJSON (Object o)
+    pure (Envelope i payload)
+
+instance (ToJSON a) => ToJSON (Envelope a) where
+  toJSON (Envelope (CorrelationId i) payload) =
+    case toJSON payload of
+      Object payloadObject -> Object (KeyMap.insert "id" (toJSON i) payloadObject)
+      val -> error $ "Envelope inner value must encode to an Object" ++ show val
+
+instance (ToJSON a) => WS.WebSocketsData (Envelope a) where
+  fromLazyByteString = undefined
+  fromDataMessage = undefined
+  toLazyByteString = encode
+
+-------------------------------------------------------------------------------
+
+-- | Commands that can be issued to Home Assistant.
+data HASSCommand
+  = -- | Dumps the current config.
+    CommandGetConfig
+  | -- | Dumps all the current states.
+    CommandGetStates
+  deriving (Generic, Eq, Show)
+  deriving (FromJSON, ToJSON) via CustomJSON (HASSMessageJSONOptions "command") HASSCommand
+
+instance WS.WebSocketsData HASSCommand where
+  fromLazyByteString = undefined
+  fromDataMessage = undefined
+  toLazyByteString = encode
+
+data HASSResult a = Result {value :: Either HASSFailure a}
+  deriving (Eq, Show)
+
+instance (FromJSON a) => FromJSON (HASSResult a) where
+  parseJSON = withObject "HASSResult" $ \o -> do
+    t :: String <- o .: "type"
+    if t /= "result"
+      then fail $ "Expected type=result, got: " ++ show t
+      else do
+        success <- o .: "success"
+        value <-
+          if success
+            then Right <$> o .: "result"
+            else Left <$> o .: "error"
+        return $ Result value
+
+data HASSState = State
+  { stateEntityId :: Text,
+    stateState :: Text,
+    stateAttributes :: KeyMap Value,
+    stateLastChanged :: UTCTime,
+    stateLastReported :: UTCTime,
+    stateLastUpdated :: UTCTime,
+    stateContext :: HASSContext
   }
   deriving (Generic, Eq, Show)
-  deriving (FromJSON, ToJSON) via CustomJSON (JSONOptions "unitSystem") UnitSystem
+  deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "state") HASSState
+
+data HASSContext = HASSContext
+  { contextId :: Text,
+    contextParentId :: Maybe Text,
+    contextUserId :: Maybe Text
+  }
+  deriving (Generic, Eq, Show)
+  deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "context") HASSContext
+
+-- | A command failure response.
+data HASSFailure = Failure {failureCode :: Text, failureMessage :: Text}
+  deriving (Generic, Eq, Show)
+  deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "failure") HASSFailure
 
 -- | Represents Home Assistant configurations.
 data HASSConfig = MkConfig
@@ -87,30 +179,44 @@ data HASSConfig = MkConfig
     configLatitude :: Double,
     configLongitude :: Double,
     -- | The units that Home Assistant is configured to use.
-    configUnitSystem :: UnitSystem,
+    configUnitSystem :: HASSUnitSystem,
     configVersion :: Text,
     configWhitelistExternalDirs :: [Text]
   }
   deriving (Generic, Eq, Show)
-  deriving (FromJSON, ToJSON) via CustomJSON (JSONOptions "config") HASSConfig
+  deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "config") HASSConfig
+
+-- | Represents units that Home Assistant is configured to use.
+data HASSUnitSystem = MkUnitSystem
+  { -- | Identifies the unit used for distances.
+    unitSystemLength :: Text,
+    -- | Identifies the unit used for mass.
+    unitSystemMass :: Text,
+    -- | Identifies the unit used for temperatures.
+    unitSystemTemperature :: Text,
+    -- | Identifies the unit used for volumes.
+    unitSystemVolume :: Text
+  }
+  deriving (Generic, Eq, Show)
+  deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "unitSystem") HASSUnitSystem
 
 -- | Represents Home Assistant services.
-data Service = MkService
+data HASSService = MkService
   { serviceName :: Text,
     serviceDescription :: Text,
     serviceFields :: M.Map Text Value
   }
   deriving (Generic, Eq, Show)
-  deriving (FromJSON, ToJSON) via CustomJSON (JSONOptions "service") Service
+  deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "service") HASSService
 
 -- | Represents Home Assistant service domains.
-data ServiceDomain = MkServiceDomain
+data HASSServiceDomain = MkServiceDomain
   { -- | The domain name.
     sdDomain :: Text,
     -- | The services in this domain as a mapping from names to services.
-    sdServices :: M.Map Text Service
+    sdServices :: M.Map Text HASSService
   }
   deriving (Generic, Eq, Show)
-  deriving (FromJSON, ToJSON) via CustomJSON (JSONOptions "sd") ServiceDomain
+  deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "sd") HASSServiceDomain
 
 --------------------------------------------------------------------------------

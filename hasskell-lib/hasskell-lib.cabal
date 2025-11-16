@@ -31,6 +31,7 @@ library
   hs-source-dirs:
       src
   default-extensions:
+      TypeApplications
       OverloadedStrings
       ImportQualifiedPost
       DerivingVia
@@ -78,7 +79,10 @@ library
     , containers >=0.6.8 && <0.8
     , deriving-aeson >=0.2.10 && <0.3
     , mtl >=2.3.1 && <3
+    , pretty-show >=1.10 && <2
+    , stm >=2.5 && <3
     , text >=2.1.1 && <2.2
+    , time >=1.12 && <2
     , websockets ==0.13.*
   default-language: Haskell2010
 
@@ -93,6 +97,7 @@ test-suite hasskell-lib-test
   hs-source-dirs:
       test
   default-extensions:
+      TypeApplications
       OverloadedStrings
       ImportQualifiedPost
       DerivingVia
@@ -143,7 +148,10 @@ test-suite hasskell-lib-test
     , deriving-aeson >=0.2.10 && <0.3
     , hasskell-lib
     , mtl >=2.3.1 && <3
+    , pretty-show >=1.10 && <2
+    , stm >=2.5 && <3
     , sydtest
     , text >=2.1.1 && <2.2
+    , time >=1.12 && <2
     , websockets ==0.13.*
   default-language: Haskell2010
