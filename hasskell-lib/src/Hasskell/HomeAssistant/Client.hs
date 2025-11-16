@@ -22,6 +22,7 @@ type ClientM = ReaderT Config (ExceptT ClientError IO)
 data ClientError
   = ParserError Text Text
   | InvalidAuthentication Text
+  | UnknownResponse Text
   deriving (Generic, Eq, Show)
 
 instance Exception ClientError
@@ -66,19 +67,20 @@ app connection = do
 
 authenticate :: WS.Connection -> ClientM ()
 authenticate connection = do
+  let handleAuthResponse message = do
+        logDebug $ T.concat ["got auth response ", T.show message]
+        case message of
+          Left clientError -> throwError clientError
+          Right (ResponseAuthRequired _) -> do
+            hassToken <- asks token
+            send connection $ MessageAuth hassToken
+            authMessage <- liftIO $ WS.receiveData connection
+            handleAuthResponse authMessage
+          Right (ResponseAuthInvalid errorMessage) -> throwError $ InvalidAuthentication errorMessage
+          Right (ResponseAuthOk _) -> pure ()
+
   initialMessage <- liftIO $ WS.receiveData connection
-  case initialMessage of
-    Left clientError -> throwError clientError
-    Right (ResponseAuthRequired _) -> do
-      hassToken <- asks token
-      send connection $ MessageAuth hassToken
-      authMessage <- liftIO $ WS.receiveData connection
-      case authMessage of
-        Left clientError -> throwError clientError
-        Right (ResponseAuthInvalid errorMessage) -> throwError $ InvalidAuthentication errorMessage
-        Right (ResponseAuthOk _) -> pure ()
-        Right _ -> error "unknown message"
-    Right _ -> error "unknown message"
+  handleAuthResponse initialMessage
 
 send :: (WS.WebSocketsData a, ToJSON a) => WS.Connection -> a -> ClientM ()
 send connection value = do
