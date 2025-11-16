@@ -7,7 +7,6 @@ import Control.Monad.Except
 import Control.Monad.Reader
 import Data.Aeson
 import Data.ByteString.Lazy qualified as BL
-import Data.ByteString.Lazy.Char8 qualified as BL8
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
