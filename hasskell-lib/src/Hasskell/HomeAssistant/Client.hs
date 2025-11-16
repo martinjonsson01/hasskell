@@ -1,6 +1,12 @@
 {-# OPTIONS_GHC -Wno-partial-fields #-}
 
-module Hasskell.HomeAssistant.Client (startWebSocket, runClient, ClientError, HASSAuthResponse) where
+module Hasskell.HomeAssistant.Client
+  ( startWebSocket,
+    runClient,
+    ClientError,
+    HASSAuthResponse,
+  )
+where
 
 import Control.Concurrent.STM
 import Control.Exception.Base
