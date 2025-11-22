@@ -1,3 +1,4 @@
+{-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-partial-fields #-}
 
 module Hasskell.HomeAssistant.Client
@@ -35,6 +36,18 @@ data ClientEnv = ClientEnv
   { clientConfig :: Config,
     clientMessageCounter :: TVar CorrelationId
   }
+
+class HasClientEnv a where
+  getClientEnv :: a -> ClientEnv
+
+instance HasClientEnv ClientEnv where
+  getClientEnv = id
+
+class HasMessageCounter a where
+  getMessageCounter :: a -> TVar CorrelationId
+
+instance (HasClientEnv a) => HasMessageCounter a where
+  getMessageCounter = clientMessageCounter . getClientEnv
 
 instance HasConfig ClientEnv where
   getConfig = clientConfig
@@ -140,16 +153,23 @@ authenticate connection = do
   handleAuthResponse initialMessage
 
 -- | Sends data to Home Assistant.
-send :: (WS.WebSocketsData a, ToJSON a) => WS.Connection -> a -> ClientM ()
+send :: (MonadIO m, MonadLog m, WS.WebSocketsData a, ToJSON a) => WS.Connection -> a -> m ()
 send connection value = do
   logDebug $ T.concat ["sending: ", TE.decodeUtf8 $ BL.toStrict $ encodePretty value]
   liftIO $ WS.sendTextData connection value
 
-receive :: (FromJSON a) => WS.Connection -> ClientM (Either ClientError a)
+receive :: (MonadIO m, FromJSON a) => WS.Connection -> m (Either ClientError a)
 receive connection = liftIO $ WS.receiveData connection
 
 -- | Sends a given envelope to Home Assistant.
-sendMessage :: (ToJSON a, FromJSON b) => WS.Connection -> Envelope a -> ClientM (Envelope (HASSResult b))
+sendMessage ::
+  ( MonadIO m,
+    MonadLog m,
+    MonadError ClientError m,
+    ToJSON a,
+    FromJSON b
+  ) =>
+  WS.Connection -> Envelope a -> m (Envelope (HASSResult b))
 sendMessage connection command = do
   send connection command
   result <- receive connection
@@ -158,16 +178,25 @@ sendMessage connection command = do
     Right response -> pure response
 
 -- | Sends a command to Home Assistant.
-sendCommand :: (ToJSON a, FromJSON b) => WS.Connection -> a -> ClientM (HASSResult b)
+sendCommand ::
+  ( MonadIO m,
+    ToJSON a,
+    FromJSON b,
+    MonadReader env m,
+    MonadError ClientError m,
+    HasConfig env,
+    HasMessageCounter env
+  ) =>
+  WS.Connection -> a -> m (HASSResult b)
 sendCommand connection command = do
   requestId <- incrementMessageCounter
   Envelope responseId payload <- sendMessage connection (Envelope requestId command)
   unless (requestId == responseId) (throwError $ EnvelopeMismatch requestId responseId)
   pure payload
 
-incrementMessageCounter :: ClientM CorrelationId
+incrementMessageCounter :: (MonadIO m, MonadReader env m, HasMessageCounter env) => m CorrelationId
 incrementMessageCounter = do
-  counter <- asks clientMessageCounter
+  counter <- asks getMessageCounter
   liftIO $ atomically $ do
     count <- readTVar counter
     modifyTVar' counter (+ 1)
