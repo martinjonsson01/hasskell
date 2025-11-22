@@ -25,7 +25,7 @@ import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TLE
 import Deriving.Aeson
 import Hasskell.Config
-import Hasskell.HomeAssistant.Types
+import Hasskell.HomeAssistant.API
 import Hasskell.Monad
 import Network.WebSockets qualified as WS
 import Text.Show.Pretty

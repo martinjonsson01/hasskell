@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wno-partial-fields #-}
 
 -- | Types used by Home Assistant.
-module Hasskell.HomeAssistant.Types
+module Hasskell.HomeAssistant.API
   ( HASSAuthMessage (..),
     HASSAuthResponse (..),
     Envelope (..),
