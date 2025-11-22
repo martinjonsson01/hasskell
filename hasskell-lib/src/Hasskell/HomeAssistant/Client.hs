@@ -14,7 +14,9 @@ import Control.Monad (unless)
 import Control.Monad.Except
 import Control.Monad.Reader
 import Data.Aeson
+import Data.Aeson.Encode.Pretty (encodePretty)
 import Data.ByteString.Lazy qualified as BL
+import Data.List qualified as L
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
@@ -44,7 +46,7 @@ instance Exception ClientError
 
 makeEnv :: Config -> IO ClientEnv
 makeEnv config = do
-  counter <- newTVarIO 0
+  counter <- newTVarIO 1 -- Has to start at 1, 0 results in "Message incorrectly formatted."
   pure $ ClientEnv {clientConfig = config, clientMessageCounter = counter}
 
 runClient :: Config -> ClientM a -> IO (Either ClientError a)
@@ -88,8 +90,30 @@ app connection = do
   configResult :: HASSResult HASSConfig <- sendCommand connection CommandGetConfig
   logDebug $ T.pack $ ppShow configResult
 
-  statesResult :: HASSResult [HASSState] <- sendCommand connection CommandGetStates
-  logDebug $ T.pack $ ppShow statesResult
+  _ :: HASSResult [HASSState] <- sendCommand connection CommandGetStates
+
+  _ :: HASSResult (HASSServiceActions) <- sendCommand connection CommandGetServices
+
+  actionResult :: HASSResult HASSActionResult <-
+    sendCommand
+      connection
+      ( CommandCallService
+          { commandReturnResponse = False,
+            commandTarget =
+              Just
+                ( Target
+                    { targetEntityId = L.singleton "light.flaktlampa",
+                      targetDeviceId = mempty,
+                      targetLabelId = mempty,
+                      targetAreaId = mempty
+                    }
+                ),
+            commandServiceData = Nothing,
+            commandService = ServiceName "toggle",
+            commandDomain = Domain "light"
+          }
+      )
+  logDebug $ T.pack $ ppShow actionResult
 
   liftIO $ WS.sendClose connection ("Bye!" :: Text)
 
@@ -114,7 +138,7 @@ authenticate connection = do
 -- | Sends data to Home Assistant.
 send :: (WS.WebSocketsData a, ToJSON a) => WS.Connection -> a -> ClientM ()
 send connection value = do
-  logDebug $ T.concat ["sending: ", TE.decodeUtf8 $ BL.toStrict $ encode value]
+  logDebug $ T.concat ["sending: ", TE.decodeUtf8 $ BL.toStrict $ encodePretty value]
   liftIO $ WS.sendTextData connection value
 
 receive :: (FromJSON a) => WS.Connection -> ClientM (Either ClientError a)

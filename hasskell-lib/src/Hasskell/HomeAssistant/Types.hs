@@ -11,9 +11,13 @@ module Hasskell.HomeAssistant.Types
     HASSFailure (..),
     HASSConfig (..),
     HASSState (..),
+    HASSTarget (..),
+    HASSActionResult (..),
+    HASSDomain (..),
     HASSUnitSystem (..),
+    HASSServiceActions,
     HASSService (..),
-    HASSServiceDomain (..),
+    HASSServiceName (..),
   )
 where
 
@@ -57,7 +61,8 @@ type HASSMessageJSONOptions (prefix :: Symbol) =
 type HASSValueJSONOptions (prefix :: Symbol) =
   '[ OmitNothingFields,
      UnwrapUnaryRecords,
-     FieldLabelModifier '[StripPrefix prefix, CamelToSnake]
+     FieldLabelModifier '[StripPrefix prefix, CamelToSnake],
+     ConstructorTagModifier '[Decapitalize, StripPrefix prefix, CamelToSnake]
    ]
 
 --------------------------------------------------------------------------------
@@ -120,6 +125,16 @@ data HASSCommand
     CommandGetConfig
   | -- | Dumps all the current states.
     CommandGetStates
+  | -- | Dumps all the current service actions.
+    CommandGetServices
+  | -- | Calls a service action.
+    CommandCallService
+      { commandDomain :: HASSDomain,
+        commandService :: HASSServiceName,
+        commandServiceData :: Maybe (M.Map Text Text),
+        commandTarget :: Maybe HASSTarget,
+        commandReturnResponse :: Bool
+      }
   deriving (Generic, Eq, Show)
   deriving (FromJSON, ToJSON) via CustomJSON (HASSMessageJSONOptions "command") HASSCommand
 
@@ -127,6 +142,15 @@ instance WS.WebSocketsData HASSCommand where
   fromLazyByteString = undefined
   fromDataMessage = undefined
   toLazyByteString = encode
+
+data HASSTarget = Target
+  { targetEntityId :: [Text],
+    targetDeviceId :: [Text],
+    targetAreaId :: [Text],
+    targetLabelId :: [Text]
+  }
+  deriving (Generic, Eq, Show)
+  deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "target") HASSTarget
 
 data HASSResult a = Result {value :: Either HASSFailure a}
   deriving (Eq, Show)
@@ -143,6 +167,13 @@ instance (FromJSON a) => FromJSON (HASSResult a) where
             then Right <$> o .: "result"
             else Left <$> o .: "error"
         return $ Result value
+
+data HASSActionResult = ActionResult
+  { actionResultContext :: HASSContext,
+    actionResultResponse :: Maybe Value
+  }
+  deriving (Generic, Eq, Show)
+  deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "actionResult") HASSActionResult
 
 data HASSState = State
   { stateEntityId :: Text,
@@ -200,23 +231,21 @@ data HASSUnitSystem = MkUnitSystem
   deriving (Generic, Eq, Show)
   deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "unitSystem") HASSUnitSystem
 
+newtype HASSServiceName = ServiceName Text
+  deriving (Eq, Show, Ord)
+  deriving (FromJSON, ToJSON, FromJSONKey, ToJSONKey) via Text
+
+newtype HASSDomain = Domain Text
+  deriving (Eq, Show, Ord)
+  deriving (FromJSON, ToJSON, FromJSONKey, ToJSONKey) via Text
+
+type HASSServiceActions = M.Map HASSDomain (M.Map HASSServiceName HASSService)
+
 -- | Represents Home Assistant services.
-data HASSService = MkService
+data HASSService = Service
   { serviceName :: Text,
     serviceDescription :: Text,
     serviceFields :: M.Map Text Value
   }
   deriving (Generic, Eq, Show)
   deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "service") HASSService
-
--- | Represents Home Assistant service domains.
-data HASSServiceDomain = MkServiceDomain
-  { -- | The domain name.
-    sdDomain :: Text,
-    -- | The services in this domain as a mapping from names to services.
-    sdServices :: M.Map Text HASSService
-  }
-  deriving (Generic, Eq, Show)
-  deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "sd") HASSServiceDomain
-
---------------------------------------------------------------------------------

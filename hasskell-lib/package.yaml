@@ -10,6 +10,7 @@ dependencies:
 - base >= 4.7 && < 5
 - aeson >= 2.2.3 && < 2.3
 - deriving-aeson >= 0.2.10 && < 0.3
+- aeson-pretty >= 0.8.10 && < 1.0
 - text >= 2.1.1 && < 2.2
 - containers >= 0.6.8 && < 0.8
 - websockets >= 0.13 && < 0.14

@@ -74,6 +74,7 @@ library
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       aeson >=2.2.3 && <2.3
+    , aeson-pretty >=0.8.10 && <1.0
     , base >=4.7 && <5
     , bytestring >=0.12.2.0 && <0.13
     , containers >=0.6.8 && <0.8
@@ -142,6 +143,7 @@ test-suite hasskell-lib-test
       sydtest-discover:sydtest-discover
   build-depends:
       aeson >=2.2.3 && <2.3
+    , aeson-pretty >=0.8.10 && <1.0
     , base >=4.7 && <5
     , bytestring >=0.12.2.0 && <0.13
     , containers >=0.6.8 && <0.8
