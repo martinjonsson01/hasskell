@@ -38,10 +38,6 @@ data ClientEnv = ClientEnv
   }
   deriving (Generic, Has Config, Has (TVar CorrelationId))
 
-instance Has LoggingConfig ClientEnv where
-  extract = logging . extract
-  update f = update @Config (update @LoggingConfig f)
-
 data ClientError
   = ParserError Text Text
   | InvalidAuthentication Text
@@ -88,7 +84,15 @@ runClientThrowErrorAsIO config client = do
     Left clientError -> throwIO clientError
     Right success -> pure success
 
-app :: WS.Connection -> ClientM ()
+app ::
+  ( MonadMutableClient m,
+    MonadWS m,
+    MonadLog m,
+    MonadError ClientError m,
+    MonadReader env m,
+    Has ClientEnv env
+  ) =>
+  WS.Connection -> m ()
 app connection = do
   logDebug "authenticating..."
   authenticate connection
@@ -122,13 +126,12 @@ app connection = do
       )
   logDebug $ T.pack $ ppShow actionResult
 
-  liftIO $ WS.sendClose connection ("Bye!" :: Text)
+  send connection ("Bye!" :: Text)
 
 -- | Authenticates the Home Assistant websocket.
-authenticate :: WS.Connection -> ClientM ()
+authenticate :: (MonadWS m, MonadLog m, Has ClientEnv env, MonadReader env m, MonadError ClientError m) => WS.Connection -> m ()
 authenticate connection = do
-  let handleAuthResponse :: Either ClientError HASSAuthResponse -> ClientM ()
-      handleAuthResponse message = do
+  let handleAuthResponse message = do
         logDebug $ T.concat ["got auth response ", T.show message]
         response <- liftEither message
         case response of
@@ -143,19 +146,29 @@ authenticate connection = do
   initialMessage <- receive connection
   handleAuthResponse initialMessage
 
+--------------------------------------------------------------------------------
+
+class MonadWS m where
+  sendTextData :: (WS.WebSocketsData a) => WS.Connection -> a -> m ()
+  receiveData :: (WS.WebSocketsData a) => WS.Connection -> m a
+
+instance (MonadIO m) => MonadWS m where
+  sendTextData connection = liftIO . WS.sendTextData connection
+  receiveData = liftIO . WS.receiveData
+
 -- | Sends data to Home Assistant.
-send :: (MonadIO m, MonadLog m, WS.WebSocketsData a, ToJSON a) => WS.Connection -> a -> m ()
+send :: (MonadWS m, MonadLog m, WS.WebSocketsData a, ToJSON a, Monad m) => WS.Connection -> a -> m ()
 send connection value = do
   logDebug $ T.concat ["sending: ", TE.decodeUtf8 $ BL.toStrict $ encodePretty value]
-  liftIO $ WS.sendTextData connection value
+  sendTextData connection value
 
-receive :: (MonadIO m, FromJSON a) => WS.Connection -> m (Either ClientError a)
-receive connection = liftIO $ WS.receiveData connection
+receive :: (MonadWS m, FromJSON a) => WS.Connection -> m (Either ClientError a)
+receive connection = receiveData connection
 
 -- | Sends a given envelope to Home Assistant.
 sendMessage ::
-  ( MonadIO m,
-    MonadLog m,
+  ( MonadLog m,
+    MonadWS m,
     MonadError ClientError m,
     ToJSON a,
     FromJSON b
@@ -164,31 +177,6 @@ sendMessage ::
 sendMessage connection command = do
   send connection command
   receive connection >>= liftEither
-
--- | Sends a command to Home Assistant.
-sendCommand ::
-  ( MonadIO m,
-    ToJSON a,
-    FromJSON b,
-    MonadReader env m,
-    MonadError ClientError m,
-    Has (TVar CorrelationId) env,
-    Has LoggingConfig env
-  ) =>
-  WS.Connection -> a -> m (HASSResult b)
-sendCommand connection command = do
-  requestId <- incrementMessageCounter
-  Envelope responseId payload <- sendMessage connection (Envelope requestId command)
-  unless (requestId == responseId) (throwError $ EnvelopeMismatch requestId responseId)
-  pure payload
-
-incrementMessageCounter :: (MonadIO m, MonadReader env m, Has (TVar CorrelationId) env) => m CorrelationId
-incrementMessageCounter = do
-  counter <- ask
-  liftIO $ atomically $ do
-    count <- readTVar counter
-    modifyTVar' counter (+ 1)
-    return count
 
 parseEither :: (FromJSON a) => BL.ByteString -> Either ClientError a
 parseEither s = case eitherDecode s of
@@ -200,3 +188,34 @@ instance (FromJSON a) => WS.WebSocketsData (Either ClientError a) where
   toLazyByteString = undefined
   fromDataMessage (WS.Text lbs _) = parseEither lbs
   fromDataMessage (WS.Binary lbs) = parseEither lbs
+
+--------------------------------------------------------------------------------
+
+class MonadMutableClient m where
+  incrementMessageCounter :: m CorrelationId
+
+instance (MonadIO m, MonadReader env m, Has (TVar CorrelationId) env) => MonadMutableClient m where
+  incrementMessageCounter = do
+    counter <- ask
+    liftIO $ atomically $ do
+      count <- readTVar counter
+      modifyTVar' counter (+ 1)
+      return count
+
+-- | Sends a command to Home Assistant.
+sendCommand ::
+  ( MonadMutableClient m,
+    MonadError ClientError m,
+    MonadWS m,
+    MonadLog m,
+    ToJSON a,
+    FromJSON b
+  ) =>
+  WS.Connection -> a -> m (HASSResult b)
+sendCommand connection command = do
+  requestId <- incrementMessageCounter
+  Envelope responseId payload <- sendMessage connection (Envelope requestId command)
+  unless (requestId == responseId) (throwError $ EnvelopeMismatch requestId responseId)
+  pure payload
+
+--------------------------------------------------------------------------------

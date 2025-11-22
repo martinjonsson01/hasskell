@@ -1,3 +1,5 @@
+{-# LANGUAGE UndecidableInstances #-}
+
 module Hasskell.Config
   ( Config (..),
     LoggingConfig (..),
@@ -16,6 +18,10 @@ data Config = Config
     logging :: !LoggingConfig
   }
   deriving (Generic, Has LoggingConfig)
+
+instance {-# OVERLAPPABLE #-} (Has Config env) => Has LoggingConfig env where
+  extract = logging . extract
+  update f = update @Config (update @LoggingConfig f)
 
 data LoggingConfig = Logging
   { debugLogger :: !(Text -> IO ()),
