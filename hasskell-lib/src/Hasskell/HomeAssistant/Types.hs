@@ -89,7 +89,7 @@ instance WS.WebSocketsData HASSAuthMessage where
 
 -- | Unique ID associated with a sent message.
 newtype CorrelationId = CorrelationId Int
-  deriving (Eq, Show, Num)
+  deriving newtype (Eq, Show, Num)
 
 -- | A wrapper around a message, identifying it
 -- such that the response to the message will be easy to identify.

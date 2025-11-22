@@ -13,7 +13,7 @@ import Control.Concurrent.STM
 import Control.Exception.Base
 import Control.Monad (unless)
 import Control.Monad.Except
-import Control.Monad.Reader
+import Control.Monad.Reader.Has
 import Data.Aeson
 import Data.Aeson.Encode.Pretty (encodePretty)
 import Data.ByteString.Lazy qualified as BL
@@ -36,21 +36,11 @@ data ClientEnv = ClientEnv
   { clientConfig :: Config,
     clientMessageCounter :: TVar CorrelationId
   }
+  deriving (Generic, Has Config, Has (TVar CorrelationId))
 
-class HasClientEnv a where
-  getClientEnv :: a -> ClientEnv
-
-instance HasClientEnv ClientEnv where
-  getClientEnv = id
-
-class HasMessageCounter a where
-  getMessageCounter :: a -> TVar CorrelationId
-
-instance (HasClientEnv a) => HasMessageCounter a where
-  getMessageCounter = clientMessageCounter . getClientEnv
-
-instance HasConfig ClientEnv where
-  getConfig = clientConfig
+instance Has LoggingConfig ClientEnv where
+  extract = logging . extract
+  update f = update @Config (update @LoggingConfig f)
 
 data ClientError
   = ParserError Text Text
@@ -137,19 +127,20 @@ app connection = do
 -- | Authenticates the Home Assistant websocket.
 authenticate :: WS.Connection -> ClientM ()
 authenticate connection = do
-  let handleAuthResponse message = do
+  let handleAuthResponse :: Either ClientError HASSAuthResponse -> ClientM ()
+      handleAuthResponse message = do
         logDebug $ T.concat ["got auth response ", T.show message]
-        case message of
-          Left clientError -> throwError clientError
-          Right (ResponseAuthRequired _) -> do
-            hassToken <- asks (token . clientConfig)
+        response <- liftEither message
+        case response of
+          ResponseAuthRequired _ -> do
+            hassToken :: Text <- asks (token . extract @Config @ClientEnv)
             send connection $ MessageAuth hassToken
             authMessage <- receive connection
             handleAuthResponse authMessage
-          Right (ResponseAuthInvalid errorMessage) -> throwError $ InvalidAuthentication errorMessage
-          Right (ResponseAuthOk _) -> pure ()
+          ResponseAuthInvalid errorMessage -> throwError $ InvalidAuthentication errorMessage
+          ResponseAuthOk _ -> pure ()
 
-  initialMessage <- liftIO $ WS.receiveData connection
+  initialMessage <- receive connection
   handleAuthResponse initialMessage
 
 -- | Sends data to Home Assistant.
@@ -172,10 +163,7 @@ sendMessage ::
   WS.Connection -> Envelope a -> m (Envelope (HASSResult b))
 sendMessage connection command = do
   send connection command
-  result <- receive connection
-  case result of
-    Left clientError -> throwError clientError
-    Right response -> pure response
+  receive connection >>= liftEither
 
 -- | Sends a command to Home Assistant.
 sendCommand ::
@@ -184,8 +172,8 @@ sendCommand ::
     FromJSON b,
     MonadReader env m,
     MonadError ClientError m,
-    HasConfig env,
-    HasMessageCounter env
+    Has (TVar CorrelationId) env,
+    Has LoggingConfig env
   ) =>
   WS.Connection -> a -> m (HASSResult b)
 sendCommand connection command = do
@@ -194,9 +182,9 @@ sendCommand connection command = do
   unless (requestId == responseId) (throwError $ EnvelopeMismatch requestId responseId)
   pure payload
 
-incrementMessageCounter :: (MonadIO m, MonadReader env m, HasMessageCounter env) => m CorrelationId
+incrementMessageCounter :: (MonadIO m, MonadReader env m, Has (TVar CorrelationId) env) => m CorrelationId
 incrementMessageCounter = do
-  counter <- asks getMessageCounter
+  counter <- ask
   liftIO $ atomically $ do
     count <- readTVar counter
     modifyTVar' counter (+ 1)

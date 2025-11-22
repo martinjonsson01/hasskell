@@ -2,25 +2,17 @@
 
 module Hasskell.Monad
   ( HassM,
-    HasConfig (..),
     MonadLog (..),
   )
 where
 
 import Control.Monad.Except
 import Control.Monad.Reader
+import Control.Monad.Reader.Has (Has (extract))
 import Data.Text (Text)
 import Hasskell.Config
 
 type HassM env err m = ReaderT env (ExceptT err m)
-
---------------------------------------------------------------------------------
-
-class HasConfig a where
-  getConfig :: a -> Config
-
-instance HasConfig Config where
-  getConfig = id
 
 --------------------------------------------------------------------------------
 
@@ -29,12 +21,12 @@ class MonadLog m where
   logInfo :: Text -> m ()
   logError :: Text -> m ()
 
-writeWithIOLogger :: (MonadReader env m, HasConfig env, MonadIO m) => (LoggingConfig -> Text -> IO ()) -> Text -> m ()
+writeWithIOLogger :: (MonadReader env m, Has LoggingConfig env, MonadIO m) => (LoggingConfig -> Text -> IO ()) -> Text -> m ()
 writeWithIOLogger getLogger text = do
-  writeLog <- asks (getLogger . logging . getConfig)
+  writeLog <- asks (getLogger . extract)
   liftIO $ writeLog text
 
-instance (MonadReader env m, HasConfig env, MonadIO m) => MonadLog m where
+instance (MonadReader env m, Has LoggingConfig env, MonadIO m) => MonadLog m where
   logDebug = writeWithIOLogger debugLogger
   logInfo = writeWithIOLogger infoLogger
   logError = writeWithIOLogger errorLogger
