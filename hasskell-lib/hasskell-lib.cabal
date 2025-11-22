@@ -24,6 +24,7 @@ library
       Hasskell.HomeAssistant.Client
       Hasskell.HomeAssistant.Types
       Hasskell.Lib
+      Hasskell.Monad
   other-modules:
       Paths_hasskell_lib
   autogen-modules:

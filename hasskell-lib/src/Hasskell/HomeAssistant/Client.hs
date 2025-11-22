@@ -25,15 +25,19 @@ import Data.Text.Lazy.Encoding qualified as TLE
 import Deriving.Aeson
 import Hasskell.Config
 import Hasskell.HomeAssistant.Types
+import Hasskell.Monad
 import Network.WebSockets qualified as WS
 import Text.Show.Pretty
 
-type ClientM = ReaderT ClientEnv (ExceptT ClientError IO)
+type ClientM = HassM ClientEnv ClientError IO
 
 data ClientEnv = ClientEnv
   { clientConfig :: Config,
     clientMessageCounter :: TVar CorrelationId
   }
+
+instance HasConfig ClientEnv where
+  getConfig = clientConfig
 
 data ClientError
   = ParserError Text Text
@@ -168,11 +172,6 @@ incrementMessageCounter = do
     count <- readTVar counter
     modifyTVar' counter (+ 1)
     return count
-
-logDebug :: Text -> ClientM ()
-logDebug text = do
-  logging <- asks (logging . clientConfig)
-  liftIO $ (debugLogger logging) text
 
 parseEither :: (FromJSON a) => BL.ByteString -> Either ClientError a
 parseEither s = case eitherDecode s of

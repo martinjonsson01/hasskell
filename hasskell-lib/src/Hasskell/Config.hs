@@ -9,15 +9,15 @@ import Data.Text (Text)
 import Data.Text qualified as T
 
 data Config = Config
-  { token :: Text,
-    baseUrl :: Text,
-    logging :: LoggingConfig
+  { token :: !Text,
+    baseUrl :: !Text,
+    logging :: !LoggingConfig
   }
 
 data LoggingConfig = Logging
-  { debugLogger :: Text -> IO (),
-    infoLogger :: Text -> IO (),
-    errorLogger :: Text -> IO ()
+  { debugLogger :: !(Text -> IO ()),
+    infoLogger :: !(Text -> IO ()),
+    errorLogger :: !(Text -> IO ())
   }
 
 defaultLogging :: LoggingConfig
