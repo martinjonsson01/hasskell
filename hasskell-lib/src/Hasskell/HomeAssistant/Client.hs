@@ -102,9 +102,11 @@ app connection = do
   configResult :: HASSConfig <- sendCommand connection CommandGetConfig
   logDebug $ T.pack $ ppShow configResult
 
-  _ :: [HASSState] <- sendCommand connection CommandGetStates
+  states :: [HASSState] <- sendCommand connection CommandGetStates
+  logDebug $ "state count: " <> (T.show $ length $ states)
 
-  _ :: (HASSServiceActions) <- sendCommand connection CommandGetServices
+  actions :: (HASSServiceActions) <- sendCommand connection CommandGetServices
+  logDebug $ "action count: " <> (T.show $ length $ actions)
 
   actionResult :: HASSActionResult <-
     sendCommand
