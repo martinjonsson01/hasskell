@@ -43,6 +43,7 @@ data ClientError
   | InvalidAuthentication Text
   | UnknownResponse Text
   | EnvelopeMismatch {mismatchedRequestId :: CorrelationId, mismatchedResponseId :: CorrelationId}
+  | CommandFailure HASSFailure
   deriving (Generic, Eq, Show)
 
 instance Exception ClientError
@@ -98,14 +99,14 @@ app connection = do
   authenticate connection
   logDebug "authenticated!"
 
-  configResult :: HASSResult HASSConfig <- sendCommand connection CommandGetConfig
+  configResult :: HASSConfig <- sendCommand connection CommandGetConfig
   logDebug $ T.pack $ ppShow configResult
 
-  _ :: HASSResult [HASSState] <- sendCommand connection CommandGetStates
+  _ :: [HASSState] <- sendCommand connection CommandGetStates
 
-  _ :: HASSResult (HASSServiceActions) <- sendCommand connection CommandGetServices
+  _ :: (HASSServiceActions) <- sendCommand connection CommandGetServices
 
-  actionResult :: HASSResult HASSActionResult <-
+  actionResult :: HASSActionResult <-
     sendCommand
       connection
       ( CommandCallService
@@ -202,7 +203,6 @@ instance (MonadIO m, MonadReader env m, Has (TVar CorrelationId) env) => MonadMu
       modifyTVar' counter (+ 1)
       return count
 
--- | Sends a command to Home Assistant.
 sendCommand ::
   ( MonadMutableClient m,
     MonadError ClientError m,
@@ -211,8 +211,26 @@ sendCommand ::
     ToJSON a,
     FromJSON b
   ) =>
-  WS.Connection -> a -> m (HASSResult b)
+  WS.Connection -> a -> m b
 sendCommand connection command = do
+  result <- sendCommand' connection command
+  liftEither $ leftMap CommandFailure $ value result
+  where
+    leftMap :: (a -> c) -> Either a b -> Either c b
+    leftMap f (Left l) = Left (f l)
+    leftMap _ (Right r) = Right r
+
+-- | Sends a command to Home Assistant.
+sendCommand' ::
+  ( MonadMutableClient m,
+    MonadError ClientError m,
+    MonadWS m,
+    MonadLog m,
+    ToJSON a,
+    FromJSON b
+  ) =>
+  WS.Connection -> a -> m (HASSResult b)
+sendCommand' connection command = do
   requestId <- incrementMessageCounter
   Envelope responseId payload <- sendMessage connection (Envelope requestId command)
   unless (requestId == responseId) (throwError $ EnvelopeMismatch requestId responseId)
