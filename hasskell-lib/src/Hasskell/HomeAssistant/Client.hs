@@ -3,9 +3,13 @@
 
 module Hasskell.HomeAssistant.Client
   ( runClient,
+    ClientM,
     doHASSInteractions,
     ClientError,
     HASSAuthResponse,
+    getConfig,
+    getStates,
+    getServices,
   )
 where
 
@@ -16,7 +20,7 @@ import Effectful
 import Effectful.Concurrent
 import Effectful.Error.Static
 import Effectful.Exception
-import Hasskell.Config
+import Hasskell.Config (Config (..), Configured, runConfigured)
 import Hasskell.Effects.Counter
 import Hasskell.Effects.HASSConnection
 import Hasskell.Effects.Logging
@@ -38,6 +42,8 @@ newtype ClientM a = Client
          ]
         a
   }
+  deriving stock (Functor)
+  deriving newtype (Applicative, Monad, MonadIO)
 
 data ClientError
   = UnknownResponse Text
@@ -66,17 +72,17 @@ runClient config Client {unClient} =
 
 --------------------------------------------------------------------------------
 
+getConfig :: ClientM HASSConfig
+getConfig = Client $ sendMessage CommandGetConfig
+
+getStates :: ClientM [HASSState]
+getStates = Client $ sendMessage CommandGetStates
+
+getServices :: ClientM HASSServiceActions
+getServices = Client $ sendMessage CommandGetServices
+
 doHASSInteractions :: ClientM ()
 doHASSInteractions = Client $ do
-  configResult :: HASSConfig <- sendMessage CommandGetConfig
-  logDebug $ T.pack $ ppShow configResult
-
-  states :: [HASSState] <- sendMessage CommandGetStates
-  logDebug $ "state count: " <> (T.show $ length $ states)
-
-  actions :: (HASSServiceActions) <- sendMessage CommandGetServices
-  logDebug $ "action count: " <> (T.show $ length $ actions)
-
   actionResult :: HASSActionResult <-
     sendMessage
       ( CommandCallService

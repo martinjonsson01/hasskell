@@ -104,7 +104,7 @@ test-suite hasskell-lib-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      Example.TestSpec
+      Hasskell.HomeAssistant.ClientSpec
       Paths_hasskell_lib
   autogen-modules:
       Paths_hasskell_lib
