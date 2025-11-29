@@ -5,7 +5,6 @@ module Hasskell.HomeAssistant.API
   ( HASSAuthMessage (..),
     HASSAuthResponse (..),
     Envelope (..),
-    CorrelationId,
     HASSCommand (..),
     HASSResult (..),
     HASSFailure (..),
@@ -32,6 +31,7 @@ import Data.Text (Text)
 import Data.Time (UTCTime)
 import Deriving.Aeson
 import GHC.TypeLits
+import Hasskell.Effects.Counter (CorrelationId (..))
 import Network.WebSockets qualified as WS
 
 --------------------------------------------------------------------------------
@@ -86,10 +86,6 @@ instance WS.WebSocketsData HASSAuthMessage where
   toLazyByteString = encode
 
 -------------------------------------------------------------------------------
-
--- | Unique ID associated with a sent message.
-newtype CorrelationId = CorrelationId Int
-  deriving newtype (Eq, Show, Num)
 
 -- | A wrapper around a message, identifying it
 -- such that the response to the message will be easy to identify.

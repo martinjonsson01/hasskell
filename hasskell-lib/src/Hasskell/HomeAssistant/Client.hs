@@ -17,6 +17,7 @@ import Effectful.Concurrent
 import Effectful.Error.Static
 import Effectful.Exception
 import Hasskell.Config
+import Hasskell.Effects.Counter
 import Hasskell.Effects.Logging
 import Hasskell.Effects.Profiling
 import Hasskell.HomeAssistant.API

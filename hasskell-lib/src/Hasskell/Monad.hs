@@ -1,11 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Hasskell.Monad
-  ( -- Counter
-    CorrelationIdSource,
-    newId,
-    runCounter,
-    -- Connection to Home Assistant
+  ( -- Connection to Home Assistant
     HASSConnection,
     sendMessage,
     runWithHASSWebSocket,
@@ -32,25 +28,10 @@ import Effectful.Dispatch.Dynamic (interpretWith_)
 import Effectful.Error.Static
 import Effectful.TH
 import Hasskell.Config
+import Hasskell.Effects.Counter
 import Hasskell.Effects.Logging
 import Hasskell.HomeAssistant.API
 import Network.WebSockets qualified as WS
-
-data CorrelationIdSource :: Effect where
-  NewId :: CorrelationIdSource m CorrelationId
-
-makeEffect ''CorrelationIdSource
-
-runCounter :: (Concurrent :> es) => Eff (CorrelationIdSource : es) a -> Eff es a
-runCounter counter = do
-  var <- newTVarIO (1 :: CorrelationId) -- Has to start at 1, 0 results in "Message incorrectly formatted."
-  interpretWith_ counter $ \case
-    NewId -> atomically $ do
-      corrId <- readTVar var
-      modifyTVar var (+ 1)
-      pure corrId
-
---------------------------------------------------------------------------------
 
 data SomeHASSMessage = forall a. (ToJSON a) => SomeMessage a
 
