@@ -34,4 +34,4 @@ run = do
   case result of
     Left clientError -> logError $ Utf8Builder $ encodeUtf8Builder $ T.pack $ ppShow clientError
     Right _ -> do
-      logInfo "We're inside the application!"
+      logInfo "Application finished, exiting..."

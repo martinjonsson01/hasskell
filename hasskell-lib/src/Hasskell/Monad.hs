@@ -31,7 +31,7 @@ import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TLE
 import Effectful
 import Effectful.Concurrent
-import Effectful.Concurrent.Async (concurrently, concurrently_)
+import Effectful.Concurrent.Async
 import Effectful.Concurrent.STM
 import Effectful.Dispatch.Dynamic (interpret, interpretWith_, localSeqUnlift, localSeqUnliftIO)
 import Effectful.Error.Static
@@ -100,6 +100,7 @@ data HASSWebSocketError
   | InvalidAuthentication Text
   | WebSocketLogError LogError
   | CommandFailure HASSFailure
+  | WebSocketDied
   deriving (Eq, Show)
 
 runWithHASSWebSocket ::
@@ -119,25 +120,46 @@ runWithHASSWebSocket action = do
   let websocket = runWebSocket receiveQueue sendQueue
       interpreter =
         interpretWith_ action $ \case
-          SendMessage message -> do
-            requestId <- newId
+          SendMessage message -> handleSendMessage sendQueue receiveQueue message
 
-            atomically $ writeTBQueue sendQueue (Envelope requestId (SomeMessage message))
-            Envelope responseId response <- atomically $ readTBQueue receiveQueue
+  race websocket interpreter >>= \result -> do
+    logDebug "after websocket/interpreter?"
+    case result of
+      Left () -> do
+        logError "Web socket finished before the action"
+        throwError WebSocketDied
+      Right b -> do
+        logDebug "interpreter finished, killing web socket..."
+        pure b
 
-            unless (requestId == responseId) (throwError $ EnvelopeMismatch requestId responseId)
+handleSendMessage ::
+  ( ToJSON a,
+    Error HASSWebSocketError :> es,
+    CorrelationIdSource :> es,
+    Concurrent :> es,
+    FromJSON b
+  ) =>
+  TBQueue (Envelope SomeHASSMessage) ->
+  TBQueue (Envelope (HASSResult Value)) ->
+  a ->
+  Eff es b
+handleSendMessage sendQueue receiveQueue message = do
+  requestId <- newId
 
-            result <- liftEither $ leftMap CommandFailure $ value response
+  atomically $ writeTBQueue sendQueue (Envelope requestId (SomeMessage message))
+  Envelope responseId response <- atomically $ readTBQueue receiveQueue
 
-            case fromJSON result of
-              Error errorMessage ->
-                throwError $
-                  ParserError
-                    (TE.decodeUtf8 $ BL.toStrict $ encodePretty result)
-                    (T.pack errorMessage)
-              Success value -> pure value
+  unless (requestId == responseId) (throwError $ EnvelopeMismatch requestId responseId)
 
-  concurrently websocket interpreter >>= \(_, b) -> pure b
+  result <- liftEither $ leftMap CommandFailure $ value response
+
+  case fromJSON result of
+    Error errorMessage ->
+      throwError $
+        ParserError
+          (TE.decodeUtf8 $ BL.toStrict $ encodePretty result)
+          (T.pack errorMessage)
+    Success value -> pure value
 
 leftMap :: (a -> c) -> Either a b -> Either c b
 leftMap f (Left l) = Left (f l)
