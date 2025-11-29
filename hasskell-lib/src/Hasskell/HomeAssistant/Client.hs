@@ -21,8 +21,8 @@ import Hasskell.Effects.Counter
 import Hasskell.Effects.HASSConnection
 import Hasskell.Effects.Logging
 import Hasskell.Effects.Profiling
+import Hasskell.Effects.Utils
 import Hasskell.HomeAssistant.API
-import Hasskell.Monad
 import Text.Show.Pretty
 
 newtype ClientM a = Client

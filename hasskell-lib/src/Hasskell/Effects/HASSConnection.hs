@@ -28,8 +28,8 @@ import Effectful.TH
 import Hasskell.Config
 import Hasskell.Effects.Counter
 import Hasskell.Effects.Logging
+import Hasskell.Effects.Utils
 import Hasskell.HomeAssistant.API
-import Hasskell.Monad
 import Network.WebSockets qualified as WS
 
 data SomeHASSMessage = forall a. (ToJSON a) => SomeMessage a

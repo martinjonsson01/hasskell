@@ -25,10 +25,10 @@ library
       Hasskell.Effects.HASSConnection
       Hasskell.Effects.Logging
       Hasskell.Effects.Profiling
+      Hasskell.Effects.Utils
       Hasskell.HomeAssistant.API
       Hasskell.HomeAssistant.Client
       Hasskell.Lib
-      Hasskell.Monad
   other-modules:
       Paths_hasskell_lib
   autogen-modules:

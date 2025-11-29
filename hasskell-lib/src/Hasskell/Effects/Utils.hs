@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Hasskell.Monad
+module Hasskell.Effects.Utils
   ( -- Utils
     runMapError,
   )
