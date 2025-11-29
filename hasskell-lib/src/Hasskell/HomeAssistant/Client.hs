@@ -28,7 +28,7 @@ newtype ClientM a = Client
   { unClient ::
       Eff
         '[ Configured,
-           CorrelationIdSource,
+           Counter,
            Logger,
            Error ClientError,
            Profiling,

@@ -3,7 +3,7 @@
 module Hasskell.Effects.Counter
   ( -- Counter
     CorrelationId (..),
-    CorrelationIdSource,
+    Counter,
     newId,
     runCounter,
   )
@@ -19,12 +19,12 @@ import Effectful.TH
 newtype CorrelationId = CorrelationId Int
   deriving newtype (Eq, Show, Num)
 
-data CorrelationIdSource :: Effect where
-  NewId :: CorrelationIdSource m CorrelationId
+data Counter :: Effect where
+  NewId :: Counter m CorrelationId
 
-makeEffect ''CorrelationIdSource
+makeEffect ''Counter
 
-runCounter :: (Concurrent :> es) => Eff (CorrelationIdSource : es) a -> Eff es a
+runCounter :: (Concurrent :> es) => Eff (Counter : es) a -> Eff es a
 runCounter counter = do
   var <- newTVarIO (1 :: CorrelationId) -- Has to start at 1, 0 results in "Message incorrectly formatted."
   interpretWith_ counter $ \case

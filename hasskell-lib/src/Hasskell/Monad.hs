@@ -59,7 +59,7 @@ data HASSWebSocketError
 
 runWithHASSWebSocket ::
   ( IOE :> es,
-    CorrelationIdSource :> es,
+    Counter :> es,
     Concurrent :> es,
     Error HASSWebSocketError :> es,
     Logger :> es,
@@ -89,7 +89,7 @@ runWithHASSWebSocket action = do
 handleSendMessage ::
   ( ToJSON a,
     Error HASSWebSocketError :> es,
-    CorrelationIdSource :> es,
+    Counter :> es,
     Concurrent :> es,
     FromJSON b
   ) =>
