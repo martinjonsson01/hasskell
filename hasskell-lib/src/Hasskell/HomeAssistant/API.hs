@@ -6,9 +6,11 @@ module Hasskell.HomeAssistant.API
     HASSAuthResponse (..),
     Envelope (..),
     HASSCommand (..),
+    HASSCommandGetEntityRegistry (..),
     HASSResult (..),
     HASSFailure (..),
     HASSConfig (..),
+    HASSEntity (..),
     HASSState (..),
     HASSTarget (..),
     HASSActionResult (..),
@@ -29,6 +31,7 @@ import Data.Char (toLower)
 import Data.Map.Lazy qualified as M
 import Data.Text (Text)
 import Data.Time (UTCTime)
+import Data.Time.Clock.POSIX (posixSecondsToUTCTime, utcTimeToPOSIXSeconds)
 import Deriving.Aeson
 import GHC.TypeLits
 import Hasskell.Effects.Counter (CorrelationId (..))
@@ -114,6 +117,12 @@ instance (ToJSON a) => WS.WebSocketsData (Envelope a) where
   toLazyByteString = encode
 
 -------------------------------------------------------------------------------
+
+data HASSCommandGetEntityRegistry = CommandGetEntityRegistry
+  deriving (Eq, Show)
+
+instance ToJSON HASSCommandGetEntityRegistry where
+  toJSON CommandGetEntityRegistry = object ["type" .= ("config/entity_registry/list" :: Text)]
 
 -- | Commands that can be issued to Home Assistant.
 data HASSCommand
@@ -212,6 +221,43 @@ data HASSConfig = MkConfig
   }
   deriving (Generic, Eq, Show)
   deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "config") HASSConfig
+
+-- | A data type used for parsing unix epoch time encoded UTC time.
+newtype UnixUTC = UnixUTC UTCTime
+  deriving (Show, Eq)
+
+instance FromJSON UnixUTC where
+  parseJSON v = parseJSON v >>= pure . UnixUTC . posixSecondsToUTCTime
+
+instance ToJSON UnixUTC where
+  toJSON (UnixUTC t) = toJSON (utcTimeToPOSIXSeconds t)
+
+-- | Represents a Home Assistant entity.
+data HASSEntity = MkEntity
+  { entityEntityId :: Text,
+    entityPlatform :: Text,
+    entityUniqueId :: Text,
+    entityCategories :: KeyMap Value,
+    entityHasEntityName :: Bool,
+    entityCreatedAt :: UnixUTC,
+    entityModifiedAt :: UnixUTC,
+    entityOptions :: KeyMap Value,
+    entityLabels :: [Text],
+    entityDeviceId :: Maybe Text,
+    entityConfigEntryId :: Maybe Text,
+    entityAreaId :: Maybe Text,
+    entityConfigSubentryId :: Maybe Text,
+    entityDisabledBy :: Maybe Text,
+    entityEntityCategory :: Maybe Text,
+    entityHiddenBy :: Maybe Text,
+    entityIcon :: Maybe Text,
+    entityId :: Maybe Text,
+    entityName :: Maybe Text,
+    entityOriginalName :: Maybe Text,
+    entityTranslationKey :: Maybe Text
+  }
+  deriving (Generic, Eq, Show)
+  deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "entity") HASSEntity
 
 -- | Represents units that Home Assistant is configured to use.
 data HASSUnitSystem = MkUnitSystem

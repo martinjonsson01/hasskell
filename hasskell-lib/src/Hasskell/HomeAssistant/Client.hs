@@ -4,18 +4,20 @@
 module Hasskell.HomeAssistant.Client
   ( runClient,
     ClientM,
-    doHASSInteractions,
-    ClientError,
+    ClientError (..),
     HASSAuthResponse,
+    HASSDomain (..),
+    HASSServiceName (..),
     getConfig,
     getStates,
+    getEntities,
     getServices,
+    callService,
   )
 where
 
 import Data.List qualified as L
 import Data.Text (Text)
-import Data.Text qualified as T
 import Effectful
 import Effectful.Concurrent
 import Effectful.Error.Static
@@ -27,7 +29,6 @@ import Hasskell.Effects.Logging
 import Hasskell.Effects.Profiling
 import Hasskell.Effects.Utils
 import Hasskell.HomeAssistant.API
-import Text.Show.Pretty
 
 newtype ClientM a = Client
   { unClient ::
@@ -78,27 +79,29 @@ getConfig = Client $ sendMessage CommandGetConfig
 getStates :: ClientM [HASSState]
 getStates = Client $ sendMessage CommandGetStates
 
+getEntities :: ClientM [HASSEntity]
+getEntities = Client $ sendMessage CommandGetEntityRegistry
+
 getServices :: ClientM HASSServiceActions
 getServices = Client $ sendMessage CommandGetServices
 
-doHASSInteractions :: ClientM ()
-doHASSInteractions = Client $ do
-  actionResult :: HASSActionResult <-
+callService :: HASSDomain -> HASSServiceName -> Text -> ClientM ()
+callService domain service entityId =
+  Client $
     sendMessage
       ( CommandCallService
           { commandReturnResponse = False,
             commandTarget =
               Just
                 ( Target
-                    { targetEntityId = L.singleton "light.flaktlampa",
+                    { targetEntityId = L.singleton entityId,
                       targetDeviceId = mempty,
                       targetLabelId = mempty,
                       targetAreaId = mempty
                     }
                 ),
             commandServiceData = Nothing,
-            commandService = ServiceName "toggle",
-            commandDomain = Domain "light"
+            commandService = service,
+            commandDomain = domain
           }
       )
-  logDebug $ T.pack $ ppShow actionResult

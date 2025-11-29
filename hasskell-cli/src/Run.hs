@@ -4,11 +4,14 @@
 module Run (run) where
 
 import Hasskell.Config (Config (..), LoggingConfig (..))
+import Hasskell.HomeAssistant.API (HASSEntity (..))
+import Hasskell.HomeAssistant.Client (HASSDomain (..))
 import Hasskell.HomeAssistant.Client qualified as HASS
 import Import
+import RIO.Map qualified as Map
 import RIO.Text qualified as T
 import System.IO.Error (userError)
-import Text.Show.Pretty (ppShow)
+import Text.Show.Pretty (pPrint, ppShow)
 
 run :: RIO App ()
 run = do
@@ -30,7 +33,12 @@ run = do
               logging = logging
             }
         )
-        HASS.doHASSInteractions
+      $ do
+        -- result <- HASS.callService (Domain "light") (ServiceName "toggle") "light.flaktlampa"
+        -- services <- HASS.getServices
+        -- liftIO $ pPrint (Map.filterWithKey (\(Domain domain) _ -> domain == "light") services)
+        entities <- HASS.getEntities
+        liftIO $ pPrint (map entityEntityId entities)
   case result of
     Left clientError -> logError $ Utf8Builder $ encodeUtf8Builder $ T.pack $ ppShow clientError
     Right _ -> do

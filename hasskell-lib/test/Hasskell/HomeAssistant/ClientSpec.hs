@@ -2,8 +2,10 @@ module Hasskell.HomeAssistant.ClientSpec (spec) where
 
 import Data.Text qualified as T
 import Hasskell.Config (Config (..), LoggingConfig (..))
+import Hasskell.Effects.HASSConnection (HASSWebSocketError (CommandFailure, ParserError))
 import Hasskell.HomeAssistant.API
 import Hasskell.HomeAssistant.Client
+import Hasskell.HomeAssistant.Client (ClientError (ClientWebSocketError))
 import System.Environment (lookupEnv)
 import Test.Syd
 
@@ -18,6 +20,10 @@ spec = do
       states <- runWithClient getStates
       length (states) `shouldNotBe` 0
 
+    it "can get entities" $ do
+      entities <- runWithClient getEntities
+      length (entities) `shouldNotBe` 0
+
     it "can get services" $ do
       services <- runWithClient getServices
       length (services) `shouldNotBe` 0
@@ -26,6 +32,7 @@ runWithClient :: ClientM a -> IO a
 runWithClient action = do
   maybeConfig <- runWithClient' action
   case maybeConfig of
+    Left (ClientWebSocketError (ParserError source message)) -> expectationFailure $ T.unpack $ T.unlines ["JSON parsing failure:", source, "with error message:", message]
     Left err -> expectationFailure $ ppShow err
     Right value -> pure value
 
