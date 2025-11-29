@@ -1,12 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Hasskell.Monad
-  ( -- Profiling
-    Profiling,
-    profile,
-    runProfiling,
-    runNoProfiling,
-    -- Counter
+  ( -- Counter
     CorrelationIdSource,
     newId,
     runCounter,
@@ -33,36 +28,13 @@ import Effectful
 import Effectful.Concurrent
 import Effectful.Concurrent.Async
 import Effectful.Concurrent.STM
-import Effectful.Dispatch.Dynamic (interpret, interpretWith_, localSeqUnlift, localSeqUnliftIO)
+import Effectful.Dispatch.Dynamic (interpretWith_)
 import Effectful.Error.Static
 import Effectful.TH
-import GHC.Clock (getMonotonicTime)
 import Hasskell.Config
 import Hasskell.Effects.Logging
 import Hasskell.HomeAssistant.API
 import Network.WebSockets qualified as WS
-
---------------------------------------------------------------------------------
-
-data Profiling :: Effect where
-  Profile :: Text -> m a -> Profiling m a
-
-makeEffect ''Profiling
-
-runProfiling :: (IOE :> es) => Eff (Profiling : es) a -> Eff es a
-runProfiling = interpret $ \env -> \case
-  Profile label action -> localSeqUnliftIO env $ \unlift -> do
-    t1 <- liftIO getMonotonicTime
-    result <- unlift action
-    t2 <- liftIO getMonotonicTime
-    liftIO . putStrLn . T.unpack $ mconcat ["Action '", label, "' took ", T.show (t2 - t1), " seconds."]
-    pure result
-
-runNoProfiling :: Eff (Profiling : es) a -> Eff es a
-runNoProfiling = interpret $ \env -> \case
-  Profile _ action -> localSeqUnlift env $ \unlift -> unlift action
-
---------------------------------------------------------------------------------
 
 data CorrelationIdSource :: Effect where
   NewId :: CorrelationIdSource m CorrelationId

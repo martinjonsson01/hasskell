@@ -22,6 +22,7 @@ library
   exposed-modules:
       Hasskell.Config
       Hasskell.Effects.Logging
+      Hasskell.Effects.Profiling
       Hasskell.HomeAssistant.API
       Hasskell.HomeAssistant.Client
       Hasskell.Lib
