@@ -38,6 +38,7 @@ import Effectful.Error.Static
 import Effectful.TH
 import GHC.Clock (getMonotonicTime)
 import Hasskell.Config
+import Hasskell.Effects.Logging
 import Hasskell.HomeAssistant.API
 import Network.WebSockets qualified as WS
 
