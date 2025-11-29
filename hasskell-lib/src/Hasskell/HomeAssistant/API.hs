@@ -110,7 +110,7 @@ instance (ToJSON a) => ToJSON (Envelope a) where
   toJSON (Envelope (CorrelationId i) payload) =
     case toJSON payload of
       Object payloadObject -> Object (KeyMap.insert "id" (toJSON i) payloadObject)
-      val -> error $ "Envelope inner value must encode to an Object" ++ show val
+      val -> error $ "Unknown envelope payload type: " ++ show val
 
 instance (ToJSON a) => WS.WebSocketsData (Envelope a) where
   fromLazyByteString = undefined

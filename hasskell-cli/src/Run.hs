@@ -3,7 +3,7 @@
 
 module Run (run) where
 
-import Hasskell.Config
+import Hasskell.Config (Config (..), LoggingConfig (..))
 import Hasskell.HomeAssistant.Client qualified as HASS
 import Import
 import RIO.Text qualified as T
@@ -30,7 +30,7 @@ run = do
               logging = logging
             }
         )
-        HASS.startWebSocket
+        HASS.doHASSInteractions
   case result of
     Left clientError -> logError $ Utf8Builder $ encodeUtf8Builder $ T.pack $ ppShow clientError
     Right _ -> do
