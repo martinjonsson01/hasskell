@@ -39,7 +39,6 @@ default-extensions:
 - MultiParamTypeClasses
 - MultiWayIf
 - NamedFieldPuns
-- NoImplicitPrelude
 - OverloadedStrings
 - PartialTypeSignatures
 - PatternGuards
