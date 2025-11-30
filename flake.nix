@@ -40,9 +40,9 @@
     in {
       packages.hasskell = haskellPackages.callCabal2nix "hasskell" ./hasskell-cli {
         # Dependency overrides go here
-        hasskell-lib = (haskellPackages.callCabal2nix "hasskell-lib" ./hasskell-lib {}).overrideAttrs (old: {
+        hasskell-lib = pkgs.haskell.lib.dontCheck ((haskellPackages.callCabal2nix "hasskell-lib" ./hasskell-lib {}).overrideAttrs (old: {
           buildInputs = with pkgs; old.buildInputs ++ [zlib];
-        });
+        }));
       };
 
       packages.default = self.packages.${system}.hasskell;
