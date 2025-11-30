@@ -52,6 +52,9 @@
         buildInputs = [
           haskellPackages.haskell-language-server
           haskellPackages.ghc
+          haskellPackages.cabal-install
+          haskellPackages.hoogle
+          haskellPackages.ghcid
           stack-wrapped
           pkgs.zlib
         ];
