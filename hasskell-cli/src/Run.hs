@@ -15,7 +15,7 @@ import Text.Show.Pretty (pPrint, ppShow)
 
 run :: RIO App ()
 run = do
-  maybeToken <- hassToken <$> asks appOptions
+  maybeToken <- optionsHassToken <$> asks appOptions
   token <- maybe (throwIO $ userError "No token provided") pure maybeToken
   app <- ask
   let logging =

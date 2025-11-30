@@ -3,6 +3,7 @@
 module Types
   ( App (..),
     Options (..),
+    ColorMode (..),
   )
 where
 
@@ -12,8 +13,12 @@ import RIO.Process
 -- | Command line arguments
 data Options = Options
   { optionsVerbose :: !Bool,
-    hassToken :: !(Maybe Text)
+    optionsColor :: !ColorMode,
+    optionsHassToken :: !(Maybe Text)
   }
+
+data ColorMode = ColorAuto | ColorAlways | ColorNever
+  deriving (Eq, Show)
 
 data App = App
   { appLogFunc :: !LogFunc,

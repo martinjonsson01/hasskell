@@ -63,6 +63,7 @@ ghc-options:
 - -Wmissing-home-modules
 - -Wpartial-fields
 - -Wredundant-constraints
+- -fdiagnostics-color=always
 
 library:
   source-dirs: src

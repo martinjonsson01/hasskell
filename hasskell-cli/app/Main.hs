@@ -25,6 +25,14 @@ main = do
                 <> short 'v'
                 <> help "Verbose output?"
             )
+          <*> option
+            (eitherReader parseColor)
+            ( long "color"
+                <> metavar "MODE"
+                <> help "Color output: auto | always | never"
+                <> value ColorAuto
+                <> showDefault
+            )
           <*> optional
             ( strOption
                 ( long "hass-token"
@@ -37,12 +45,16 @@ main = do
 
   let environmentAugmentedOptions =
         options
-          { hassToken = (hassToken options <|> envApiToken)
+          { optionsHassToken = (optionsHassToken options <|> envApiToken)
           }
 
-  lo <- logOptionsHandle stderr (optionsVerbose options)
+  logOptionsVerbose <- logOptionsHandle stderr (optionsVerbose options)
+  let logOptionsColor = case optionsColor options of
+          ColorAuto -> logOptionsVerbose
+          ColorAlways -> setLogUseColor True logOptionsVerbose
+          ColorNever -> setLogUseColor False logOptionsVerbose
   pc <- mkDefaultProcessContext
-  withLogFunc lo $ \lf ->
+  withLogFunc logOptionsColor $ \lf ->
     let app =
           App
             { appLogFunc = lf,
@@ -50,3 +62,10 @@ main = do
               appOptions = environmentAugmentedOptions
             }
      in runRIO app run
+
+parseColor :: String -> Either String ColorMode
+parseColor s = case s of
+  "auto" -> Right ColorAuto
+  "always" -> Right ColorAlways
+  "never" -> Right ColorNever
+  _ -> Left "Expected 'auto', 'always', or 'never'"
