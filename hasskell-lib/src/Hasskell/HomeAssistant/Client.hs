@@ -11,6 +11,7 @@ module Hasskell.HomeAssistant.Client
     getConfig,
     getStates,
     getEntities,
+    getDevices,
     getServices,
     callService,
   )
@@ -81,6 +82,9 @@ getStates = Client $ sendMessage CommandGetStates
 
 getEntities :: ClientM [HASSEntity]
 getEntities = Client $ sendMessage CommandGetEntityRegistry
+
+getDevices :: ClientM [HASSDevice]
+getDevices = Client $ sendMessage CommandGetDeviceRegistry
 
 getServices :: ClientM HASSServiceActions
 getServices = Client $ sendMessage CommandGetServices

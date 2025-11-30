@@ -24,6 +24,10 @@ spec = do
       entities <- runWithClient getEntities
       length (entities) `shouldNotBe` 0
 
+    it "can get devices" $ do
+      devices <- runWithClient getDevices
+      length (devices) `shouldNotBe` 0
+
     it "can get services" $ do
       services <- runWithClient getServices
       length (services) `shouldNotBe` 0

@@ -7,10 +7,12 @@ module Hasskell.HomeAssistant.API
     Envelope (..),
     HASSCommand (..),
     HASSCommandGetEntityRegistry (..),
+    HASSCommandGetDeviceRegistry (..),
     HASSResult (..),
     HASSFailure (..),
     HASSConfig (..),
     HASSEntity (..),
+    HASSDevice (..),
     HASSState (..),
     HASSTarget (..),
     HASSActionResult (..),
@@ -27,7 +29,9 @@ where
 import Data.Aeson
 import Data.Aeson.KeyMap (KeyMap)
 import Data.Aeson.KeyMap qualified as KeyMap
+import Data.Aeson.Types (typeMismatch)
 import Data.Char (toLower)
+import Data.Foldable (toList)
 import Data.Map.Lazy qualified as M
 import Data.Text (Text)
 import Data.Time (UTCTime)
@@ -123,6 +127,12 @@ data HASSCommandGetEntityRegistry = CommandGetEntityRegistry
 
 instance ToJSON HASSCommandGetEntityRegistry where
   toJSON CommandGetEntityRegistry = object ["type" .= ("config/entity_registry/list" :: Text)]
+
+data HASSCommandGetDeviceRegistry = CommandGetDeviceRegistry
+  deriving (Eq, Show)
+
+instance ToJSON HASSCommandGetDeviceRegistry where
+  toJSON CommandGetDeviceRegistry = object ["type" .= ("config/device_registry/list" :: Text)]
 
 -- | Commands that can be issued to Home Assistant.
 data HASSCommand
@@ -258,6 +268,49 @@ data HASSEntity = MkEntity
   }
   deriving (Generic, Eq, Show)
   deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "entity") HASSEntity
+
+-- | Represents a Home Assistant device software version.
+data HASSSoftwareVersion = MkSwVersion [Text]
+  deriving (Show, Eq, Generic)
+
+instance FromJSON HASSSoftwareVersion where
+  parseJSON Null = pure (MkSwVersion [])
+  parseJSON (String t) = pure (MkSwVersion [t])
+  parseJSON (Array arr) = MkSwVersion <$> mapM parseJSON (toList arr)
+  parseJSON v = typeMismatch "MkSwVersion" v
+
+instance ToJSON HASSSoftwareVersion where
+  toJSON (MkSwVersion []) = Null
+  toJSON (MkSwVersion [t]) = String t
+  toJSON (MkSwVersion ts) = toJSON ts
+
+-- | Represents a Home Assistant device.
+data HASSDevice = MkDevice
+  { deviceName :: Text,
+    deviceId :: Text,
+    deviceModifiedAt :: UnixUTC,
+    deviceCreatedAt :: UnixUTC,
+    deviceSwVersion :: HASSSoftwareVersion,
+    deviceLabels :: [Text],
+    deviceConfigEntries :: [Text],
+    deviceConnections :: [[Text]],
+    deviceIdentifiers :: [[Text]],
+    deviceConfigEntriesSubentries :: KeyMap Value,
+    devicePrimaryConfigEntry :: Maybe Text,
+    deviceAreaId :: Maybe Text,
+    deviceConfigurationUrl :: Maybe Text,
+    deviceDisabledBy :: Maybe Text,
+    deviceEntryType :: Maybe Text,
+    deviceHwVersion :: Maybe Text,
+    deviceManufacturer :: Maybe Text,
+    deviceModel :: Maybe Text,
+    deviceModelId :: Maybe Text,
+    deviceNameByUser :: Maybe Text,
+    deviceSerialNumber :: Maybe Text,
+    deviceViaDeviceId :: Maybe Text
+  }
+  deriving (Generic, Eq, Show)
+  deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "device") HASSDevice
 
 -- | Represents units that Home Assistant is configured to use.
 data HASSUnitSystem = MkUnitSystem
