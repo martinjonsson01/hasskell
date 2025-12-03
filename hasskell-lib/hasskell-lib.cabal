@@ -104,6 +104,7 @@ library
     , stm >=2.5 && <3
     , text >=2.1.1 && <2.2
     , time >=1.12 && <2
+    , utility-ht >=0.0.17 && <0.1
     , websockets ==0.13.*
   default-language: Haskell2010
 
@@ -113,6 +114,7 @@ test-suite hasskell-lib-test
   other-modules:
       Hasskell.HomeAssistant.ClientSpec
       Hasskell.Language.ASTSpec
+      Hasskell.Language.WorldSpec
       Hasskell.TestUtils.Utils
       Paths_hasskell_lib
   autogen-modules:
@@ -190,5 +192,6 @@ test-suite hasskell-lib-test
     , sydtest-hedgehog >=0.4 && <1
     , text >=2.1.1 && <2.2
     , time >=1.12 && <2
+    , utility-ht >=0.0.17 && <0.1
     , websockets ==0.13.*
   default-language: Haskell2010

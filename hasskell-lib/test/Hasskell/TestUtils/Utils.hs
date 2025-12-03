@@ -1,6 +1,11 @@
-module Hasskell.TestUtils.Utils (runWithClient) where
+module Hasskell.TestUtils.Utils
+  ( runWithClient,
+    shouldBeSubsetOf,
+  )
+where
 
 import Data.Text qualified as T
+import GHC.Stack (HasCallStack)
 import Hasskell.Config (Config (..), LoggingConfig (..))
 import Hasskell.Effects.HASSConnection (HASSWebSocketError (ParserError))
 import Hasskell.HomeAssistant.Client
@@ -30,3 +35,9 @@ runWithClient' action =
     runClient
       (Config {baseUrl = envBaseUrl, token = envApiToken, logging = logging})
       action
+
+-- | Assert that the first list is a subset of the second list
+shouldBeSubsetOf :: (HasCallStack, Show a, Eq a) => [a] -> [a] -> Expectation
+as `shouldBeSubsetOf` bs = mapM_ (\a -> shouldSatisfyNamed bs ("should contain\n" <> ppShow a) (a `elem`)) as
+
+infix 1 `shouldBeSubsetOf`
