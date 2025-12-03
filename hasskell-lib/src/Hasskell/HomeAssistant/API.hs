@@ -11,6 +11,7 @@ module Hasskell.HomeAssistant.API
     HASSResult (..),
     HASSFailure (..),
     HASSConfig (..),
+    EntityId,
     HASSEntity (..),
     HASSDevice (..),
     HASSState (..),
@@ -159,7 +160,7 @@ instance WS.WebSocketsData HASSCommand where
   toLazyByteString = encode
 
 data HASSTarget = Target
-  { targetEntityId :: [Text],
+  { targetEntityId :: [EntityId],
     targetDeviceId :: [Text],
     targetAreaId :: [Text],
     targetLabelId :: [Text]
@@ -191,7 +192,7 @@ data HASSActionResult = ActionResult
   deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "actionResult") HASSActionResult
 
 data HASSState = State
-  { stateEntityId :: Text,
+  { stateEntityId :: EntityId,
     stateState :: Text,
     stateAttributes :: KeyMap Value,
     stateLastChanged :: UTCTime,
@@ -242,9 +243,13 @@ instance FromJSON UnixUTC where
 instance ToJSON UnixUTC where
   toJSON (UnixUTC t) = toJSON (utcTimeToPOSIXSeconds t)
 
+newtype EntityId = EntityId Text
+  deriving (Show, Eq)
+  deriving (FromJSON, ToJSON) via Text
+
 -- | Represents a Home Assistant entity.
 data HASSEntity = MkEntity
-  { entityEntityId :: Text,
+  { entityEntityId :: EntityId,
     entityPlatform :: Text,
     entityUniqueId :: Text,
     entityCategories :: KeyMap Value,

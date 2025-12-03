@@ -89,7 +89,7 @@ getDevices = Client $ sendMessage CommandGetDeviceRegistry
 getServices :: ClientM HASSServiceActions
 getServices = Client $ sendMessage CommandGetServices
 
-callService :: HASSDomain -> HASSServiceName -> Text -> ClientM ()
+callService :: HASSDomain -> HASSServiceName -> EntityId -> ClientM ()
 callService domain service entityId =
   Client $
     sendMessage
