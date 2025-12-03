@@ -24,9 +24,12 @@ dependencies:
 - effectful-core >= 2.6 && < 3
 - effectful-th >= 1.0.0.3 && < 2
 - effectful-plugin >= 2.0.0.1 && < 3
+- singletons >= 3 && < 4
+- singletons-th >= 3 && < 4
 
 
 default-extensions:
+- StandaloneKindSignatures
 - TypeOperators
 - DerivingStrategies
 - DeriveAnyClass 
@@ -77,6 +80,7 @@ ghc-options:
 - -Widentities
 - -Wincomplete-record-updates
 - -Wincomplete-uni-patterns
+- -Wincomplete-patterns
 - -Wmissing-export-lists
 - -Wmissing-home-modules
 - -Wpartial-fields
@@ -96,6 +100,8 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - hasskell-lib
-    - sydtest
+    - sydtest >= 0.20 && < 1
+    - sydtest-hedgehog >= 0.4 && < 1
+    - hedgehog >= 1.5 && < 2
     build-tools:
       sydtest-discover:sydtest-discover

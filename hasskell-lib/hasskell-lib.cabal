@@ -28,6 +28,9 @@ library
       Hasskell.Effects.Utils
       Hasskell.HomeAssistant.API
       Hasskell.HomeAssistant.Client
+      Hasskell.Language.AST
+      Hasskell.Language.Reconciler
+      Hasskell.Language.World
       Hasskell.Lib
   other-modules:
       Paths_hasskell_lib
@@ -36,6 +39,7 @@ library
   hs-source-dirs:
       src
   default-extensions:
+      StandaloneKindSignatures
       TypeOperators
       DerivingStrategies
       DeriveAnyClass
@@ -79,7 +83,7 @@ library
       TypeFamilies
       TypeSynonymInstances
       ViewPatterns
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -fplugin=Effectful.Plugin
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wincomplete-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -fplugin=Effectful.Plugin
   build-depends:
       aeson >=2.2.3 && <2.3
     , aeson-pretty >=0.8.10 && <1.0
@@ -94,6 +98,8 @@ library
     , effectful-th >=1.0.0.3 && <2
     , mtl >=2.3.1 && <3
     , pretty-show >=1.10 && <2
+    , singletons ==3.*
+    , singletons-th ==3.*
     , stm >=2.5 && <3
     , text >=2.1.1 && <2.2
     , time >=1.12 && <2
@@ -105,12 +111,14 @@ test-suite hasskell-lib-test
   main-is: Spec.hs
   other-modules:
       Hasskell.HomeAssistant.ClientSpec
+      Hasskell.Language.ASTSpec
       Paths_hasskell_lib
   autogen-modules:
       Paths_hasskell_lib
   hs-source-dirs:
       test
   default-extensions:
+      StandaloneKindSignatures
       TypeOperators
       DerivingStrategies
       DeriveAnyClass
@@ -154,7 +162,7 @@ test-suite hasskell-lib-test
       TypeFamilies
       TypeSynonymInstances
       ViewPatterns
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -fplugin=Effectful.Plugin -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wincomplete-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -fplugin=Effectful.Plugin -threaded -rtsopts -with-rtsopts=-N
   build-tool-depends:
       sydtest-discover:sydtest-discover
   build-depends:
@@ -170,10 +178,14 @@ test-suite hasskell-lib-test
     , effectful-plugin >=2.0.0.1 && <3
     , effectful-th >=1.0.0.3 && <2
     , hasskell-lib
+    , hedgehog >=1.5 && <2
     , mtl >=2.3.1 && <3
     , pretty-show >=1.10 && <2
+    , singletons ==3.*
+    , singletons-th ==3.*
     , stm >=2.5 && <3
-    , sydtest
+    , sydtest >=0.20 && <1
+    , sydtest-hedgehog >=0.4 && <1
     , text >=2.1.1 && <2.2
     , time >=1.12 && <2
     , websockets ==0.13.*
