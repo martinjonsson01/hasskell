@@ -4,11 +4,11 @@
 module Run (run) where
 
 import Hasskell.Config (Config (..), LoggingConfig (..))
+import Hasskell.Effects.HASS qualified as HASS
 import Hasskell.HomeAssistant.API (HASSEntity (..))
-import Hasskell.HomeAssistant.Client (HASSDomain (..))
-import Hasskell.HomeAssistant.Client qualified as HASS
+import Hasskell.HomeAssistant.Client
 import Import
-import RIO.Map qualified as Map
+import RIO.List (find)
 import RIO.Text qualified as T
 import System.IO.Error (userError)
 import Text.Show.Pretty (pPrint, ppShow)
@@ -26,7 +26,7 @@ run = do
           }
   result <-
     liftIO
-      $ HASS.runClient
+      $ runClient
         ( Config
             { baseUrl = "localhost",
               token = token,
@@ -34,11 +34,13 @@ run = do
             }
         )
       $ do
-        -- result <- HASS.callService (Domain "light") (ServiceName "toggle") "light.flaktlampa"
-        -- services <- HASS.getServices
-        -- liftIO $ pPrint (Map.filterWithKey (\(Domain domain) _ -> domain == "light") services)
         entities <- HASS.getEntities
-        liftIO $ pPrint (map entityEntityId entities)
+        let mbLight = entityEntityId <$> find (\entity -> show (entityEntityId entity) == "EntityId \"light.flaktlampa\"") entities
+        case mbLight of
+          Just light -> do
+            result <- HASS.callService (Domain "light") (ServiceName "toggle") light
+            liftIO $ pPrint result
+          Nothing -> liftIO $ pPrint ("no light :(" :: Text)
   case result of
     Left clientError -> logError $ Utf8Builder $ encodeUtf8Builder $ T.pack $ ppShow clientError
     Right _ -> do

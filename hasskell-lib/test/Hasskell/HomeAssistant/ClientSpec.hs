@@ -2,6 +2,7 @@ module Hasskell.HomeAssistant.ClientSpec (spec) where
 
 import Data.Text qualified as T
 import Hasskell.Config (Config (..), LoggingConfig (..))
+import Hasskell.Effects.HASS
 import Hasskell.Effects.HASSConnection (HASSWebSocketError (ParserError))
 import Hasskell.HomeAssistant.API
 import Hasskell.HomeAssistant.Client

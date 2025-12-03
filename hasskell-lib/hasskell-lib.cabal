@@ -22,6 +22,7 @@ library
   exposed-modules:
       Hasskell.Config
       Hasskell.Effects.Counter
+      Hasskell.Effects.HASS
       Hasskell.Effects.HASSConnection
       Hasskell.Effects.Logging
       Hasskell.Effects.Profiling
