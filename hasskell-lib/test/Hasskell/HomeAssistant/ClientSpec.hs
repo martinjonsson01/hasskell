@@ -2,10 +2,9 @@ module Hasskell.HomeAssistant.ClientSpec (spec) where
 
 import Data.Text qualified as T
 import Hasskell.Config (Config (..), LoggingConfig (..))
-import Hasskell.Effects.HASSConnection (HASSWebSocketError (CommandFailure, ParserError))
+import Hasskell.Effects.HASSConnection (HASSWebSocketError (ParserError))
 import Hasskell.HomeAssistant.API
 import Hasskell.HomeAssistant.Client
-import Hasskell.HomeAssistant.Client (ClientError (ClientWebSocketError))
 import System.Environment (lookupEnv)
 import Test.Syd
 
