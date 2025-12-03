@@ -113,6 +113,7 @@ test-suite hasskell-lib-test
   other-modules:
       Hasskell.HomeAssistant.ClientSpec
       Hasskell.Language.ASTSpec
+      Hasskell.TestUtils.Utils
       Paths_hasskell_lib
   autogen-modules:
       Paths_hasskell_lib
