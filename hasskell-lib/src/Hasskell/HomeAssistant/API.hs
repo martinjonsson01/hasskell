@@ -11,7 +11,7 @@ module Hasskell.HomeAssistant.API
     HASSResult (..),
     HASSFailure (..),
     HASSConfig (..),
-    EntityId,
+    EntityId (..),
     HASSEntity (..),
     HASSDevice (..),
     HASSState (..),
@@ -244,7 +244,7 @@ instance ToJSON UnixUTC where
   toJSON (UnixUTC t) = toJSON (utcTimeToPOSIXSeconds t)
 
 newtype EntityId = EntityId Text
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord)
   deriving (FromJSON, ToJSON) via Text
 
 -- | Represents a Home Assistant entity.

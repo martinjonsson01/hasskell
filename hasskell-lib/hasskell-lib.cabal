@@ -30,6 +30,7 @@ library
       Hasskell.HomeAssistant.API
       Hasskell.HomeAssistant.Client
       Hasskell.Language.AST
+      Hasskell.Language.Interpreter
       Hasskell.Language.Reconciler
       Hasskell.Language.World
       Hasskell.Lib
@@ -114,6 +115,8 @@ test-suite hasskell-lib-test
   other-modules:
       Hasskell.HomeAssistant.ClientSpec
       Hasskell.Language.ASTSpec
+      Hasskell.Language.InterpreterSpec
+      Hasskell.Language.ReconcilerSpec
       Hasskell.Language.WorldSpec
       Hasskell.TestUtils.Utils
       Paths_hasskell_lib

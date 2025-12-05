@@ -8,16 +8,14 @@ import Test.Syd
 
 spec :: Spec
 spec = do
-  describe "World" $ do
+  describe "Collected current world state" $ do
     it "toggleable entities are real entities" $ do
       realEntityIds <- map stateEntityId <$> runWithClient getStates
-      toggleableEntityIds <-
-        (map toggleableId . worldToggleables)
-          <$> runWithClient collectCurrentState
+      MkObserved _ world <- runWithClient collectCurrentState
+      let toggleableEntityIds = map toggleableId . worldToggleables $ world
       toggleableEntityIds `shouldBeSubsetOf` realEntityIds
 
     it "contains any toggleable entity" $ do
-      toggleableEntityIds <-
-        (map toggleableId . worldToggleables)
-          <$> runWithClient collectCurrentState
+      MkObserved _ world <- runWithClient collectCurrentState
+      let toggleableEntityIds = map toggleableId . worldToggleables $ world
       length (toggleableEntityIds) `shouldNotBe` 0

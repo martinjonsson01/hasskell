@@ -2,6 +2,7 @@ module Hasskell.Language.World
   ( World (..),
     ToggleState (..),
     Toggleable (..),
+    ObservedWorld (..),
     collectCurrentState,
   )
 where
@@ -15,8 +16,7 @@ import Hasskell.HomeAssistant.API
 -- | A distilled representation of entities and devices,
 -- based on data from Home Assistant.
 data World = MkWorld
-  { worldTime :: UTCTime,
-    worldToggleables :: [Toggleable]
+  { worldToggleables :: [Toggleable]
   }
   deriving (Eq, Show)
 
@@ -33,19 +33,23 @@ data Toggleable = Toggleable
 
 --------------------------------------------------------------------------------
 
+-- | A recorded observation of a given world state.
+data ObservedWorld = MkObserved UTCTime World
+  deriving (Eq, Show)
+
 -- | Gathers information about the current state of the world from Home Assistant.
 --
 -- The returned `World` is a snapshot of the moment in time at which the function
 -- was invoked.
-collectCurrentState :: (IOE :> es, HASS :> es) => Eff es World
+collectCurrentState :: (IOE :> es, HASS :> es) => Eff es ObservedWorld
 collectCurrentState = do
   states <- getStates
   time <- liftIO $ getCurrentTime
   pure $
-    MkWorld
-      { worldTime = time,
-        worldToggleables = filterToggleables states
-      }
+    MkObserved time $
+      MkWorld
+        { worldToggleables = filterToggleables states
+        }
 
 filterToggleables :: [HASSState] -> [Toggleable]
 filterToggleables = mapMaybe $ \state -> do
