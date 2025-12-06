@@ -2,21 +2,22 @@
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
 module Hasskell.Language.AST
-  ( Specification,
+  ( Specification (..),
     policies,
-    Policy,
+    Policy (..),
     policy,
-    SomeExp,
+    SomeExp (..),
     T (..),
-    Exp,
-    entity,
-    turnOn,
+    Exp (..),
+    IntoEntity (..),
+    isOn,
   )
 where
 
 import Data.Kind (Type)
 import Data.Singletons.TH
 import Data.Text (Text)
+import Hasskell.HomeAssistant.API
 
 data T = TDevice | TEntity | TVoid
   deriving (Show, Eq)
@@ -33,12 +34,12 @@ data Specification = Specification
 policies :: [Policy] -> Specification
 policies = Specification
 
-data Policy = Declare {name :: Text, expression :: SomeExp}
+data Policy = Policy {name :: Text, expression :: SomeExp}
   deriving (Show)
 
 -- | Declare a desired state.
 policy :: (SingI t) => Text -> Exp t -> Policy
-policy name expr = Declare name (SomeExp expr)
+policy name expr = Policy name (SomeExp expr)
 
 data SomeExp :: Type where
   SomeExp :: (SingI t) => Exp t -> SomeExp
@@ -48,17 +49,25 @@ instance Show (SomeExp) where
 
 data Exp :: T -> Type where
   EDevice :: Text -> Exp 'TDevice
-  EEntity :: Text -> Exp 'TEntity
-  ETurnOn :: Exp 'TEntity -> Exp 'TVoid
+  EEntity :: EntityId -> Exp 'TEntity
+  EIsOn :: Exp 'TEntity -> Exp 'TVoid
 
 deriving instance Show (Exp t)
 
 deriving instance Eq (Exp t)
 
+-- | Things that uniquely reference an entity.
+class IntoEntity a where
+  toEntity :: a -> Exp 'TEntity
+
 -- | A named entity.
-entity :: Text -> Exp 'TEntity
-entity = EEntity
+instance IntoEntity Text where
+  toEntity = EEntity . EntityId
+
+-- | An identified entity.
+instance IntoEntity EntityId where
+  toEntity = EEntity
 
 -- | Turn on a given entity.
-turnOn :: Exp 'TEntity -> Exp 'TVoid
-turnOn = ETurnOn
+isOn :: Exp 'TEntity -> Exp 'TVoid
+isOn = EIsOn

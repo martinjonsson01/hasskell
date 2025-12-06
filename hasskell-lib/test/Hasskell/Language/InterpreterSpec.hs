@@ -1,27 +1,19 @@
 module Hasskell.Language.InterpreterSpec (spec) where
 
-import Data.Text (Text)
 import Hasskell.Language.AST
+import Hasskell.Language.Interpreter
+import Hasskell.Language.World
+import Hasskell.TestUtils.Gen
 import Hedgehog
-import Hedgehog.Gen qualified as Gen
-import Hedgehog.Range qualified as Range
 import Test.Syd
 import Test.Syd.Hedgehog ()
 
 spec :: Spec
 spec = do
   describe "Interpreter" $ do
-    specify "can describe a light being on on" $
+    specify "can describe a light being on" $
       property $ do
-        e <- forAll genEntity
-        let specification =
-              policies
-                [ policy "light on" $ turnOn e
-                ]
-        liftIO $ specification `shouldSatisfy` \_ -> True
-
-genEntityName :: Gen Text
-genEntityName = Gen.text (Range.constant 1 10) Gen.alphaNum
-
-genEntity :: Gen (Exp 'TEntity)
-genEntity = entity <$> genEntityName
+        (offEntity, observed) <- forAll $ genWorldWithToggled Off
+        let worldSpec = policies [policy "light is always on" (isOn $ toEntity offEntity)]
+        let worldWithLightOn = observed `withEntityOn` offEntity
+        interpret worldSpec observed === worldWithLightOn
