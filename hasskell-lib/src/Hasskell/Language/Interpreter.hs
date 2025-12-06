@@ -14,8 +14,8 @@ newtype DesiredWorld = MkDesired World
 
 -- | Derives a desired world state from an observed one,
 -- given a certain specification.
-interpret :: Specification -> ObservedWorld -> DesiredWorld
-interpret spec observed =
+interpret :: ObservedWorld -> Specification -> DesiredWorld
+interpret observed spec =
   turnOnEntities
     (extractAllEntitiesToTurnOn spec observed)
     observed

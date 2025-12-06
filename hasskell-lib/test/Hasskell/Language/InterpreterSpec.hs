@@ -16,4 +16,4 @@ spec = do
         (offEntity, observed) <- forAll $ genWorldWithToggled Off
         let worldSpec = policy "light is always on" (isOn $ toEntity offEntity)
         let worldWithLightOn = observed `withEntityOn` offEntity
-        interpret worldSpec observed === worldWithLightOn
+        interpret observed worldSpec === worldWithLightOn
