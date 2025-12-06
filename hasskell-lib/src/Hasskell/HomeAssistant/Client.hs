@@ -6,8 +6,6 @@ module Hasskell.HomeAssistant.Client
     ClientError (..),
     ClientM,
     HASSAuthResponse,
-    HASSDomain (..),
-    HASSServiceName (..),
   )
 where
 
@@ -24,17 +22,17 @@ import Hasskell.Effects.Profiling
 import Hasskell.Effects.Utils
 import Hasskell.HomeAssistant.API
 
-type ClientM  =
-      Eff
-        '[ Configured,
-           Counter,
-           Logger,
-           Error ClientError,
-           Profiling,
-           HASSConnection,
-           HASS,
-           IOE
-         ]
+type ClientM =
+  Eff
+    '[ Configured,
+       Counter,
+       Logger,
+       Error ClientError,
+       Profiling,
+       HASSConnection,
+       HASS,
+       IOE
+     ]
 
 data ClientError
   = ClientLogError LogError
@@ -46,8 +44,8 @@ instance Exception ClientError
 runClient :: Config -> ClientM a -> IO (Either ClientError a)
 runClient config client =
   let logConfig = logging config
-   in  runEff .
-         runConcurrent
+   in runEff
+        . runConcurrent
         . runProfiling
         . runErrorNoCallStack @ClientError
         . runMapError ClientLogError

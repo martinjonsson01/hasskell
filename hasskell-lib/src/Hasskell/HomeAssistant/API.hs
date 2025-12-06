@@ -17,11 +17,15 @@ module Hasskell.HomeAssistant.API
     HASSState (..),
     HASSTarget (..),
     HASSActionResult (..),
-    HASSDomain (..),
     HASSUnitSystem (..),
-    HASSServiceActions,
+    -- Domains
+    HASSDomain,
+    domainLight,
+    -- Services
     HASSService (..),
-    HASSServiceName (..),
+    HASSServiceActions,
+    HASSServiceName,
+    serviceToggle,
   )
 where
 
@@ -335,9 +339,15 @@ newtype HASSServiceName = ServiceName Text
   deriving (Eq, Show, Ord)
   deriving (FromJSON, ToJSON, FromJSONKey, ToJSONKey) via Text
 
+serviceToggle :: HASSServiceName
+serviceToggle = ServiceName "toggle"
+
 newtype HASSDomain = Domain Text
   deriving (Eq, Show, Ord)
   deriving (FromJSON, ToJSON, FromJSONKey, ToJSONKey) via Text
+
+domainLight :: HASSDomain
+domainLight = Domain "light"
 
 type HASSServiceActions = M.Map HASSDomain (M.Map HASSServiceName HASSService)
 
