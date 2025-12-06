@@ -14,6 +14,6 @@ spec = do
     specify "can describe a light being on" $
       property $ do
         (offEntity, observed) <- forAll $ genWorldWithToggled Off
-        let worldSpec = policies [policy "light is always on" (isOn $ toEntity offEntity)]
+        let worldSpec = policy "light is always on" (isOn $ toEntity offEntity)
         let worldWithLightOn = observed `withEntityOn` offEntity
         interpret worldSpec observed === worldWithLightOn

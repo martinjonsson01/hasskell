@@ -3,7 +3,6 @@
 
 module Hasskell.Language.AST
   ( Specification (..),
-    policies,
     Policy (..),
     policy,
     SomeExp (..),
@@ -15,6 +14,7 @@ module Hasskell.Language.AST
 where
 
 import Data.Kind (Type)
+import Data.List (singleton)
 import Data.Singletons.TH
 import Data.Text (Text)
 import Hasskell.HomeAssistant.API
@@ -30,16 +30,18 @@ data Specification = Specification
   }
   deriving (Show)
 
--- | Create a specification consisting of several state policies.
-policies :: [Policy] -> Specification
-policies = Specification
+instance Semigroup Specification where
+  (Specification policiesA) <> (Specification policiesB) = Specification $ policiesA <> policiesB
+
+instance Monoid Specification where
+  mempty = Specification []
 
 data Policy = Policy {name :: Text, expression :: SomeExp}
   deriving (Show)
 
 -- | Declare a desired state.
-policy :: (SingI t) => Text -> Exp t -> Policy
-policy name expr = Policy name (SomeExp expr)
+policy :: (SingI t) => Text -> Exp t -> Specification
+policy name expr = Specification . singleton $ Policy name (SomeExp expr)
 
 data SomeExp :: Type where
   SomeExp :: (SingI t) => Exp t -> SomeExp
