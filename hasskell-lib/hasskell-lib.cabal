@@ -118,6 +118,7 @@ test-suite hasskell-lib-test
       Hasskell.Language.InterpreterSpec
       Hasskell.Language.ReconcilerSpec
       Hasskell.Language.WorldSpec
+      Hasskell.TestUtils.Gen
       Hasskell.TestUtils.Utils
       Paths_hasskell_lib
   autogen-modules:
