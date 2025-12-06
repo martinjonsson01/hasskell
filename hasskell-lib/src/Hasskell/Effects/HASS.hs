@@ -41,7 +41,7 @@ runHASS = interpret_ $ \case
   GetEntities -> sendMessage CommandGetEntityRegistry
   GetDevices -> sendMessage CommandGetDeviceRegistry
   GetServices -> sendMessage CommandGetServices
-  TurnOnLight entity -> callService domainLight serviceToggle entity
+  TurnOnLight entity -> callService domainLight serviceTurnOn entity
 
 callService :: (HASSConnection :> es) => HASSDomain -> HASSServiceName -> EntityId -> Eff es ()
 callService domain service entityId =

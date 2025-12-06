@@ -26,6 +26,8 @@ module Hasskell.HomeAssistant.API
     HASSServiceActions,
     HASSServiceName,
     serviceToggle,
+    serviceTurnOn,
+    serviceTurnOff,
   )
 where
 
@@ -341,6 +343,12 @@ newtype HASSServiceName = ServiceName Text
 
 serviceToggle :: HASSServiceName
 serviceToggle = ServiceName "toggle"
+
+serviceTurnOn :: HASSServiceName
+serviceTurnOn = ServiceName "turn_on"
+
+serviceTurnOff :: HASSServiceName
+serviceTurnOff = ServiceName "turn_off"
 
 newtype HASSDomain = Domain Text
   deriving (Eq, Show, Ord)
