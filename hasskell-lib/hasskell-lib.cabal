@@ -20,6 +20,7 @@ source-repository head
 
 library
   exposed-modules:
+      Hasskell
       Hasskell.Config
       Hasskell.Effects.Counter
       Hasskell.Effects.HASS
@@ -34,7 +35,6 @@ library
       Hasskell.Language.Interpreter
       Hasskell.Language.Reconciler
       Hasskell.Language.World
-      Hasskell.Lib
   other-modules:
       Paths_hasskell_lib
   autogen-modules:
@@ -121,6 +121,7 @@ test-suite hasskell-lib-test
       Hasskell.Language.WorldSpec
       Hasskell.TestUtils.Gen
       Hasskell.TestUtils.Utils
+      HasskellSpec
       Paths_hasskell_lib
   autogen-modules:
       Paths_hasskell_lib
