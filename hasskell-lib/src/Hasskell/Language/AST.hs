@@ -17,7 +17,9 @@ import Data.Kind (Type)
 import Data.List (singleton)
 import Data.Singletons.TH
 import Data.Text (Text)
+import GHC.Stack
 import Hasskell.HomeAssistant.API
+import Error.Diagnose (Position (..))
 
 data T = TDevice | TEntity | TVoid
   deriving (Show, Eq)
@@ -51,8 +53,8 @@ instance Show (SomeExp) where
 
 data Exp :: T -> Type where
   EDevice :: Text -> Exp 'TDevice
-  EEntity :: EntityId -> Exp 'TEntity
-  EIsOn :: Exp 'TEntity -> Exp 'TVoid
+  EEntity :: Position -> EntityId -> Exp 'TEntity
+  EIsOn :: Position -> Exp 'TEntity -> Exp 'TVoid
 
 deriving instance Show (Exp t)
 
@@ -60,16 +62,32 @@ deriving instance Eq (Exp t)
 
 -- | Things that uniquely reference an entity.
 class IntoEntity a where
-  toEntity :: a -> Exp 'TEntity
+  toEntity :: (HasCallStack) => a -> Exp 'TEntity
 
 -- | A named entity.
 instance IntoEntity Text where
-  toEntity = EEntity . EntityId
+  toEntity = EEntity captureSrcSpan . EntityId
 
 -- | An identified entity.
 instance IntoEntity EntityId where
-  toEntity = EEntity
+  toEntity = EEntity captureSrcSpan
 
 -- | Turn on a given entity.
-isOn :: Exp 'TEntity -> Exp 'TVoid
-isOn = EIsOn
+isOn :: (HasCallStack) => Exp 'TEntity -> Exp 'TVoid
+isOn = EIsOn captureSrcSpan
+
+--------------------------------------------------------------------------------
+
+captureSrcSpan :: (HasCallStack) => Position
+captureSrcSpan = case reverse (getCallStack callStack) of
+  ( _,
+    SrcLoc
+      { srcLocFile,
+        srcLocStartLine,
+        srcLocStartCol,
+        srcLocEndLine,
+        srcLocEndCol
+      }
+    )
+    : _ -> Position (srcLocStartLine, srcLocStartCol) (srcLocEndLine, srcLocEndCol) srcLocFile
+  _ -> Position (0, 0) (0,0) "<unknown>"

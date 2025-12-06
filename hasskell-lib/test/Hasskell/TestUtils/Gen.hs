@@ -1,10 +1,12 @@
 module Hasskell.TestUtils.Gen
   ( genWorldWithToggled,
+    genWorldWithoutEntity,
     genObservedWorld,
     genWorld,
     genTime,
     genToggleable,
     genEntityId,
+    genUniqueEntityId,
     genToggleState,
   )
 where
@@ -35,6 +37,12 @@ genWorldWithToggled state = do
 genObservedWorld :: Gen ObservedWorld
 genObservedWorld = MkObserved <$> genTime <*> genWorld
 
+genWorldWithoutEntity :: Gen (EntityId, ObservedWorld)
+genWorldWithoutEntity = do
+  world <- genObservedWorld
+  entity <- genUniqueEntityId world
+  pure (entity, world)
+
 genWorld :: Gen World
 genWorld = MkWorld <$> Gen.list (Range.linear 0 10) genToggleable
 
@@ -42,6 +50,11 @@ genTime :: Gen UTCTime
 genTime =
   posixSecondsToUTCTime . fromInteger
     <$> Gen.integral (Range.constant 0 (60 * 60 * 24 * 365 * 200)) -- up to year 2169
+
+genUniqueEntityId :: ObservedWorld -> Gen EntityId
+genUniqueEntityId (MkObserved _ MkWorld {worldToggleables}) =
+  let existingIds = map toggleableId worldToggleables
+   in Gen.filter (not . (`elem` existingIds)) genEntityId
 
 genToggleable :: Gen Toggleable
 genToggleable = Toggleable <$> genEntityId <*> genToggleState
