@@ -3,6 +3,7 @@ module HasskellSpec (spec) where
 import Data.Text (Text)
 import Data.Text qualified as T
 import Hasskell
+import Hasskell.TestUtils.Specifications
 import System.Environment
 import Test.Syd
 import Test.Syd.Hedgehog ()
@@ -13,8 +14,8 @@ spec = do
 
   describe "Hasskell" $ do
     it "runs specification without error" $ do
-      let worldSpec = policy "light is always on" (isOn $ toEntity ("light.flaktlampa" :: Text))
-      runHasskell config worldSpec
+      let light = "light.flaktlampa" :: Text
+      runHasskell config (lightAlwaysOn light)
 
 getConfig :: IO Config
 getConfig = do

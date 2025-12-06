@@ -5,6 +5,7 @@ module Hasskell
     Config (..),
     LoggingConfig (..),
     -- Language
+    Specification,
     policy,
     isOn,
     IntoEntity (..),
