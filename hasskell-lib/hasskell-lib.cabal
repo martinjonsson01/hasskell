@@ -32,7 +32,6 @@ library
       Hasskell.HomeAssistant.Client
       Hasskell.Language.AST
       Hasskell.Language.Executor
-      Hasskell.Language.Interpreter
       Hasskell.Language.Reconciler
       Hasskell.Language.World
   other-modules:
@@ -116,7 +115,6 @@ test-suite hasskell-lib-test
   other-modules:
       Hasskell.HomeAssistant.ClientSpec
       Hasskell.Language.ExecutorSpec
-      Hasskell.Language.InterpreterSpec
       Hasskell.Language.ReconcilerSpec
       Hasskell.Language.WorldSpec
       Hasskell.TestUtils.Gen

@@ -6,11 +6,9 @@ module Hasskell.Language.Reconciler
   )
 where
 
-import Data.Map.Merge.Strict qualified as Merge
-import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as Map
+import Data.Maybe
 import Hasskell.HomeAssistant.API
-import Hasskell.Language.Interpreter
+import Hasskell.Language.AST
 import Hasskell.Language.World
 
 -- | A plan describing how to transform one world into another.
@@ -25,33 +23,29 @@ data ReconciliationStep = TurnOnEntity EntityId
   deriving (Eq, Show)
 
 -- | Computes the steps necessary to transform
--- the observed world state into the desired world state.
-reconcile :: ObservedWorld -> DesiredWorld -> ReconciliationPlan
-reconcile (MkObserved _ observed) (MkDesired desired) =
+-- the observed world state into the specified world state.
+reconcile :: ObservedWorld -> Specification -> ReconciliationPlan
+reconcile observed spec =
   MkReconciliationPlan $
-    if observed == desired
-      then []
-      else
-        map
-          TurnOnEntity
-          ( findOffOnTransitions
-              (createToggleMap observed)
-              (createToggleMap desired)
-          )
+    turnOnEntities (extractAllEntitiesToTurnOn spec observed) observed
 
-createToggleMap :: World -> Map EntityId ToggleState
-createToggleMap (MkWorld {worldToggleables}) = Map.fromList $ map (\Toggleable {toggleableId, toggleableState} -> (toggleableId, toggleableState)) worldToggleables
-
-findOffOnTransitions :: Map EntityId ToggleState -> Map EntityId ToggleState -> [EntityId]
-findOffOnTransitions before after =
-  Map.elems $
-    Merge.merge
-      Merge.dropMissing -- Ignore entities in `before` but not in `after`
-      Merge.dropMissing -- Ignore entities in `after` but not in `before`
-      (Merge.zipWithMaybeMatched toOffOnTransition) -- Keep only Off -> On transitions
-      before
-      after
+turnOnEntities :: [EntityId] -> ObservedWorld -> [ReconciliationStep]
+turnOnEntities toTurnOn (MkObserved _ world) =
+  mapMaybe turnOn (worldToggleables world)
   where
-    toOffOnTransition :: EntityId -> ToggleState -> ToggleState -> Maybe EntityId
-    toOffOnTransition entityId Off On = Just entityId
-    toOffOnTransition _ _ _ = Nothing
+    turnOn entity
+      | toggleableId entity `elem` toTurnOn = pure $ TurnOnEntity (toggleableId entity)
+      | otherwise = Nothing
+
+extractAllEntitiesToTurnOn :: Specification -> ObservedWorld -> [EntityId]
+extractAllEntitiesToTurnOn Specification {specPolicies} world =
+  concatMap (extractEntitiesToTurnOn world) specPolicies
+
+extractEntitiesToTurnOn :: ObservedWorld -> Policy -> [EntityId]
+extractEntitiesToTurnOn (MkObserved _ world) (Policy _ (SomeExp (EIsOn (EEntity entityId)))) =
+  [ toggleableId
+  | Toggleable {toggleableId, toggleableState} <- worldToggleables world,
+    toggleableId == entityId,
+    toggleableState /= On
+  ]
+extractEntitiesToTurnOn _ _ = []

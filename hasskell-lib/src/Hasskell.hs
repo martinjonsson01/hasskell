@@ -20,7 +20,6 @@ import Hasskell.Effects.Logging
 import Hasskell.HomeAssistant.Client
 import Hasskell.Language.AST
 import Hasskell.Language.Executor
-import Hasskell.Language.Interpreter
 import Hasskell.Language.Reconciler
 import Hasskell.Language.World
 import Text.Show.Pretty
@@ -33,8 +32,7 @@ runHasskell config spec =
 innerRunHasskell :: Specification -> ClientM ()
 innerRunHasskell spec = do
   observed <- collectCurrentState
-  let desired = interpret observed spec
-      plan = reconcile observed desired
+  let plan = reconcile observed spec
   logInfo $
     if isPlanEmpty plan
       then "nothing to reconcile"

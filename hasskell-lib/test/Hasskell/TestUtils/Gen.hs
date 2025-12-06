@@ -1,6 +1,5 @@
 module Hasskell.TestUtils.Gen
-  ( withEntityOn,
-    genWorldWithToggled,
+  ( genWorldWithToggled,
     genObservedWorld,
     genWorld,
     genTime,
@@ -13,18 +12,10 @@ where
 import Data.Time
 import Data.Time.Clock.POSIX
 import Hasskell.HomeAssistant.API
-import Hasskell.Language.Interpreter
 import Hasskell.Language.World
 import Hedgehog
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
-
-withEntityOn :: ObservedWorld -> EntityId -> DesiredWorld
-withEntityOn (MkObserved _ world) entityId =
-  MkDesired $ world {worldToggleables = map turnOnEntity (worldToggleables world)}
-  where
-    turnOnEntity entity | toggleableId entity == entityId = entity {toggleableState = On}
-    turnOnEntity entity | otherwise = entity
 
 genWorldWithToggled :: ToggleState -> Gen (EntityId, ObservedWorld)
 genWorldWithToggled state = do
