@@ -2,7 +2,7 @@
 
 module Hasskell.Effects.HASS
   ( -- Interactions with Home Assistant
-    HASS,
+    HASS (..),
     runHASS,
     -- Actions
     getConfig,
@@ -10,7 +10,7 @@ module Hasskell.Effects.HASS
     getEntities,
     getDevices,
     getServices,
-    callService,
+    turnOnLight,
   )
 where
 
@@ -27,7 +27,7 @@ data HASS :: Effect where
   GetEntities :: HASS m [HASSEntity]
   GetDevices :: HASS m [HASSDevice]
   GetServices :: HASS m HASSServiceActions
-  CallService :: HASSDomain -> HASSServiceName -> EntityId -> HASS m ()
+  TurnOnLight :: EntityId -> HASS m ()
 
 makeEffect ''HASS
 
@@ -41,21 +41,24 @@ runHASS = interpret_ $ \case
   GetEntities -> sendMessage CommandGetEntityRegistry
   GetDevices -> sendMessage CommandGetDeviceRegistry
   GetServices -> sendMessage CommandGetServices
-  CallService domain service entityId ->
-    sendMessage
-      ( CommandCallService
-          { commandReturnResponse = False,
-            commandTarget =
-              Just
-                ( Target
-                    { targetEntityId = L.singleton entityId,
-                      targetDeviceId = mempty,
-                      targetLabelId = mempty,
-                      targetAreaId = mempty
-                    }
-                ),
-            commandServiceData = Nothing,
-            commandService = service,
-            commandDomain = domain
-          }
-      )
+  TurnOnLight entity -> callService domainLight serviceToggle entity
+
+callService :: (HASSConnection :> es) => HASSDomain -> HASSServiceName -> EntityId -> Eff es ()
+callService domain service entityId =
+  sendMessage
+    ( CommandCallService
+        { commandReturnResponse = False,
+          commandTarget =
+            Just
+              ( Target
+                  { targetEntityId = L.singleton entityId,
+                    targetDeviceId = mempty,
+                    targetLabelId = mempty,
+                    targetAreaId = mempty
+                  }
+              ),
+          commandServiceData = Nothing,
+          commandService = service,
+          commandDomain = domain
+        }
+    )

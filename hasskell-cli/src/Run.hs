@@ -5,7 +5,7 @@ module Run (run) where
 
 import Hasskell.Config (Config (..), LoggingConfig (..))
 import Hasskell.Effects.HASS qualified as HASS
-import Hasskell.HomeAssistant.API (HASSEntity (..))
+import Hasskell.HomeAssistant.API
 import Hasskell.HomeAssistant.Client
 import Import
 import RIO.List (find)
@@ -38,7 +38,7 @@ run = do
         let mbLight = entityEntityId <$> find (\entity -> show (entityEntityId entity) == "EntityId \"light.flaktlampa\"") entities
         case mbLight of
           Just light -> do
-            result <- HASS.callService (Domain "light") (ServiceName "toggle") light
+            result <- HASS.turnOnLight light
             liftIO $ pPrint result
           Nothing -> liftIO $ pPrint ("no light :(" :: Text)
   case result of
