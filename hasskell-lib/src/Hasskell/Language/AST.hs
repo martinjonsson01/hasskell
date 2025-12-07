@@ -19,7 +19,7 @@ import Data.Singletons.TH
 import Data.Text (Text)
 import GHC.Stack
 import Hasskell.HomeAssistant.API
-import Error.Diagnose (Position (..))
+import Hasskell.Language.Diagnostic
 
 data T = TDevice | TEntity | TVoid
   deriving (Show, Eq)
@@ -53,8 +53,8 @@ instance Show (SomeExp) where
 
 data Exp :: T -> Type where
   EDevice :: Text -> Exp 'TDevice
-  EEntity :: Position -> EntityId -> Exp 'TEntity
-  EIsOn :: Position -> Exp 'TEntity -> Exp 'TVoid
+  EEntity :: Blame -> EntityId -> Exp 'TEntity
+  EIsOn :: Blame -> Exp 'TEntity -> Exp 'TVoid
 
 deriving instance Show (Exp t)
 
@@ -75,19 +75,3 @@ instance IntoEntity EntityId where
 -- | Turn on a given entity.
 isOn :: (HasCallStack) => Exp 'TEntity -> Exp 'TVoid
 isOn = EIsOn captureSrcSpan
-
---------------------------------------------------------------------------------
-
-captureSrcSpan :: (HasCallStack) => Position
-captureSrcSpan = case reverse (getCallStack callStack) of
-  ( _,
-    SrcLoc
-      { srcLocFile,
-        srcLocStartLine,
-        srcLocStartCol,
-        srcLocEndLine,
-        srcLocEndCol
-      }
-    )
-    : _ -> Position (srcLocStartLine, srcLocStartCol) (srcLocEndLine, srcLocEndCol) srcLocFile
-  _ -> Position (0, 0) (0,0) "<unknown>"

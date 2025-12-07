@@ -11,63 +11,14 @@ module Hasskell.Language.Reconciler
   )
 where
 
-import Control.Monad
 import Data.Either
-import Data.List qualified as List
 import Data.Map qualified as Map
 import Data.Map.Strict (Map)
 import Data.Maybe
-import Data.Text (Text)
-import Data.Text qualified as T
-import Effectful
-import Error.Diagnose
 import Hasskell.HomeAssistant.API
 import Hasskell.Language.AST
+import Hasskell.Language.Diagnostic
 import Hasskell.Language.World
-import Prettyprinter
-import Prettyprinter.Render.Terminal qualified as Terminal
-
--- | Non-fatal details about how the reconciliation went.
-data ReconciliationReport = MkReconciliationReport [ReconciliationDiagnostic]
-
--- | Info about a reconciliation occurrence.
-data ReconciliationDiagnostic = Diagnostic
-  { diagnosticSpan :: Position,
-    diagnosticReport :: Report Text
-  }
-
--- | Converts the given report from a data representation into a pretty
--- user-presentable representation.
-renderReport :: (MonadIO m) => ReconciliationReport -> m Text
-renderReport (MkReconciliationReport diagnostics) = do
-  let reports = map diagnosticReport diagnostics
-      incompleteDiagnostic = foldl' addReport mempty reports
-      files = List.nub $ map (file . diagnosticSpan) diagnostics
-
-  fullDiagnostic <- foldM loadAndAddFile incompleteDiagnostic files
-
-  let doc = prettyDiagnostic WithUnicode (TabSize 2) fullDiagnostic
-      coloredDoc = reAnnotate defaultStyle doc
-  pure $ Terminal.renderStrict $ layoutPretty defaultLayoutOptions coloredDoc
-  where
-    loadAndAddFile diagnostic path = liftIO $ addFile diagnostic path <$> readFile path
-
-hasWarnings :: ReconciliationReport -> Bool
-hasWarnings (MkReconciliationReport reports) = length (reports) > 0
-
-warnUnknownEntity :: Position -> EntityId -> ReconciliationDiagnostic
-warnUnknownEntity srcSpan (EntityId entityId) =
-  Diagnostic
-    srcSpan
-    ( Warn
-        Nothing
-        "Unknown entity"
-        [(srcSpan, message)]
-        []
-    )
-  where
-    title = "Unknown entity"
-    message = This $ T.unwords [title, T.show entityId]
 
 --------------------------------------------------------------------------------
 
@@ -91,7 +42,7 @@ reconcile observed spec =
   let (unknowns, toTurnOn) = extractAllEntitiesToTurnOn spec observed
       steps = turnOnEntities toTurnOn observed
    in ( MkReconciliationPlan steps,
-        MkReconciliationReport unknowns
+        reportFromList unknowns
       )
 
 turnOnEntities :: [EntityId] -> ObservedWorld -> [ReconciliationStep]
@@ -112,9 +63,9 @@ extractEntitiesToTurnOn ::
   Map EntityId Toggleable ->
   Policy ->
   [Either ReconciliationDiagnostic EntityId]
-extractEntitiesToTurnOn entityMap (Policy _ (SomeExp (EIsOn _ (EEntity entitySpan entityId)))) =
+extractEntitiesToTurnOn entityMap (Policy _ (SomeExp (EIsOn _ (EEntity entityBlame entityId)))) =
   maybe
-    [Left (warnUnknownEntity entitySpan entityId)]
+    [Left (warnUnknownEntity entityBlame entityId)]
     (\t -> [Right (toggleableId t) | toggleableState t /= On])
     (Map.lookup entityId entityMap)
 extractEntitiesToTurnOn _ _ = []

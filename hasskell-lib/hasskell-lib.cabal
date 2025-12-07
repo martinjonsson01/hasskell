@@ -31,6 +31,8 @@ library
       Hasskell.HomeAssistant.API
       Hasskell.HomeAssistant.Client
       Hasskell.Language.AST
+      Hasskell.Language.CallStack
+      Hasskell.Language.Diagnostic
       Hasskell.Language.Executor
       Hasskell.Language.Reconciler
       Hasskell.Language.World
@@ -99,6 +101,7 @@ library
     , effectful-core >=2.6 && <3
     , effectful-plugin >=2.0.0.1 && <3
     , effectful-th >=1.0.0.3 && <2
+    , filepath >=1.5 && <=2.0
     , mtl >=2.3.1 && <3
     , pretty-show >=1.10 && <2
     , prettyprinter >=1.7 && <2
@@ -108,6 +111,7 @@ library
     , stm >=2.5 && <3
     , text >=2.0 && <=2.0
     , time >=1.12 && <2
+    , utf8-string >=1.0 && <=2.0
     , utility-ht >=0.0.17 && <0.1
     , websockets ==0.13.*
   default-language: Haskell2010
@@ -117,6 +121,8 @@ test-suite hasskell-lib-test
   main-is: Spec.hs
   other-modules:
       Hasskell.HomeAssistant.ClientSpec
+      Hasskell.Language.CallStackSpec
+      Hasskell.Language.DiagnosticSpec
       Hasskell.Language.ExecutorSpec
       Hasskell.Language.ReconcilerSpec
       Hasskell.Language.WorldSpec
@@ -190,6 +196,7 @@ test-suite hasskell-lib-test
     , effectful-core >=2.6 && <3
     , effectful-plugin >=2.0.0.1 && <3
     , effectful-th >=1.0.0.3 && <2
+    , filepath >=1.5 && <=2.0
     , hasskell-lib
     , hedgehog >=1.5 && <2
     , mtl >=2.3.1 && <3
@@ -203,6 +210,7 @@ test-suite hasskell-lib-test
     , sydtest-hedgehog >=0.4 && <1
     , text >=2.0 && <=2.0
     , time >=1.12 && <2
+    , utf8-string >=1.0 && <=2.0
     , utility-ht >=0.0.17 && <0.1
     , websockets ==0.13.*
   default-language: Haskell2010
