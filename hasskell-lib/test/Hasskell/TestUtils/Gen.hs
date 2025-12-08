@@ -1,6 +1,7 @@
 module Hasskell.TestUtils.Gen
   ( genWorldWithToggled,
     genWorldWithoutEntity,
+    genWorldWithKnownEntities,
     genObservedWorld,
     genWorld,
     genTime,
@@ -34,6 +35,12 @@ genWorldWithToggled state = do
       let (front, back) = splitAt i xs
        in front ++ (x : back)
 
+genWorldWithKnownEntities :: [EntityId] -> Gen ObservedWorld
+genWorldWithKnownEntities known = do
+  MkObserved time world <- genObservedWorld
+  knownEntities <- mapM genEntityWithId known
+  pure $ MkObserved time world {worldToggleables = knownEntities <> (worldToggleables world)}
+
 genObservedWorld :: Gen ObservedWorld
 genObservedWorld = MkObserved <$> genTime <*> genWorld
 
@@ -57,7 +64,10 @@ genUniqueEntityId (MkObserved _ MkWorld {worldToggleables}) =
    in Gen.filter (not . (`elem` existingIds)) genEntityId
 
 genToggleable :: Gen Toggleable
-genToggleable = Toggleable <$> genEntityId <*> genToggleState
+genToggleable = genEntityId >>= genEntityWithId
+
+genEntityWithId :: EntityId -> Gen Toggleable
+genEntityWithId entity = Toggleable <$> pure entity <*> genToggleState
 
 genEntityId :: Gen EntityId
 genEntityId = EntityId <$> Gen.text (Range.constant 1 10) Gen.alphaNum

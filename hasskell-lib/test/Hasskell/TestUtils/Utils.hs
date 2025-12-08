@@ -1,6 +1,7 @@
 module Hasskell.TestUtils.Utils
   ( runWithClient,
     shouldBeSubsetOf,
+    sampleDeterministic,
   )
 where
 
@@ -9,8 +10,25 @@ import GHC.Stack (HasCallStack)
 import Hasskell.Config (Config (..), LoggingConfig (..))
 import Hasskell.Effects.HASSConnection (HASSWebSocketError (ParserError))
 import Hasskell.HomeAssistant.Client
+import Hedgehog (Gen, Seed)
+import Hedgehog.Internal.Gen qualified as InternalGen
+import Hedgehog.Internal.Tree qualified as InternalTree
 import System.Environment (lookupEnv)
 import Test.Syd
+
+sampleDeterministic :: Seed -> Gen a -> IO a
+sampleDeterministic seed gen =
+  let loop n =
+        if n <= 0
+          then
+            expectationFailure "Hedgehog generator failed to produce a value"
+          else do
+            case InternalGen.evalGen 30 seed gen of
+              Nothing ->
+                loop (n - 1)
+              Just x ->
+                pure $ InternalTree.treeValue x
+   in loop (100 :: Int)
 
 runWithClient :: ClientM a -> IO a
 runWithClient action = do

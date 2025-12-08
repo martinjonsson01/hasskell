@@ -2,14 +2,16 @@
 
 module Hasskell.Language.DiagnosticSpec (spec) where
 
+import Data.Text (Text)
+import Hasskell.HomeAssistant.API
 import Hasskell.Language.Reconciler
 import Hasskell.TestUtils.Gen
 import Hasskell.TestUtils.Specifications
+import Hasskell.TestUtils.Utils
 import Hedgehog
-import Hedgehog.Internal.Gen qualified as InternalGen
-import Hedgehog.Internal.Tree qualified as InternalTree
 import Test.Syd
 import Test.Syd.Hedgehog ()
+import qualified Data.Text as T
 
 spec :: Spec
 spec = do
@@ -20,16 +22,26 @@ spec = do
       renderedReport <- renderReport report
       goldenStage $ pureGoldenTextFile "test_resources/warn_unknown_entity.golden" renderedReport
 
-sampleDeterministic :: Seed -> Gen a -> IO a
-sampleDeterministic seed gen =
-  let loop n =
-        if n <= 0
-          then
-            expectationFailure "Hedgehog generator failed to produce a value"
-          else do
-            case InternalGen.evalGen 30 seed gen of
-              Nothing ->
-                loop (n - 1)
-              Just x ->
-                pure $ InternalTree.treeValue x
-   in loop (100 :: Int)
+    specify "suggests correct entity on typos" $
+      property $ do
+        let expectedMatch = "some_entity_name"
+            knownEntities = map EntityId $ expectedMatch : ["light.some_other"]
+        observed <- forAll (genWorldWithKnownEntities knownEntities)
+        let (_, report) = reconcile observed (lightAlwaysOn ("some_titynamr" :: Text))
+        renderedReport <- renderReport report
+        annotate (T.unpack renderedReport)
+        let expectedSuggestion = "did you mean `"<> expectedMatch <>"`?"
+        annotate (T.unpack expectedSuggestion)
+        assert (expectedSuggestion `T.isInfixOf` renderedReport)
+
+    specify "suggests correct entity on forgotten prefix" $
+      property $ do
+        let expectedMatch = "light.some_entity_name"
+            knownEntities = map EntityId $ expectedMatch : ["light.some_other"]
+        observed <- forAll (genWorldWithKnownEntities knownEntities)
+        let (_, report) = reconcile observed (lightAlwaysOn ("some_entity_name" :: Text))
+        renderedReport <- renderReport report
+        annotate (T.unpack renderedReport)
+        let expectedSuggestion = "did you mean `"<> expectedMatch <>"`?"
+        annotate (T.unpack expectedSuggestion)
+        assert (expectedSuggestion `T.isInfixOf` renderedReport)

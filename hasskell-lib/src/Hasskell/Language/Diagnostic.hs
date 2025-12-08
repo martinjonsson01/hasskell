@@ -15,8 +15,14 @@ where
 
 import Control.Monad
 import Data.ByteString.UTF8 qualified as BS8
+import Data.Foldable
+import Data.Heap (MaxPrioHeap)
+import Data.Heap qualified as Heap
 import Data.List qualified as List
+import Data.Maybe
+import Data.Ratio
 import Data.Text (Text)
+import Data.Text.Metrics
 import Effectful
 import Effectful.FileSystem qualified as File
 import Effectful.FileSystem.IO.ByteString qualified as File8
@@ -80,18 +86,42 @@ simplifyBlamePaths (Blame primary secondary) =
 simplifyFilePath :: FilePath -> FilePath
 simplifyFilePath = takeFileName
 
-warnUnknownEntity :: Blame -> EntityId -> ReconciliationDiagnostic
-warnUnknownEntity blame (EntityId entityId) =
+warnUnknownEntity :: Blame -> EntityId -> [EntityId] -> ReconciliationDiagnostic
+warnUnknownEntity blame (EntityId entityId) knownEntities =
   Diagnostic
     blame
     ( Warn
         Nothing
         "Unknown entity referenced"
-        (mainMarker : contextMarkers)
+        (mainMarker : contextMarkers <> suggestionMarker)
         ["The entity ID may be misspelled."]
     )
   where
     message = This $ mconcat ["Unknown entity ID `", entityId, "`"]
     cleanedBlame = simplifyBlamePaths blame
     mainMarker = (blamePrimary cleanedBlame, message)
+    suggestionMarker =
+      maybeToList $
+        (blamePrimary cleanedBlame,)
+          . Where
+          . ("did you mean `" <>)
+          . (<> "`?")
+          <$> closestMatch
+      where
+        unwrapEntity (EntityId entityInner) = entityInner
+        closestMatch = findClosestMatch entityId (map unwrapEntity knownEntities)
     contextMarkers = map (,Where "via") (blameSecondary cleanedBlame)
+
+findClosestMatch :: Text -> [Text] -> Maybe Text
+findClosestMatch text candidates =
+  snd <$> find ((> 0.85) . fst) (Heap.viewHead (scoreSimilarities text candidates))
+
+scoreSimilarities :: Text -> [Text] -> MaxPrioHeap (Ratio Int) Text
+scoreSimilarities text candidates =
+  foldl'
+    (flip Heap.insert)
+    mempty
+    (map (computeSimilarity text) candidates)
+
+computeSimilarity :: Text -> Text -> (Ratio Int, Text)
+computeSimilarity reference candidate = (jaroWinkler reference candidate, candidate)
