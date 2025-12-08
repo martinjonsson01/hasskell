@@ -70,6 +70,7 @@ library
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -fdiagnostics-color=always
   build-depends:
       base >=4.11 && <10
+    , directory >=1.3 && <2
     , hasskell-lib
     , mtl >=2.3.1 && <3
     , pretty-show >=1.10 && <2
@@ -125,6 +126,7 @@ executable hasskell
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -fdiagnostics-color=always -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.11 && <10
+    , directory >=1.3 && <2
     , hasskell-cli
     , hasskell-lib
     , mtl >=2.3.1 && <3

@@ -68,7 +68,7 @@ classify loc
 isInternal :: SrcLoc -> Bool
 isInternal loc =
   (srcLocModule loc `elem` knownInternalModules)
-    || ("hasskell" `List.isPrefixOf` srcLocPackage loc)
+    || ("hasskell-lib" `List.isPrefixOf` srcLocPackage loc)
 
 knownInternalModules :: [String]
 knownInternalModules = ["Hasskell.Language.AST"]

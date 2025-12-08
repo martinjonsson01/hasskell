@@ -3,15 +3,11 @@
 
 module Run (run) where
 
-import Hasskell.Config (Config (..), LoggingConfig (..))
-import Hasskell.Effects.HASS qualified as HASS
-import Hasskell.HomeAssistant.API
-import Hasskell.HomeAssistant.Client
+import Hasskell
 import Import
-import RIO.List (find)
-import RIO.Text qualified as T
+import RIO.FilePath
+import System.Directory qualified as Dir
 import System.IO.Error (userError)
-import Text.Show.Pretty (pPrint, ppShow)
 
 run :: RIO App ()
 run = do
@@ -24,24 +20,14 @@ run = do
             infoLogger = \message -> runRIO app (logInfo $ display message),
             errorLogger = \message -> runRIO app (logError $ display message)
           }
-  result <-
-    liftIO
-      $ runClient
-        ( Config
-            { baseUrl = "localhost",
-              token = token,
-              logging = logging
-            }
-        )
-      $ do
-        entities <- HASS.getEntities
-        let mbLight = entityEntityId <$> find (\entity -> show (entityEntityId entity) == "EntityId \"light.flaktlampa\"") entities
-        case mbLight of
-          Just light -> do
-            result <- HASS.turnOnLight light
-            liftIO $ pPrint result
-          Nothing -> liftIO $ pPrint ("no light :(" :: Text)
-  case result of
-    Left clientError -> logError $ Utf8Builder $ encodeUtf8Builder $ T.pack $ ppShow clientError
-    Right _ -> do
-      logInfo "Application finished, exiting..."
+  currentDir <- liftIO Dir.getCurrentDirectory
+  liftIO
+    $ runHasskell
+      ( Config
+          { baseUrl = "localhost",
+            token = token,
+            logging = logging,
+            workingDir = Just $ currentDir </> "hasskell-cli"
+          }
+      )
+    $ (policy "light is always on" (isOn $ toEntity ("light.flaktlampa" :: Text)))

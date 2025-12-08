@@ -31,7 +31,6 @@ import Hasskell.HomeAssistant.API
 import Hasskell.Language.CallStack
 import Prettyprinter
 import Prettyprinter.Render.Terminal qualified as Terminal
-import System.FilePath
 
 -- | Non-fatal details about how the reconciliation went.
 data ReconciliationReport = MkReconciliationReport [ReconciliationDiagnostic]
@@ -65,27 +64,20 @@ innerRenderReport (MkReconciliationReport diagnostics) = do
   where
     loadAndAddFile :: (File.FileSystem :> es) => Diagnostic Text -> FilePath -> Eff es (Diagnostic Text)
     loadAndAddFile diagnostic path = do
-      exists <- File.doesFileExist path
+      absolutePath <- File.makeAbsolute path
+      exists <- File.doesFileExist absolutePath
       contents <-
         if exists
-          then BS8.toString <$> File8.readFile path
+          then BS8.toString <$> File8.readFile absolutePath
           else pure "file does not exist"
-      pure $ addFile diagnostic (simplifyFilePath path) contents
+      pure $ addFile diagnostic path contents
 
 hasWarnings :: ReconciliationReport -> Bool
 hasWarnings (MkReconciliationReport reports) = length (reports) > 0
 
-simplifyBlamePaths :: Blame -> Blame
-simplifyBlamePaths (Blame primary secondary) =
-  Blame
-    (simplifyPath primary)
-    (map simplifyPath secondary)
-  where
-    simplifyPath position = position {file = simplifyFilePath (file position)}
-
-simplifyFilePath :: FilePath -> FilePath
-simplifyFilePath = takeFileName
-
+-- TODO: don't create a real report here, just store the data so
+-- that we can create a real one later on (where we're free to rewrite
+-- the file paths as we like)
 warnUnknownEntity :: Blame -> EntityId -> [EntityId] -> ReconciliationDiagnostic
 warnUnknownEntity blame (EntityId entityId) knownEntities =
   Diagnostic
@@ -98,11 +90,10 @@ warnUnknownEntity blame (EntityId entityId) knownEntities =
     )
   where
     message = This $ mconcat ["Unknown entity ID `", entityId, "`"]
-    cleanedBlame = simplifyBlamePaths blame
-    mainMarker = (blamePrimary cleanedBlame, message)
+    mainMarker = (blamePrimary blame, message)
     suggestionMarker =
       maybeToList $
-        (blamePrimary cleanedBlame,)
+        (blamePrimary blame,)
           . Where
           . ("did you mean `" <>)
           . (<> "`?")
@@ -110,7 +101,7 @@ warnUnknownEntity blame (EntityId entityId) knownEntities =
       where
         unwrapEntity (EntityId entityInner) = entityInner
         closestMatch = findClosestMatch entityId (map unwrapEntity knownEntities)
-    contextMarkers = map (,Where "via") (blameSecondary cleanedBlame)
+    contextMarkers = map (,Where "via") (blameSecondary blame)
 
 findClosestMatch :: Text -> [Text] -> Maybe Text
 findClosestMatch text candidates =

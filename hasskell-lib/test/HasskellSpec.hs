@@ -29,4 +29,4 @@ getConfig = do
             infoLogger = putStrLn . T.unpack,
             errorLogger = putStrLn . T.unpack
           }
-  pure (Config {baseUrl = envBaseUrl, token = envApiToken, logging = logging})
+  pure (Config {baseUrl = envBaseUrl, token = envApiToken, logging = logging, workingDir = Nothing})

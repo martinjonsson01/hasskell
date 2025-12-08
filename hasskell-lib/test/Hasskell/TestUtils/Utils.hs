@@ -51,7 +51,7 @@ runWithClient' action =
               errorLogger = putStrLn . T.unpack
             }
     runClient
-      (Config {baseUrl = envBaseUrl, token = envApiToken, logging = logging})
+      (Config {baseUrl = envBaseUrl, token = envApiToken, logging = logging, workingDir = Nothing})
       action
 
 -- | Assert that the first list is a subset of the second list

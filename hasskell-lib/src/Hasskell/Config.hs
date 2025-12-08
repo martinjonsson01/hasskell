@@ -19,7 +19,8 @@ import Hasskell.Effects.Logging (LoggingConfig (..))
 data Config = Config
   { token :: !Text,
     baseUrl :: !Text,
-    logging :: !LoggingConfig
+    logging :: !LoggingConfig,
+    workingDir :: !(Maybe FilePath)
   }
 
 data Configured :: Effect where

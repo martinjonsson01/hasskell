@@ -97,6 +97,7 @@ library
     , containers >=0.6.8 && <0.8
     , deriving-aeson >=0.2.10 && <0.3
     , diagnose >=2.5.1 && <3
+    , directory >=1.3 && <2
     , effectful >=2.6 && <3
     , effectful-core >=2.6 && <3
     , effectful-plugin >=2.0.0.1 && <3
@@ -194,6 +195,7 @@ test-suite hasskell-lib-test
     , containers >=0.6.8 && <0.8
     , deriving-aeson >=0.2.10 && <0.3
     , diagnose >=2.5.1 && <3
+    , directory >=1.3 && <2
     , effectful >=2.6 && <3
     , effectful-core >=2.6 && <3
     , effectful-plugin >=2.0.0.1 && <3
