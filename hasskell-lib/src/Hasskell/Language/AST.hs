@@ -52,7 +52,6 @@ instance Show (SomeExp) where
   show (SomeExp e) = show e
 
 data Exp :: T -> Type where
-  EDevice :: Text -> Exp 'TDevice
   EEntity :: Blame -> EntityId -> Exp 'TEntity
   EIsOn :: Blame -> Exp 'TEntity -> Exp 'TVoid
 
