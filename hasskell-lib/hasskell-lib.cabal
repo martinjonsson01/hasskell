@@ -111,7 +111,7 @@ library
     , singletons ==3.*
     , singletons-th ==3.*
     , stm >=2.5 && <3
-    , text >=2.0 && <=2.0
+    , text >=2.0 && <3.0
     , text-metrics >=0.3 && <1.0
     , time >=1.12 && <2
     , utf8-string >=1.0 && <=2.0
@@ -213,7 +213,7 @@ test-suite hasskell-lib-test
     , stm >=2.5 && <3
     , sydtest >=0.20 && <1
     , sydtest-hedgehog >=0.4 && <1
-    , text >=2.0 && <=2.0
+    , text >=2.0 && <3.0
     , text-metrics >=0.3 && <1.0
     , time >=1.12 && <2
     , utf8-string >=1.0 && <=2.0
