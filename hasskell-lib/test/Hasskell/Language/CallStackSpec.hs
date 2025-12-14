@@ -17,7 +17,7 @@ spec = do
           libraryLoc0 = fakePosition "user-lib" "My.Library.Mod"
           userLoc = fakePosition "user-lib" "My.User.Mod"
           cs = fromCallSiteList $ map ("",) $ [internalLoc0, libraryLoc0, userLoc]
-          Blame primary _ = captureSrcSpan' cs
+          Positions primary _ = captureSrcSpan' cs
       primary `shouldBe` convertSrcLoc libraryLoc0
 
     it "correctly selects secondary frame" $ do
@@ -25,7 +25,7 @@ spec = do
           libraryLoc0 = fakePosition "user-lib" "My.Library.Mod"
           userLoc = fakePosition "user-lib" "My.User.Mod"
           cs = fromCallSiteList $ map ("",) $ [internalLoc0, libraryLoc0, userLoc]
-          Blame _ secondarySites = captureSrcSpan' cs
+          Positions _ secondarySites = captureSrcSpan' cs
       secondarySites `shouldBe` [convertSrcLoc userLoc]
 
 currentLoc :: (HasCallStack) => SrcLoc

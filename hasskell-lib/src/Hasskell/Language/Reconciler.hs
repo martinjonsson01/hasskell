@@ -63,9 +63,9 @@ extractEntitiesToTurnOn ::
   Map EntityId Toggleable ->
   Policy ->
   [Either ReconciliationDiagnostic EntityId]
-extractEntitiesToTurnOn entityMap (Policy _ (SomeExp (EIsOn _ (EEntity entityBlame entityId)))) =
+extractEntitiesToTurnOn entityMap (Policy _ (SomeExp (EIsOn _ (EEntity positions entityId)))) =
   maybe
-    [Left (warnUnknownEntity entityBlame entityId (Map.keys entityMap))]
+    [Left (warnUnknownEntity positions entityId (Map.keys entityMap))]
     (\t -> [Right (toggleableId t) | toggleableState t /= On])
     (Map.lookup entityId entityMap)
 extractEntitiesToTurnOn _ _ = []

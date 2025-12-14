@@ -52,8 +52,8 @@ instance Show (SomeExp) where
   show (SomeExp e) = show e
 
 data Exp :: T -> Type where
-  EEntity :: Blame -> EntityId -> Exp 'TEntity
-  EIsOn :: Blame -> Exp 'TEntity -> Exp 'TVoid
+  EEntity :: Positions -> EntityId -> Exp 'TEntity
+  EIsOn :: Positions -> Exp 'TEntity -> Exp 'TVoid
 
 deriving instance Show (Exp t)
 

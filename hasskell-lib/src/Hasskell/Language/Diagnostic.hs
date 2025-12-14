@@ -6,7 +6,7 @@ module Hasskell.Language.Diagnostic
     renderReport,
     -- Capturing source locations
     captureSrcSpan,
-    Blame,
+    Positions,
     -- Warnings
     hasWarnings,
     warnUnknownEntity,
@@ -40,7 +40,7 @@ reportFromList = MkReconciliationReport
 
 -- | Info about a reconciliation occurrence.
 data ReconciliationDiagnostic = Diagnostic
-  { diagnosticBlame :: Blame,
+  { diagnosticPositions :: Positions,
     diagnosticReport :: Report Text
   }
 
@@ -53,8 +53,8 @@ innerRenderReport :: (File.FileSystem :> es) => ReconciliationReport -> Eff es T
 innerRenderReport (MkReconciliationReport diagnostics) = do
   let reports = map diagnosticReport diagnostics
       incompleteDiagnostic = foldl' addReport mempty reports
-      getFilesIn (Blame primary secondary) = (file primary) : map file secondary
-      files = List.nub $ concatMap (getFilesIn . diagnosticBlame) diagnostics
+      getFilesIn (Positions primary secondary) = (file primary) : map file secondary
+      files = List.nub $ concatMap (getFilesIn . diagnosticPositions) diagnostics
 
   fullDiagnostic <- foldM loadAndAddFile incompleteDiagnostic files
 
@@ -78,10 +78,10 @@ hasWarnings (MkReconciliationReport reports) = length (reports) > 0
 -- TODO: don't create a real report here, just store the data so
 -- that we can create a real one later on (where we're free to rewrite
 -- the file paths as we like)
-warnUnknownEntity :: Blame -> EntityId -> [EntityId] -> ReconciliationDiagnostic
-warnUnknownEntity blame (EntityId entityId) knownEntities =
+warnUnknownEntity :: Positions -> EntityId -> [EntityId] -> ReconciliationDiagnostic
+warnUnknownEntity positions (EntityId entityId) knownEntities =
   Diagnostic
-    blame
+    positions
     ( Warn
         Nothing
         "Unknown entity referenced"
@@ -90,10 +90,10 @@ warnUnknownEntity blame (EntityId entityId) knownEntities =
     )
   where
     message = This $ mconcat ["Unknown entity ID `", entityId, "`"]
-    mainMarker = (blamePrimary blame, message)
+    mainMarker = (positionsPrimary positions, message)
     suggestionMarker =
       maybeToList $
-        (blamePrimary blame,)
+        (positionsPrimary positions,)
           . Where
           . ("did you mean `" <>)
           . (<> "`?")
@@ -101,7 +101,7 @@ warnUnknownEntity blame (EntityId entityId) knownEntities =
       where
         unwrapEntity (EntityId entityInner) = entityInner
         closestMatch = findClosestMatch entityId (map unwrapEntity knownEntities)
-    contextMarkers = map (,Where "via") (blameSecondary blame)
+    contextMarkers = map (,Where "via") (positionsSecondary positions)
 
 findClosestMatch :: Text -> [Text] -> Maybe Text
 findClosestMatch text candidates =

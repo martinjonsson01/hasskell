@@ -1,5 +1,5 @@
 module Hasskell.Language.CallStack
-  ( Blame (..),
+  ( Positions (..),
     captureSrcSpan,
     captureSrcSpan',
     convertSrcLoc,
@@ -11,26 +11,26 @@ import Data.List qualified as List
 import Error.Diagnose
 import GHC.Stack
 
--- | A location in the user's source code.
-data Blame = Blame
-  { blamePrimary :: Position,
-    blameSecondary :: [Position]
+-- | A main location, along with supplementary locations, in the user's source code.
+data Positions = Positions
+  { positionsPrimary :: Position,
+    positionsSecondary :: [Position]
   }
   deriving (Eq, Ord, Show)
 
 -- | Captures the current context, based on the current call stack.
-captureSrcSpan :: (HasCallStack) => Blame
+captureSrcSpan :: (HasCallStack) => Positions
 captureSrcSpan = captureSrcSpan' callStack
 
 -- | Captures the current context, based on the given call stack.
-captureSrcSpan' :: CallStack -> Blame
+captureSrcSpan' :: CallStack -> Positions
 captureSrcSpan' cs =
   let (primary, secondary) =
         bimap
           convertSrcLoc
           (map convertSrcLoc)
-          (selectBlameSites cs)
-   in Blame primary secondary
+          (selectPositions cs)
+   in Positions primary secondary
 
 convertSrcLoc :: SrcLoc -> Position
 convertSrcLoc
@@ -46,9 +46,9 @@ convertSrcLoc
       (srcLocEndLine, srcLocEndCol)
       srcLocFile
 
--- | Selects sites of blame that lie in user code.
-selectBlameSites :: CallStack -> (SrcLoc, [SrcLoc])
-selectBlameSites cs =
+-- | Selects positions that lie in user code.
+selectPositions :: CallStack -> (SrcLoc, [SrcLoc])
+selectPositions cs =
   let frames = reverse (getCallStack cs) -- outermost first
       classified = zip frames (map (classify . snd) frames)
       userFrames = takeWhile ((== UserFrame) . snd) classified
