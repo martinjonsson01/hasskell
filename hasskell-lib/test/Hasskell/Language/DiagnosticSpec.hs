@@ -3,6 +3,7 @@
 module Hasskell.Language.DiagnosticSpec (spec) where
 
 import Data.Text (Text)
+import Data.Text qualified as T
 import Hasskell.HomeAssistant.API
 import Hasskell.Language.Reconciler
 import Hasskell.TestUtils.Gen
@@ -11,7 +12,6 @@ import Hasskell.TestUtils.Utils
 import Hedgehog
 import Test.Syd
 import Test.Syd.Hedgehog ()
-import qualified Data.Text as T
 
 spec :: Spec
 spec = do
@@ -30,7 +30,7 @@ spec = do
         let (_, report) = reconcile observed (lightAlwaysOn ("some_titynamr" :: Text))
         renderedReport <- renderReport report
         annotate (T.unpack renderedReport)
-        let expectedSuggestion = "did you mean `"<> expectedMatch <>"`?"
+        let expectedSuggestion = "did you mean `" <> expectedMatch <> "`?"
         annotate (T.unpack expectedSuggestion)
         assert (expectedSuggestion `T.isInfixOf` renderedReport)
 
@@ -42,6 +42,6 @@ spec = do
         let (_, report) = reconcile observed (lightAlwaysOn ("some_entity_name" :: Text))
         renderedReport <- renderReport report
         annotate (T.unpack renderedReport)
-        let expectedSuggestion = "did you mean `"<> expectedMatch <>"`?"
+        let expectedSuggestion = "did you mean `" <> expectedMatch <> "`?"
         annotate (T.unpack expectedSuggestion)
         assert (expectedSuggestion `T.isInfixOf` renderedReport)
