@@ -2,6 +2,10 @@ module Hasskell.Language.Reconciler
   ( -- Plans
     ReconciliationPlan (..),
     ReconciliationStep (..),
+    ReconciliationAction (..),
+    Reason (..),
+    Observation (..),
+    Derivation (..),
     isPlanEmpty,
     reconcile,
     -- Reports
@@ -12,6 +16,7 @@ module Hasskell.Language.Reconciler
 where
 
 import Data.Either
+import Data.List qualified as List
 import Data.Map qualified as Map
 import Data.Map.Strict (Map)
 import Data.Maybe
@@ -29,8 +34,29 @@ data ReconciliationPlan = MkReconciliationPlan [ReconciliationStep]
 isPlanEmpty :: ReconciliationPlan -> Bool
 isPlanEmpty (MkReconciliationPlan steps) = null steps
 
--- | A step that can be taken to alter the world.
-data ReconciliationStep = TurnOnEntity EntityId
+-- | Information about what caused a step to be generated.
+data Reason = ReconciliationNeeded EntityId Observation Derivation
+  deriving (Eq, Ord, Show)
+
+-- | An observation about the world.
+data Observation = StateObservation EntityId ToggleState
+  deriving (Eq, Ord, Show)
+
+-- | A derivation tree, giving reasons for each derivation step.
+data Derivation
+  = DeclaredState EntityId ToggleState Derivation
+  | DeclaredPolicy Policy
+  deriving (Eq, Ord, Show)
+
+-- | A step that can be taken to change the world, along with a motivation as to why.
+data ReconciliationStep = JustifyAction
+  { stepAction :: ReconciliationAction,
+    stepReason :: Reason
+  }
+  deriving (Eq, Ord, Show)
+
+-- | An action that can be taken to alter the world.
+data ReconciliationAction = TurnOnEntity EntityId
   deriving (Eq, Ord, Show)
 
 --------------------------------------------------------------------------------
@@ -45,15 +71,24 @@ reconcile observed spec =
         reportFromList unknowns
       )
 
-turnOnEntities :: [EntityId] -> ObservedWorld -> [ReconciliationStep]
+turnOnEntities :: [(Policy, EntityId)] -> ObservedWorld -> [ReconciliationStep]
 turnOnEntities toTurnOn (MkObserved _ world) =
   mapMaybe turnOn (worldToggleables world)
   where
     turnOn entity
-      | toggleableId entity `elem` toTurnOn = pure $ TurnOnEntity (toggleableId entity)
+      | Just (turnOnPolicy, entityId) <- List.find ((== toggleableId entity) . snd) toTurnOn =
+          do
+            pure $
+              JustifyAction
+                (TurnOnEntity entityId)
+                ( ReconciliationNeeded
+                    entityId
+                    (StateObservation entityId Off)
+                    (DeclaredState entityId On (DeclaredPolicy turnOnPolicy))
+                )
       | otherwise = Nothing
 
-extractAllEntitiesToTurnOn :: Specification -> ObservedWorld -> ([ReconciliationDiagnostic], [EntityId])
+extractAllEntitiesToTurnOn :: Specification -> ObservedWorld -> ([ReconciliationDiagnostic], [(Policy, EntityId)])
 extractAllEntitiesToTurnOn Specification {specPolicies} (MkObserved _ world) =
   partitionEithers $ concatMap (extractEntitiesToTurnOn entityMap) specPolicies
   where
@@ -62,13 +97,12 @@ extractAllEntitiesToTurnOn Specification {specPolicies} (MkObserved _ world) =
 extractEntitiesToTurnOn ::
   Map EntityId Toggleable ->
   Policy ->
-  [Either ReconciliationDiagnostic EntityId]
-extractEntitiesToTurnOn entityMap (Policy _ (SomeExp (EIsOn _ (EEntity positions entityId)))) =
+  [Either ReconciliationDiagnostic (Policy, EntityId)]
+extractEntitiesToTurnOn entityMap onPolicy@(Policy _ (EIsOn _ (EEntity positions entityId))) =
   maybe
     [Left (warnUnknownEntity positions entityId (Map.keys entityMap))]
-    (\t -> [Right (toggleableId t) | toggleableState t /= On])
+    (\t -> [Right (onPolicy, toggleableId t) | toggleableState t /= On])
     (Map.lookup entityId entityMap)
-extractEntitiesToTurnOn _ _ = []
 
 worldToggleableMap :: World -> Map EntityId Toggleable
 worldToggleableMap world =

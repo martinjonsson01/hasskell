@@ -18,24 +18,24 @@ import Hasskell.HomeAssistant.API
 data World = MkWorld
   { worldToggleables :: [Toggleable]
   }
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 -- | On or off.
 data ToggleState = On | Off
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 -- | Something that can be toggled on or off, like a light switch or a relay.
 data Toggleable = Toggleable
   { toggleableId :: EntityId,
     toggleableState :: ToggleState
   }
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 --------------------------------------------------------------------------------
 
 -- | A recorded observation of a given world state.
 data ObservedWorld = MkObserved UTCTime World
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 -- | Gathers information about the current state of the world from Home Assistant.
 --

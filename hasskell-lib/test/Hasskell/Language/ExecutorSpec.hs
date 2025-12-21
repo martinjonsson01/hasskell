@@ -27,7 +27,7 @@ spec = do
     specify "turns on light" $
       property $ do
         let entityId = EntityId "entity"
-        let plan = MkReconciliationPlan [TurnOnEntity entityId]
+        let plan = MkReconciliationPlan [JustifyAction (TurnOnEntity entityId) undefined]
         let (_, executedCommands) = recordHASSCommands (executePlan plan)
         executedCommands === [TurnOnLight entityId]
 

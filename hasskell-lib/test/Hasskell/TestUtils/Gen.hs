@@ -1,7 +1,9 @@
 module Hasskell.TestUtils.Gen
-  ( genWorldWithToggled,
+  ( -- | World generators
+    genWorldWithToggled,
     genWorldWithoutEntity,
     genWorldWithKnownEntities,
+    genWorldWithToggleds,
     genObservedWorld,
     genWorld,
     genTime,
@@ -9,31 +11,48 @@ module Hasskell.TestUtils.Gen
     genEntityId,
     genUniqueEntityId,
     genToggleState,
+    -- | Specification generators
+    genSpecWithPolicy,
+    genPolicy,
   )
 where
 
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NE
+import Data.Text (Text)
 import Data.Time
 import Data.Time.Clock.POSIX
+import Error.Diagnose
 import Hasskell.HomeAssistant.API
+import Hasskell.Language.AST
+import Hasskell.Language.CallStack
 import Hasskell.Language.World
 import Hedgehog
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
 
+----------------------------------------------------------------------
+
+genWithInserted :: [a] -> [a] -> Gen [a]
+genWithInserted toInsert items = do
+  index <- Gen.int (Range.constant 0 (length items))
+  let (front, back) = splitAt index items
+   in pure $ front ++ toInsert ++ back
+
+----------------------------------------------------------------------
+
 genWorldWithToggled :: ToggleState -> Gen (EntityId, ObservedWorld)
 genWorldWithToggled state = do
-  MkObserved time world <- genObservedWorld
   entityId <- genEntityId
-  index <- Gen.int (Range.constant 0 (length (worldToggleables world)))
-  let toggleable = Toggleable entityId state
-      newToggleables = insertAt index toggleable (worldToggleables world)
-      observed = MkObserved time world {worldToggleables = newToggleables}
-  pure $ (entityId, observed)
-  where
-    insertAt :: Int -> a -> [a] -> [a]
-    insertAt i x xs =
-      let (front, back) = splitAt i xs
-       in front ++ (x : back)
+  world <- genWorldWithToggleds [(entityId, state)]
+  pure (entityId, world)
+
+genWorldWithToggleds :: [(EntityId, ToggleState)] -> Gen ObservedWorld
+genWorldWithToggleds entitiesAndStates = do
+  MkObserved time world <- genObservedWorld
+  let toggleables = map (uncurry Toggleable) entitiesAndStates
+  newToggleables <- genWithInserted toggleables (worldToggleables world)
+  pure $ MkObserved time world {worldToggleables = newToggleables}
 
 genWorldWithKnownEntities :: [EntityId] -> Gen ObservedWorld
 genWorldWithKnownEntities known = do
@@ -74,3 +93,37 @@ genEntityId = EntityId <$> Gen.text (Range.constant 1 10) Gen.alphaNum
 
 genToggleState :: Gen ToggleState
 genToggleState = Gen.choice [pure On, pure Off]
+
+----------------------------------------------------------------------
+
+genSpecWithPolicy :: ObservedWorld -> Specification -> Gen Specification
+genSpecWithPolicy (MkObserved _ world) includePolicy = do
+  let entitiesToExclude = referencedEntitiesIn includePolicy
+  case NE.nonEmpty (filter (not . (`elem` entitiesToExclude)) . map toggleableId $ worldToggleables world) of
+    Just knownEntities -> do
+      policies <- Gen.list (Range.constant 0 10) (genPolicy knownEntities)
+      mconcat <$> genWithInserted [includePolicy] policies
+    Nothing -> pure mempty
+
+genPolicy :: NonEmpty EntityId -> Gen Specification
+genPolicy knownEntities = policy <$> genPolicyName <*> genVoidExp knownEntities
+
+genPolicyName :: Gen Text
+genPolicyName = Gen.text (Range.constant 1 10) Gen.alphaNum
+
+genVoidExp :: NonEmpty EntityId -> Gen (Exp 'TVoid)
+genVoidExp knownEntities = EIsOn <$> genPositions <*> genEntityExp knownEntities
+
+genEntityExp :: NonEmpty EntityId -> Gen (Exp 'TEntity)
+genEntityExp knownEntities = EEntity <$> genPositions <*> genKnownEntityId knownEntities
+
+genKnownEntityId :: NonEmpty EntityId -> Gen EntityId
+genKnownEntityId knownEntities = do
+  index <- Gen.int (Range.constant 0 (length knownEntities - 1))
+  pure $ knownEntities NE.!! index
+
+genPositions :: Gen Positions
+genPositions = Positions <$> genPosition <*> pure mempty
+
+genPosition :: Gen Position
+genPosition = pure $ Position {begin = (-1, -1), end = (-1, -1), file = "Generated"}

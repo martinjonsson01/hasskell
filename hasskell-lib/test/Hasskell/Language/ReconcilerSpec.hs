@@ -1,7 +1,11 @@
 module Hasskell.Language.ReconcilerSpec (spec) where
 
+import Data.List (uncons)
+import Data.Maybe (fromJust)
 import Data.Text qualified as T
 import Hasskell
+import Hasskell.HomeAssistant.API
+import Hasskell.Language.AST
 import Hasskell.Language.Reconciler
 import Hasskell.TestUtils.Gen
 import Hasskell.TestUtils.Specifications
@@ -34,7 +38,7 @@ spec = do
         let (MkReconciliationPlan steps, report) = reconcile observed (lightAlwaysOn offEntity)
         renderedReport <- renderReport report
         annotate (T.unpack renderedReport)
-        steps === [TurnOnEntity offEntity]
+        (map stepAction steps) === [TurnOnEntity offEntity]
 
   describe "Reconciler warnings" $ do
     specify "are generated when referencing unknown entity" $
@@ -52,3 +56,26 @@ spec = do
         renderedReport <- renderReport report
         annotate (T.unpack renderedReport)
         assert (not . hasWarnings $ report)
+
+  describe "Reconciler traces" $ do
+    specify "describe why light should be on" $
+      property $ do
+        let onEntity = EntityId "lightA"
+            offEntity = EntityId "lightB"
+        observed <- forAll $ genWorldWithToggleds [(onEntity, On), (offEntity, Off)]
+        let lightOnSpec = lightAlwaysOn offEntity
+        lightsSpec <- forAll $ genSpecWithPolicy observed lightOnSpec
+        let (lightOnPolicy, _) = fromJust $ uncons (specPolicies lightOnSpec)
+            (MkReconciliationPlan steps, report) = reconcile observed lightsSpec
+        renderedReport <- renderReport report
+        annotate (T.unpack renderedReport)
+        let expectedReason =
+              ReconciliationNeeded
+                offEntity
+                (StateObservation offEntity Off)
+                (DeclaredState offEntity On (DeclaredPolicy lightOnPolicy))
+            actualReasons = map stepReason steps
+
+        annotate (ppShow actualReasons)
+        annotate (ppShow expectedReason)
+        assert (expectedReason `elem` actualReasons)

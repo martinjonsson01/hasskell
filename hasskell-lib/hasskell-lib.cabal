@@ -53,6 +53,8 @@ library
       DerivingVia
       BangPatterns
       BinaryLiterals
+      EmptyCase
+      UndecidableInstances
       ConstraintKinds
       DataKinds
       DefaultSignatures
@@ -87,6 +89,14 @@ library
       TypeFamilies
       TypeSynonymInstances
       ViewPatterns
+      NoCUSKs
+      NoNamedWildCards
+      NoStarIsType
+      StandaloneKindSignatures
+      TypeAbstractions
+      TypeApplications
+      TypeOperators
+      UndecidableInstances
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wincomplete-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -fplugin=Effectful.Plugin
   build-depends:
       aeson >=2.2.3 && <2.3
@@ -109,6 +119,7 @@ library
     , prettyprinter >=1.7 && <2
     , prettyprinter-ansi-terminal >=1.1 && <2
     , singletons ==3.*
+    , singletons-base ==3.*
     , singletons-th ==3.*
     , stm >=2.5 && <3
     , text >=2.0 && <3.0
@@ -149,6 +160,8 @@ test-suite hasskell-lib-test
       DerivingVia
       BangPatterns
       BinaryLiterals
+      EmptyCase
+      UndecidableInstances
       ConstraintKinds
       DataKinds
       DefaultSignatures
@@ -183,6 +196,14 @@ test-suite hasskell-lib-test
       TypeFamilies
       TypeSynonymInstances
       ViewPatterns
+      NoCUSKs
+      NoNamedWildCards
+      NoStarIsType
+      StandaloneKindSignatures
+      TypeAbstractions
+      TypeApplications
+      TypeOperators
+      UndecidableInstances
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wincomplete-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -fplugin=Effectful.Plugin -threaded -rtsopts -with-rtsopts=-N
   build-tool-depends:
       sydtest-discover:sydtest-discover
@@ -209,6 +230,7 @@ test-suite hasskell-lib-test
     , prettyprinter >=1.7 && <2
     , prettyprinter-ansi-terminal >=1.1 && <2
     , singletons ==3.*
+    , singletons-base ==3.*
     , singletons-th ==3.*
     , stm >=2.5 && <3
     , sydtest >=0.20 && <1

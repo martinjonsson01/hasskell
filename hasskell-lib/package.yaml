@@ -31,6 +31,7 @@ dependencies:
   - effectful-th >= 1.0.0.3 && < 2
   - effectful-plugin >= 2.0.0.1 && < 3
   - singletons >= 3 && < 4
+  - singletons-base >= 3 && < 4
   - singletons-th >= 3 && < 4
   - utility-ht >= 0.0.17 && < 0.1
   - diagnose >= 2.5.1 && < 3
@@ -48,6 +49,8 @@ default-extensions:
   - DerivingVia
   - BangPatterns
   - BinaryLiterals
+  - EmptyCase
+  - UndecidableInstances
   - ConstraintKinds
   - DataKinds
   - DefaultSignatures
@@ -82,6 +85,14 @@ default-extensions:
   - TypeFamilies
   - TypeSynonymInstances
   - ViewPatterns
+  - NoCUSKs
+  - NoNamedWildCards
+  - NoStarIsType
+  - StandaloneKindSignatures
+  - TypeAbstractions
+  - TypeApplications
+  - TypeOperators
+  - UndecidableInstances
 
 ghc-options:
   - -Wall

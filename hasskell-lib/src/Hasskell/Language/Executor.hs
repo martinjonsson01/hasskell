@@ -16,9 +16,9 @@ data ExecutionReport = MkExecutionReport ()
 -- reporting back how it went.
 executePlan :: (HASS :> es) => ReconciliationPlan -> Eff es ExecutionReport
 executePlan (MkReconciliationPlan steps) = do
-  mapM_ executeStep steps
+  mapM_ (executeAction . stepAction) steps
   pure $ MkExecutionReport ()
 
-executeStep :: (HASS :> es) => ReconciliationStep -> Eff es ()
-executeStep = \case
+executeAction :: (HASS :> es) => ReconciliationAction -> Eff es ()
+executeAction = \case
   TurnOnEntity entity -> turnOnLight entity

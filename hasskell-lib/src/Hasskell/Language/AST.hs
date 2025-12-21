@@ -1,10 +1,12 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE NoOverloadedStrings #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
 module Hasskell.Language.AST
   ( Specification (..),
     Policy (..),
     policy,
+    HasReferencedEntities (..),
     SomeExp (..),
     T (..),
     Exp (..),
@@ -13,18 +15,30 @@ module Hasskell.Language.AST
   )
 where
 
-import Data.Kind (Type)
+import Data.Eq.Singletons
+import Data.Kind
 import Data.List (singleton)
+import Data.Ord.Singletons
+import Data.Singletons
+import Data.Singletons.Decide
 import Data.Singletons.TH
 import Data.Text (Text)
 import GHC.Stack
 import Hasskell.HomeAssistant.API
 import Hasskell.Language.Diagnostic
+import Prelude.Singletons
 
-data T = TDevice | TEntity | TVoid
-  deriving (Show, Eq)
+$( singletons
+     [d|
+       data T = TEntity | TVoid
 
-genSingletons [''T]
+       deriving instance (Eq T)
+
+       deriving instance (Ord T)
+
+       deriving instance (Show T)
+       |]
+ )
 
 -- | A specification defining rules for desired world states.
 data Specification = Specification
@@ -38,18 +52,44 @@ instance Semigroup Specification where
 instance Monoid Specification where
   mempty = Specification []
 
-data Policy = Policy {name :: Text, expression :: SomeExp}
-  deriving (Show)
+data Policy = Policy {name :: Text, expression :: Exp 'TVoid}
+  deriving (Eq, Ord, Show)
 
 -- | Declare a desired state.
-policy :: (SingI t) => Text -> Exp t -> Specification
-policy name expr = Specification . singleton $ Policy name (SomeExp expr)
+policy :: Text -> Exp 'TVoid -> Specification
+policy name expr = Specification . singleton $ Policy name expr
+
+class HasReferencedEntities a where
+  referencedEntitiesIn :: a -> [EntityId]
+
+instance HasReferencedEntities Specification where
+  referencedEntitiesIn Specification {specPolicies} = concatMap referencedEntitiesIn specPolicies
+
+instance HasReferencedEntities Policy where
+  referencedEntitiesIn Policy {expression} = referencedEntitiesIn expression
+
+instance HasReferencedEntities (Exp t) where
+  referencedEntitiesIn = \case
+    EEntity _ eId -> [eId]
+    EIsOn _ expr -> referencedEntitiesIn expr
 
 data SomeExp :: Type where
-  SomeExp :: (SingI t) => Exp t -> SomeExp
+  SomeExp :: (SingI (t :: T)) => Exp t -> SomeExp
 
 instance Show (SomeExp) where
   show (SomeExp e) = show e
+
+instance Eq SomeExp where
+  SomeExp (e1 :: Exp t1) == SomeExp (e2 :: Exp t2) =
+    case (sing @t1) %~ (sing @t2) of
+      Proved Refl -> e1 == e2
+      Disproved _ -> False
+
+instance Ord SomeExp where
+  compare (SomeExp (e1 :: Exp t1)) (SomeExp (e2 :: Exp t2)) =
+    case (sing @t1) %~ (sing @t2) of
+      Proved Refl -> compare e1 e2
+      Disproved _ -> fromSing $ sCompare (sing @t1) (sing @t2)
 
 data Exp :: T -> Type where
   EEntity :: Positions -> EntityId -> Exp 'TEntity
@@ -58,6 +98,8 @@ data Exp :: T -> Type where
 deriving instance Show (Exp t)
 
 deriving instance Eq (Exp t)
+
+deriving instance Ord (Exp t)
 
 -- | Things that uniquely reference an entity.
 class IntoEntity a where
