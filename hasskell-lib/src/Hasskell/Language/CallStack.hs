@@ -1,5 +1,7 @@
 module Hasskell.Language.CallStack
   ( Location (..),
+    Located (..),
+    HasLocations (..),
     captureSrcSpan,
     captureSrcSpan',
     convertSrcLoc,
@@ -17,6 +19,17 @@ data Location = Location
     positionsSecondary :: [Position]
   }
   deriving (Eq, Ord, Show)
+
+-- | Something that can be traced back to user's source code.
+data Located a
+  = a :@ Location
+  deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
+
+class HasLocations a where
+  extractLocations :: a -> [Location]
+
+instance HasLocations (Located a) where
+  extractLocations (_ :@ pos) = pos : []
 
 -- | Captures the current context, based on the current call stack.
 captureSrcSpan :: (HasCallStack) => Location

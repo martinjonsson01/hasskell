@@ -13,6 +13,8 @@ module Hasskell.Language.AST
     Exp (..),
     IntoEntity (..),
     isOn,
+    -- Reexports
+    Located (..),
   )
 where
 
@@ -26,7 +28,7 @@ import Data.Singletons.TH
 import Data.Text (Text)
 import GHC.Stack
 import Hasskell.HomeAssistant.API
-import Hasskell.Language.Diagnostic
+import Hasskell.Language.CallStack
 import Prelude.Singletons
 
 $( singletons
@@ -53,15 +55,18 @@ instance Semigroup Specification where
 instance Monoid Specification where
   mempty = Specification []
 
-data Policy = Policy {name :: Text, expression :: Exp 'TVoid}
+data Policy = Policy {name :: Text, expression :: Located (Exp 'TVoid)}
   deriving (Eq, Ord, Show)
 
 -- | Declare a desired state.
-policy :: Text -> Exp 'TVoid -> Specification
+policy :: Text -> Located (Exp 'TVoid) -> Specification
 policy name expr = Specification . singleton $ Policy name expr
 
 class HasReferencedEntities a where
   referencedEntitiesIn :: a -> [EntityId]
+
+instance (HasReferencedEntities a) => HasReferencedEntities (Located a) where
+  referencedEntitiesIn (a :@ _) = referencedEntitiesIn a
 
 instance HasReferencedEntities Specification where
   referencedEntitiesIn Specification {specPolicies} = concatMap referencedEntitiesIn specPolicies
@@ -71,16 +76,13 @@ instance HasReferencedEntities Policy where
 
 instance HasReferencedEntities (Exp t) where
   referencedEntitiesIn = \case
-    EEntity _ eId -> [eId]
-    EIsOn _ expr -> referencedEntitiesIn expr
-
-class HasLocations a where
-  extractLocations :: a -> [Location]
+    EEntity eId -> [eId]
+    EIsOn expr -> referencedEntitiesIn expr
 
 instance HasLocations (Exp t) where
   extractLocations = \case
-    EEntity pos _ -> [pos]
-    EIsOn pos expr -> pos : extractLocations expr
+    EEntity _ -> []
+    EIsOn expr -> extractLocations expr
 
 data SomeExp :: Type where
   SomeExp :: (SingI (t :: T)) => Exp t -> SomeExp
@@ -101,8 +103,8 @@ instance Ord SomeExp where
       Disproved _ -> fromSing $ sCompare (sing @t1) (sing @t2)
 
 data Exp :: T -> Type where
-  EEntity :: Location -> EntityId -> Exp 'TEntity
-  EIsOn :: Location -> Exp 'TEntity -> Exp 'TVoid
+  EEntity :: EntityId -> Exp 'TEntity
+  EIsOn :: Located (Exp 'TEntity) -> Exp 'TVoid
 
 deriving instance Show (Exp t)
 
@@ -112,16 +114,16 @@ deriving instance Ord (Exp t)
 
 -- | Things that uniquely reference an entity.
 class IntoEntity a where
-  toEntity :: (HasCallStack) => a -> Exp 'TEntity
+  toEntity :: (HasCallStack) => a -> Located (Exp 'TEntity)
 
 -- | A named entity.
 instance IntoEntity Text where
-  toEntity = EEntity captureSrcSpan . EntityId
+  toEntity = (:@ captureSrcSpan) . EEntity . EntityId
 
 -- | An identified entity.
 instance IntoEntity EntityId where
-  toEntity = EEntity captureSrcSpan
+  toEntity = (:@ captureSrcSpan) . EEntity
 
 -- | Turn on a given entity.
-isOn :: (HasCallStack) => Exp 'TEntity -> Exp 'TVoid
-isOn = EIsOn captureSrcSpan
+isOn :: (HasCallStack) => Located (Exp 'TEntity) -> Located (Exp 'TVoid)
+isOn = (:@ captureSrcSpan) . EIsOn
