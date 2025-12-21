@@ -13,24 +13,19 @@ module Hasskell.Language.Diagnostic
   )
 where
 
-import Control.Monad
-import Data.ByteString.UTF8 qualified as BS8
 import Data.Foldable
 import Data.Heap (MaxPrioHeap)
 import Data.Heap qualified as Heap
-import Data.List qualified as List
 import Data.Maybe
 import Data.Ratio
 import Data.Text (Text)
 import Data.Text.Metrics
 import Effectful
 import Effectful.FileSystem qualified as File
-import Effectful.FileSystem.IO.ByteString qualified as File8
 import Error.Diagnose
 import Hasskell.HomeAssistant.API
 import Hasskell.Language.CallStack
-import Prettyprinter
-import Prettyprinter.Render.Terminal qualified as Terminal
+import Hasskell.Language.Report
 
 -- | Non-fatal details about how the reconciliation went.
 data ReconciliationReport = MkReconciliationReport [ReconciliationDiagnostic]
@@ -51,26 +46,13 @@ renderReport = liftIO . runEff . File.runFileSystem . innerRenderReport
 
 innerRenderReport :: (File.FileSystem :> es) => ReconciliationReport -> Eff es Text
 innerRenderReport (MkReconciliationReport diagnostics) = do
+  let referencedPositions = map diagnosticPositions diagnostics
+  baseDiagnostic <- loadReferencedFiles referencedPositions
+
   let reports = map diagnosticReport diagnostics
-      incompleteDiagnostic = foldl' addReport mempty reports
-      getFilesIn (Positions primary secondary) = (file primary) : map file secondary
-      files = List.nub $ concatMap (getFilesIn . diagnosticPositions) diagnostics
+      fullDiagnostic = foldl' addReport baseDiagnostic reports
 
-  fullDiagnostic <- foldM loadAndAddFile incompleteDiagnostic files
-
-  let doc = prettyDiagnostic WithUnicode (TabSize 2) fullDiagnostic
-      coloredDoc = reAnnotate defaultStyle doc
-  pure $ Terminal.renderStrict $ layoutPretty defaultLayoutOptions coloredDoc
-  where
-    loadAndAddFile :: (File.FileSystem :> es) => Diagnostic Text -> FilePath -> Eff es (Diagnostic Text)
-    loadAndAddFile diagnostic path = do
-      absolutePath <- File.makeAbsolute path
-      exists <- File.doesFileExist absolutePath
-      contents <-
-        if exists
-          then BS8.toString <$> File8.readFile absolutePath
-          else pure "file does not exist"
-      pure $ addFile diagnostic path contents
+  pure (renderInANSIColor fullDiagnostic)
 
 hasWarnings :: ReconciliationReport -> Bool
 hasWarnings (MkReconciliationReport reports) = length (reports) > 0

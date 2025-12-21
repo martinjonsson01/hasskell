@@ -1,6 +1,7 @@
 module Hasskell.Language.ReconcilerSpec (spec) where
 
 import Data.List (uncons)
+import Data.List.HT
 import Data.Maybe (fromJust)
 import Data.Text qualified as T
 import Hasskell
@@ -69,13 +70,18 @@ spec = do
             (MkReconciliationPlan steps, report) = reconcile observed lightsSpec
         renderedReport <- renderReport report
         annotate (T.unpack renderedReport)
-        let expectedReason =
-              ReconciliationNeeded
-                offEntity
-                (StateObservation offEntity Off)
-                (DeclaredState offEntity On (DeclaredPolicy lightOnPolicy))
+        let matchesExpectedReason
+              ( ReconciliationNeeded
+                  entityA
+                  (StateObservation entityB Off)
+                  ( JustifyObservation
+                      _
+                      (StateObservation entityC On)
+                      (DeclaredState _ entityD On (DeclaredPolicy policyA))
+                    )
+                ) = allEqual [entityA, entityB, entityC, entityD, offEntity] && policyA == lightOnPolicy
+            matchesExpectedReason _ = False
             actualReasons = map stepReason steps
 
         annotate (ppShow actualReasons)
-        annotate (ppShow expectedReason)
-        assert (expectedReason `elem` actualReasons)
+        assert (any matchesExpectedReason actualReasons)

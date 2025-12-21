@@ -34,7 +34,10 @@ library
       Hasskell.Language.CallStack
       Hasskell.Language.Diagnostic
       Hasskell.Language.Executor
+      Hasskell.Language.Provenance
       Hasskell.Language.Reconciler
+      Hasskell.Language.ReconciliationData
+      Hasskell.Language.Report
       Hasskell.Language.World
   other-modules:
       Paths_hasskell_lib
@@ -138,6 +141,7 @@ test-suite hasskell-lib-test
       Hasskell.Language.CallStackSpec
       Hasskell.Language.DiagnosticSpec
       Hasskell.Language.ExecutorSpec
+      Hasskell.Language.ProvenanceSpec
       Hasskell.Language.ReconcilerSpec
       Hasskell.Language.WorldSpec
       Hasskell.TestUtils.Gen

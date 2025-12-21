@@ -47,6 +47,7 @@ import Deriving.Aeson
 import GHC.TypeLits
 import Hasskell.Effects.Counter (CorrelationId (..))
 import Network.WebSockets qualified as WS
+import Prettyprinter
 
 --------------------------------------------------------------------------------
 
@@ -252,6 +253,11 @@ instance ToJSON UnixUTC where
 newtype EntityId = EntityId Text
   deriving (Show, Eq, Ord)
   deriving (FromJSON, ToJSON) via Text
+
+instance Pretty EntityId where
+  pretty (EntityId eId) = enclose backtick backtick (pretty eId)
+    where
+      backtick = pretty ("`" :: Text)
 
 -- | Represents a Home Assistant entity.
 data HASSEntity = MkEntity

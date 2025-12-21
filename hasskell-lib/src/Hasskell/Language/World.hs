@@ -12,6 +12,7 @@ import Data.Time (UTCTime, getCurrentTime)
 import Effectful
 import Hasskell.Effects.HASS
 import Hasskell.HomeAssistant.API
+import Prettyprinter
 
 -- | A distilled representation of entities and devices,
 -- based on data from Home Assistant.
@@ -23,6 +24,10 @@ data World = MkWorld
 -- | On or off.
 data ToggleState = On | Off
   deriving (Eq, Ord, Show)
+
+instance Pretty ToggleState where
+  pretty On = "on"
+  pretty Off = "off"
 
 -- | Something that can be toggled on or off, like a light switch or a relay.
 data Toggleable = Toggleable

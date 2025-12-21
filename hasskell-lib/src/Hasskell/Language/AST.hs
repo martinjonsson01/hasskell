@@ -7,6 +7,7 @@ module Hasskell.Language.AST
     Policy (..),
     policy,
     HasReferencedEntities (..),
+    HasPositions (..),
     SomeExp (..),
     T (..),
     Exp (..),
@@ -72,6 +73,14 @@ instance HasReferencedEntities (Exp t) where
   referencedEntitiesIn = \case
     EEntity _ eId -> [eId]
     EIsOn _ expr -> referencedEntitiesIn expr
+
+class HasPositions a where
+  extractPositions :: a -> [Positions]
+
+instance HasPositions (Exp t) where
+  extractPositions = \case
+    EEntity pos _ -> [pos]
+    EIsOn pos expr -> pos : extractPositions expr
 
 data SomeExp :: Type where
   SomeExp :: (SingI (t :: T)) => Exp t -> SomeExp
