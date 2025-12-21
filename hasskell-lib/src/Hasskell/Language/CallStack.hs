@@ -1,5 +1,5 @@
 module Hasskell.Language.CallStack
-  ( Positions (..),
+  ( Location (..),
     captureSrcSpan,
     captureSrcSpan',
     convertSrcLoc,
@@ -12,25 +12,25 @@ import Error.Diagnose
 import GHC.Stack
 
 -- | A main location, along with supplementary locations, in the user's source code.
-data Positions = Positions
+data Location = Location
   { positionsPrimary :: Position,
     positionsSecondary :: [Position]
   }
   deriving (Eq, Ord, Show)
 
 -- | Captures the current context, based on the current call stack.
-captureSrcSpan :: (HasCallStack) => Positions
+captureSrcSpan :: (HasCallStack) => Location
 captureSrcSpan = captureSrcSpan' callStack
 
 -- | Captures the current context, based on the given call stack.
-captureSrcSpan' :: CallStack -> Positions
+captureSrcSpan' :: CallStack -> Location
 captureSrcSpan' cs =
   let (primary, secondary) =
         bimap
           convertSrcLoc
           (map convertSrcLoc)
-          (selectPositions cs)
-   in Positions primary secondary
+          (selectLocation cs)
+   in Location primary secondary
 
 convertSrcLoc :: SrcLoc -> Position
 convertSrcLoc
@@ -47,8 +47,8 @@ convertSrcLoc
       srcLocFile
 
 -- | Selects positions that lie in user code.
-selectPositions :: CallStack -> (SrcLoc, [SrcLoc])
-selectPositions cs =
+selectLocation :: CallStack -> (SrcLoc, [SrcLoc])
+selectLocation cs =
   let frames = reverse (getCallStack cs) -- outermost first
       classified = zip frames (map (classify . snd) frames)
       userFrames = takeWhile ((== UserFrame) . snd) classified

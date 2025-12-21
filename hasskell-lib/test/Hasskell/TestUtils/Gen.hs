@@ -112,18 +112,18 @@ genPolicyName :: Gen Text
 genPolicyName = Gen.text (Range.constant 1 10) Gen.alphaNum
 
 genVoidExp :: NonEmpty EntityId -> Gen (Exp 'TVoid)
-genVoidExp knownEntities = EIsOn <$> genPositions <*> genEntityExp knownEntities
+genVoidExp knownEntities = EIsOn <$> genLocation <*> genEntityExp knownEntities
 
 genEntityExp :: NonEmpty EntityId -> Gen (Exp 'TEntity)
-genEntityExp knownEntities = EEntity <$> genPositions <*> genKnownEntityId knownEntities
+genEntityExp knownEntities = EEntity <$> genLocation <*> genKnownEntityId knownEntities
 
 genKnownEntityId :: NonEmpty EntityId -> Gen EntityId
 genKnownEntityId knownEntities = do
   index <- Gen.int (Range.constant 0 (length knownEntities - 1))
   pure $ knownEntities NE.!! index
 
-genPositions :: Gen Positions
-genPositions = Positions <$> genPosition <*> pure mempty
+genLocation :: Gen Location
+genLocation = Location <$> genPosition <*> pure mempty
 
 genPosition :: Gen Position
 genPosition = pure $ Position {begin = (-1, -1), end = (-1, -1), file = "Generated"}

@@ -6,7 +6,7 @@ module Hasskell.Language.Diagnostic
     renderReport,
     -- Capturing source locations
     captureSrcSpan,
-    Positions,
+    Location,
     -- Warnings
     hasWarnings,
     warnUnknownEntity,
@@ -35,7 +35,7 @@ reportFromList = MkReconciliationReport
 
 -- | Info about a reconciliation occurrence.
 data ReconciliationDiagnostic = Diagnostic
-  { diagnosticPositions :: Positions,
+  { diagnosticLocation :: Location,
     diagnosticReport :: Report Text
   }
 
@@ -46,8 +46,8 @@ renderReport = liftIO . runEff . File.runFileSystem . innerRenderReport
 
 innerRenderReport :: (File.FileSystem :> es) => ReconciliationReport -> Eff es Text
 innerRenderReport (MkReconciliationReport diagnostics) = do
-  let referencedPositions = map diagnosticPositions diagnostics
-  baseDiagnostic <- loadReferencedFiles referencedPositions
+  let referencedLocation = map diagnosticLocation diagnostics
+  baseDiagnostic <- loadReferencedFiles referencedLocation
 
   let reports = map diagnosticReport diagnostics
       fullDiagnostic = foldl' addReport baseDiagnostic reports
@@ -60,7 +60,7 @@ hasWarnings (MkReconciliationReport reports) = length (reports) > 0
 -- TODO: don't create a real report here, just store the data so
 -- that we can create a real one later on (where we're free to rewrite
 -- the file paths as we like)
-warnUnknownEntity :: Positions -> EntityId -> [EntityId] -> ReconciliationDiagnostic
+warnUnknownEntity :: Location -> EntityId -> [EntityId] -> ReconciliationDiagnostic
 warnUnknownEntity positions (EntityId entityId) knownEntities =
   Diagnostic
     positions

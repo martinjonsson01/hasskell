@@ -42,7 +42,7 @@ reconcile observed spec =
         reportFromList unknowns
       )
 
-turnOnEntities :: [(Policy, Positions, EntityId)] -> ObservedWorld -> [ReconciliationStep]
+turnOnEntities :: [(Policy, Location, EntityId)] -> ObservedWorld -> [ReconciliationStep]
 turnOnEntities toTurnOn (MkObserved _ world) =
   mapMaybe turnOn (worldToggleables world)
   where
@@ -63,7 +63,7 @@ turnOnEntities toTurnOn (MkObserved _ world) =
                 )
       | otherwise = Nothing
 
-extractAllEntitiesToTurnOn :: Specification -> ObservedWorld -> ([ReconciliationDiagnostic], [(Policy, Positions, EntityId)])
+extractAllEntitiesToTurnOn :: Specification -> ObservedWorld -> ([ReconciliationDiagnostic], [(Policy, Location, EntityId)])
 extractAllEntitiesToTurnOn Specification {specPolicies} (MkObserved _ world) =
   partitionEithers $ concatMap (extractEntitiesToTurnOn entityMap) specPolicies
   where
@@ -72,11 +72,11 @@ extractAllEntitiesToTurnOn Specification {specPolicies} (MkObserved _ world) =
 extractEntitiesToTurnOn ::
   Map EntityId Toggleable ->
   Policy ->
-  [Either ReconciliationDiagnostic (Policy, Positions, EntityId)]
-extractEntitiesToTurnOn entityMap onPolicy@(Policy _ (EIsOn isOnPositions (EEntity positions entityId))) =
+  [Either ReconciliationDiagnostic (Policy, Location, EntityId)]
+extractEntitiesToTurnOn entityMap onPolicy@(Policy _ (EIsOn isOnLocation (EEntity positions entityId))) =
   maybe
     [Left (warnUnknownEntity positions entityId (Map.keys entityMap))]
-    (\t -> [Right (onPolicy, isOnPositions, toggleableId t) | toggleableState t /= On])
+    (\t -> [Right (onPolicy, isOnLocation, toggleableId t) | toggleableState t /= On])
     (Map.lookup entityId entityMap)
 
 worldToggleableMap :: World -> Map EntityId Toggleable

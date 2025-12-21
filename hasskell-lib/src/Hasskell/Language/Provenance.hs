@@ -25,7 +25,7 @@ renderStep = liftIO . runEff . File.runFileSystem . innerRenderStep
 
 innerRenderStep :: (File.FileSystem :> es) => ReconciliationStep -> Eff es Text
 innerRenderStep step = do
-  let positions = extractPositions step
+  let positions = extractLocations step
   baseDiagnostic <- loadReferencedFiles positions
   let fullDiagnostic = baseDiagnostic `addReport` (reportStep step)
   pure (renderInANSIColor fullDiagnostic)

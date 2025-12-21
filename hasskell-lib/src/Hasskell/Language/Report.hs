@@ -17,10 +17,10 @@ import Prettyprinter
 import Prettyprinter.Render.Terminal qualified as Terminal
 
 -- | Loads all the files referenced in the given positions into an empty diagnostic.
-loadReferencedFiles :: (File.FileSystem :> es) => [Positions] -> Eff es (Diagnostic msg)
-loadReferencedFiles allPositions = do
-  let getFilesIn (Positions primary secondary) = (file primary) : map file secondary
-      files = List.nub $ concatMap getFilesIn allPositions
+loadReferencedFiles :: (File.FileSystem :> es) => [Location] -> Eff es (Diagnostic msg)
+loadReferencedFiles allLocations = do
+  let getFilesIn (Location primary secondary) = (file primary) : map file secondary
+      files = List.nub $ concatMap getFilesIn allLocations
 
   foldM loadAndAddFile mempty files
   where

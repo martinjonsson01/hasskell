@@ -29,8 +29,8 @@ data ReconciliationStep = JustifyAction
   }
   deriving (Eq, Ord, Show)
 
-instance HasPositions ReconciliationStep where
-  extractPositions JustifyAction {stepReason} = extractPositions stepReason
+instance HasLocations ReconciliationStep where
+  extractLocations JustifyAction {stepReason} = extractLocations stepReason
 
 -- | An action that can be taken to alter the world.
 data ReconciliationAction = TurnOnEntity EntityId
@@ -40,17 +40,17 @@ data ReconciliationAction = TurnOnEntity EntityId
 data Reason = ReconciliationNeeded EntityId Observation DerivedDesire
   deriving (Eq, Ord, Show)
 
-instance HasPositions Reason where
-  extractPositions = \case
-    ReconciliationNeeded _ _ deriv -> extractPositions deriv
+instance HasLocations Reason where
+  extractLocations = \case
+    ReconciliationNeeded _ _ deriv -> extractLocations deriv
 
 -- | A desired world state that has been derived from some sequence of logical steps.
-data DerivedDesire = JustifyObservation Positions Observation Derivation
+data DerivedDesire = JustifyObservation Location Observation Derivation
   deriving (Eq, Ord, Show)
 
-instance HasPositions DerivedDesire where
-  extractPositions = \case
-    JustifyObservation pos _ deriv -> pos : extractPositions deriv
+instance HasLocations DerivedDesire where
+  extractLocations = \case
+    JustifyObservation pos _ deriv -> pos : extractLocations deriv
 
 -- | An observation about the world.
 data Observation = StateObservation EntityId ToggleState
@@ -58,11 +58,11 @@ data Observation = StateObservation EntityId ToggleState
 
 -- | A derivation tree, giving reasons for each derivation step.
 data Derivation
-  = DeclaredState Positions EntityId ToggleState Derivation
+  = DeclaredState Location EntityId ToggleState Derivation
   | DeclaredPolicy Policy
   deriving (Eq, Ord, Show)
 
-instance HasPositions Derivation where
-  extractPositions = \case
+instance HasLocations Derivation where
+  extractLocations = \case
     DeclaredState location _ _ _ -> [location]
     DeclaredPolicy _ -> []

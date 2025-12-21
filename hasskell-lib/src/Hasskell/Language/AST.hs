@@ -7,7 +7,7 @@ module Hasskell.Language.AST
     Policy (..),
     policy,
     HasReferencedEntities (..),
-    HasPositions (..),
+    HasLocations (..),
     SomeExp (..),
     T (..),
     Exp (..),
@@ -74,13 +74,13 @@ instance HasReferencedEntities (Exp t) where
     EEntity _ eId -> [eId]
     EIsOn _ expr -> referencedEntitiesIn expr
 
-class HasPositions a where
-  extractPositions :: a -> [Positions]
+class HasLocations a where
+  extractLocations :: a -> [Location]
 
-instance HasPositions (Exp t) where
-  extractPositions = \case
+instance HasLocations (Exp t) where
+  extractLocations = \case
     EEntity pos _ -> [pos]
-    EIsOn pos expr -> pos : extractPositions expr
+    EIsOn pos expr -> pos : extractLocations expr
 
 data SomeExp :: Type where
   SomeExp :: (SingI (t :: T)) => Exp t -> SomeExp
@@ -101,8 +101,8 @@ instance Ord SomeExp where
       Disproved _ -> fromSing $ sCompare (sing @t1) (sing @t2)
 
 data Exp :: T -> Type where
-  EEntity :: Positions -> EntityId -> Exp 'TEntity
-  EIsOn :: Positions -> Exp 'TEntity -> Exp 'TVoid
+  EEntity :: Location -> EntityId -> Exp 'TEntity
+  EIsOn :: Location -> Exp 'TEntity -> Exp 'TVoid
 
 deriving instance Show (Exp t)
 
