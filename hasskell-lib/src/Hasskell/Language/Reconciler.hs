@@ -3,10 +3,6 @@ module Hasskell.Language.Reconciler
     ReconciliationPlan (..),
     ReconciliationStep (..),
     ReconciliationAction (..),
-    Reason (..),
-    Observation (..),
-    DerivedDesire (..),
-    Derivation (..),
     isPlanEmpty,
     reconcile,
     -- Reports
@@ -25,19 +21,40 @@ import Data.Tuple.HT
 import Hasskell.HomeAssistant.API
 import Hasskell.Language.AST
 import Hasskell.Language.Diagnostic
-import Hasskell.Language.ReconciliationData
+import Hasskell.Language.Provenance
 import Hasskell.Language.World
 
 --------------------------------------------------------------------------------
+
+-- | A plan describing how to transform one world into another.
+data ReconciliationPlan = MkReconciliationPlan [ReconciliationStep]
+  deriving (Eq, Ord, Show)
+
+isPlanEmpty :: ReconciliationPlan -> Bool
+isPlanEmpty (MkReconciliationPlan steps) = null steps
+
+-- | A step that can be taken to change the world, along with a motivation as to why.
+data ReconciliationStep = JustifyAction
+  { stepAction :: ReconciliationAction,
+    stepReason :: Explanation
+  }
+  deriving (Eq, Ord, Show)
+
+instance HasLocations ReconciliationStep where
+  extractLocations JustifyAction {stepReason} = extractLocations stepReason
+
+-- | An action that can be taken to alter the world.
+data ReconciliationAction = TurnOnEntity EntityId
+  deriving (Eq, Ord, Show)
 
 --------------------------------------------------------------------------------
 
 -- | Computes the steps necessary to transform
 -- the observed world state into the specified world state.
 reconcile :: ObservedWorld -> Specification -> (ReconciliationPlan, ReconciliationReport)
-reconcile observed spec =
-  let (unknowns, toTurnOn) = extractAllEntitiesToTurnOn spec observed
-      steps = turnOnEntities toTurnOn observed
+reconcile observedWorld spec =
+  let (unknowns, toTurnOn) = extractAllEntitiesToTurnOn spec observedWorld
+      steps = turnOnEntities toTurnOn observedWorld
    in ( MkReconciliationPlan steps,
         reportFromList unknowns
       )
@@ -47,19 +64,16 @@ turnOnEntities toTurnOn (MkObserved _ world) =
   mapMaybe turnOn (worldToggleables world)
   where
     turnOn entity
-      | Just (onPolicy, location, entityId) <- List.find ((== toggleableId entity) . thd3) toTurnOn =
+      | Just (_, turnOnLoc, entityId) <- List.find ((== toggleableId entity) . thd3) toTurnOn =
           do
             pure $
               JustifyAction
                 (TurnOnEntity entityId)
-                ( ReconciliationNeeded
-                    entityId
-                    (StateObservation entityId Off)
-                    ( JustifyObservation
-                        location
-                        (StateObservation entityId On)
-                        (DeclaredState location entityId On (DeclaredPolicy onPolicy))
-                    )
+                ( Explain
+                    (differs turnOnLoc entityId Off On)
+                    [ Explain (observed entityId Off) [],
+                      Explain (desired turnOnLoc entityId On) []
+                    ]
                 )
       | otherwise = Nothing
 

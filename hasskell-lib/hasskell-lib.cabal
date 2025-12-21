@@ -36,7 +36,6 @@ library
       Hasskell.Language.Executor
       Hasskell.Language.Provenance
       Hasskell.Language.Reconciler
-      Hasskell.Language.ReconciliationData
       Hasskell.Language.Report
       Hasskell.Language.World
   other-modules:

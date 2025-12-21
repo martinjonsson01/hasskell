@@ -111,11 +111,17 @@ genPolicy knownEntities = policy <$> genPolicyName <*> genVoidExp knownEntities
 genPolicyName :: Gen Text
 genPolicyName = Gen.text (Range.constant 1 10) Gen.alphaNum
 
-genVoidExp :: NonEmpty EntityId -> Gen (Exp 'TVoid)
-genVoidExp knownEntities = EIsOn <$> genLocation <*> genEntityExp knownEntities
+genVoidExp :: NonEmpty EntityId -> Gen (Located (Exp 'TVoid))
+genVoidExp knownEntities = do
+  loc <- genLocation
+  expr <- genEntityExp knownEntities
+  pure (EIsOn expr :@ loc)
 
-genEntityExp :: NonEmpty EntityId -> Gen (Exp 'TEntity)
-genEntityExp knownEntities = EEntity <$> genLocation <*> genKnownEntityId knownEntities
+genEntityExp :: NonEmpty EntityId -> Gen (Located (Exp 'TEntity))
+genEntityExp knownEntities = do
+  loc <- genLocation
+  eId <- genKnownEntityId knownEntities
+  pure (EEntity eId :@ loc)
 
 genKnownEntityId :: NonEmpty EntityId -> Gen EntityId
 genKnownEntityId knownEntities = do

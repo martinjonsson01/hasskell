@@ -1,6 +1,8 @@
 module Hasskell.Language.Report
   ( loadReferencedFiles,
     renderInANSIColor,
+    toDocWithColor,
+    layoutDoc,
   )
 where
 
@@ -34,8 +36,13 @@ loadReferencedFiles allLocations = do
           else pure "file does not exist"
       pure $ addFile diagnostic path contents
 
-renderInANSIColor :: (Pretty msg) => Diagnostic msg -> Text
-renderInANSIColor diagnostic =
+toDocWithColor :: (Pretty msg) => Diagnostic msg -> Doc Terminal.AnsiStyle
+toDocWithColor diagnostic =
   let doc = prettyDiagnostic WithUnicode (TabSize 2) diagnostic
-      coloredDoc = reAnnotate defaultStyle doc
-   in Terminal.renderStrict $ layoutPretty defaultLayoutOptions coloredDoc
+   in reAnnotate defaultStyle doc
+
+layoutDoc :: Doc Terminal.AnsiStyle -> Text
+layoutDoc = Terminal.renderStrict . layoutPretty defaultLayoutOptions
+
+renderInANSIColor :: (Pretty msg) => Diagnostic msg -> Text
+renderInANSIColor = layoutDoc . toDocWithColor
