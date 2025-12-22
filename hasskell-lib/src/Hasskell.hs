@@ -10,8 +10,9 @@ module Hasskell
     shouldBe,
     toggledStateOf,
     is,
-    eIf,
-    ifElse,
+    if_,
+    then_,
+    else_,
     IntoEntity (..),
     ToggleState (..),
   )

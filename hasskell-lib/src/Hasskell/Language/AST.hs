@@ -15,8 +15,9 @@ module Hasskell.Language.AST
     -- Combinators
     shouldBe,
     toggledStateOf,
-    eIf,
-    ifElse,
+    if_,
+    then_,
+    else_,
     is,
     -- Reexports
     Located (..),
@@ -64,9 +65,19 @@ instance Monoid Specification where
 data Policy = Policy {name :: Text, expression :: Located (Exp 'TAction)}
   deriving (Eq, Ord, Show)
 
+-- | Something that can be turned into an action.
+class IntoAction a where
+  toAction :: a -> Located (Exp 'TAction)
+
+instance (BuildableIf state) => IntoAction (IfBuilder state) where
+  toAction = buildIf
+
+instance IntoAction (Located (Exp 'TAction)) where
+  toAction = id
+
 -- | Declare a desired state.
-policy :: Text -> Located (Exp 'TAction) -> Specification
-policy name expr = Specification . singleton $ Policy name expr
+policy :: (IntoAction a) => Text -> a -> Specification
+policy name expr = Specification . singleton $ Policy name (toAction expr)
 
 class HasReferencedEntities a where
   referencedEntitiesIn :: a -> [EntityId]
@@ -127,6 +138,9 @@ deriving instance Eq (Exp t)
 
 deriving instance Ord (Exp t)
 
+--------------------------------------------------------------------------------
+-- Syntax
+
 -- | Things that uniquely reference an entity.
 class IntoEntity a where
   toEntity :: (HasCallStack) => a -> Located (Exp 'TEntity)
@@ -161,10 +175,51 @@ toggledStateOf entity = EGetState (toEntity entity) :@ captureSrcSpan
 is :: (HasCallStack, IntoState s1, IntoState s2) => s1 -> s2 -> Located (Exp 'TBool)
 is s1 s2 = EEqual (toState s1) (toState s2) :@ captureSrcSpan
 
--- | Make a policy conditional on something.
-eIf :: (HasCallStack) => Located (Exp 'TBool) -> Located (Exp 'TAction) -> Located (Exp 'TAction)
-eIf cond action = ifElse cond action (EDoNothing :@ captureSrcSpan)
+-- | An incomplete if that only has a condition.
+data IfCond
 
--- | Choose an action depending on a condition.
-ifElse :: (HasCallStack) => Located (Exp 'TBool) -> Located (Exp 'TAction) -> Located (Exp 'TAction) -> Located (Exp 'TAction)
-ifElse cond thenExp elseExp = EIf cond thenExp elseExp :@ captureSrcSpan
+-- | An if-then statement.
+data IfThen
+
+-- | A full if-then-else expression.
+data IfThenElse
+
+data IfBuilder stage where
+  IfCondB ::
+    Located (Exp 'TBool) ->
+    IfBuilder IfCond
+  IfThenB ::
+    Located (Exp 'TBool) ->
+    Located (Exp 'TAction) ->
+    IfBuilder IfThen
+  IfThenElseB ::
+    Located (Exp 'TBool) ->
+    Located (Exp 'TAction) ->
+    Located (Exp 'TAction) ->
+    IfBuilder IfThenElse
+
+-- | Make a policy conditional on something.
+if_ :: Located (Exp 'TBool) -> IfBuilder IfCond
+if_ cond = IfCondB cond
+
+-- | Define what should happen if the condition holds.
+then_ :: IfBuilder IfCond -> Located (Exp 'TAction) -> IfBuilder IfThen
+then_ (IfCondB condExp) thenExp = IfThenB condExp thenExp
+
+-- | Define what should happen if the condition fails.
+else_ :: IfBuilder IfThen -> Located (Exp 'TAction) -> IfBuilder IfThenElse
+else_ (IfThenB cond thenExp) elseExp = IfThenElseB cond thenExp elseExp
+
+-- | Defines a stage at which the if-builder can construct a valid if expression.
+class BuildableIf stage where
+  buildIf :: IfBuilder stage -> Located (Exp 'TAction)
+
+-- | Fully qualified if-then-else expressions are valid.
+instance BuildableIf IfThenElse where
+  buildIf (IfThenElseB condExp thenExp elseExp) =
+    EIf condExp thenExp elseExp :@ captureSrcSpan
+
+-- | If-then expressions can be valid as well (the else is just a null action).
+instance BuildableIf IfThen where
+  buildIf (IfThenB condExp thenExp) =
+    EIf condExp thenExp (EDoNothing :@ captureSrcSpan) :@ captureSrcSpan

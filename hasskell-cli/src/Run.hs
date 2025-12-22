@@ -9,8 +9,8 @@ import RIO.FilePath
 import System.Directory qualified as Dir
 import System.IO.Error (userError)
 
-takflakt :: Text
-takflakt = "light.flaktlampa"
+flaktlampa :: Text
+flaktlampa = "light.flaktlampa"
 
 run :: RIO App ()
 run = do
@@ -33,11 +33,9 @@ run = do
             workingDir = Just $ currentDir </> "hasskell-cli"
           }
       )
-    $ ( policy
-          "toggle light"
-          ( ifElse
-              (toggledStateOf takflakt `is` On)
-              (takflakt `shouldBe` Off)
-              (takflakt `shouldBe` On)
-          )
+    $ policy
+      "toggle light"
+      ( if_ (toggledStateOf flaktlampa `is` On)
+          `then_` (flaktlampa `shouldBe` Off)
+          `else_` (flaktlampa `shouldBe` On)
       )
