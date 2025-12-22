@@ -14,27 +14,22 @@ spec = do
   describe "Reconciler" $ do
     specify "can identify when a world needs no reconciliation" $
       property $ do
-        (onEntity, observed) <- forAll $ genWorldWithToggled On
-        let (MkReconciliationPlan steps, report) = reconcile observed (lightAlwaysOn onEntity)
+        state <- forAll $ genToggleState
+        (entity, observed) <- forAll $ genWorldWithToggled state
+        let (MkReconciliationPlan steps, report) = reconcile observed (lightAlways state entity)
         renderedReport <- renderReport report
         annotate (T.unpack renderedReport)
         steps === []
 
-    specify "does not create an empty plan for world that needs changes" $
+    specify "generates toggle command for entity" $
       property $ do
-        (offEntity, observed) <- forAll $ genWorldWithToggled Off
-        let (MkReconciliationPlan steps, report) = reconcile observed (lightAlwaysOn offEntity)
+        state <- forAll $ genToggleState
+        (entity, observed) <- forAll $ genWorldWithToggled state
+        let opposite = if state == On then Off else On
+        let (MkReconciliationPlan steps, report) = reconcile observed (lightAlways opposite entity)
         renderedReport <- renderReport report
         annotate (T.unpack renderedReport)
-        steps /== []
-
-    specify "generates turn on command for entity" $
-      property $ do
-        (offEntity, observed) <- forAll $ genWorldWithToggled Off
-        let (MkReconciliationPlan steps, report) = reconcile observed (lightAlwaysOn offEntity)
-        renderedReport <- renderReport report
-        annotate (T.unpack renderedReport)
-        (map stepAction steps) === [TurnOnEntity offEntity]
+        (map stepAction steps) === [SetEntityState entity opposite]
 
   describe "Reconciler warnings" $ do
     specify "are generated when referencing unknown entity" $

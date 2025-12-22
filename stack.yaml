@@ -9,3 +9,4 @@ allow-newer: true
 
 extra-deps:
   - diagnose-2.5.1@sha256:853fd268d7fe0191b79d73187104bf7b4bc5ce3bc3483cb088dc10b09f18abc8,5977
+  - unordered-containers-0.2.21@sha256:bcff64f48fba1e25bf9b5346d1c3545402cd2f1293b411435e7850ccb62884e5,3987

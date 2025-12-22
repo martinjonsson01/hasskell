@@ -1,12 +1,13 @@
 module Hasskell.Language.World
   ( World (..),
     ToggleState (..),
-    Toggleable (..),
     ObservedWorld (..),
     collectCurrentState,
   )
 where
 
+import Data.HashMap.Strict (HashMap)
+import Data.HashMap.Strict qualified as HMap
 import Data.Maybe (mapMaybe)
 import Data.Time (UTCTime, getCurrentTime)
 import Effectful
@@ -17,7 +18,7 @@ import Prettyprinter
 -- | A distilled representation of entities and devices,
 -- based on data from Home Assistant.
 data World = MkWorld
-  { worldToggleables :: [Toggleable]
+  { worldToggleables :: HashMap EntityId ToggleState
   }
   deriving (Eq, Ord, Show)
 
@@ -28,13 +29,6 @@ data ToggleState = On | Off
 instance Pretty ToggleState where
   pretty On = "on"
   pretty Off = "off"
-
--- | Something that can be toggled on or off, like a light switch or a relay.
-data Toggleable = Toggleable
-  { toggleableId :: EntityId,
-    toggleableState :: ToggleState
-  }
-  deriving (Eq, Ord, Show)
 
 --------------------------------------------------------------------------------
 
@@ -53,10 +47,10 @@ collectCurrentState = do
   pure $
     MkObserved time $
       MkWorld
-        { worldToggleables = filterToggleables states
+        { worldToggleables = HMap.fromList (filterToggleables states)
         }
 
-filterToggleables :: [HASSState] -> [Toggleable]
+filterToggleables :: [HASSState] -> [(EntityId, ToggleState)]
 filterToggleables = mapMaybe $ \state -> do
   toggleState <- case stateState state of
     "on" -> pure On
@@ -64,7 +58,6 @@ filterToggleables = mapMaybe $ \state -> do
     _ -> Nothing
 
   pure $
-    Toggleable
-      { toggleableId = stateEntityId state,
-        toggleableState = toggleState
-      }
+    ( stateEntityId state,
+      toggleState
+    )

@@ -12,14 +12,11 @@ module Hasskell.Language.Reconciler
   )
 where
 
-import Data.Either
-import Data.List qualified as List
-import Data.Map qualified as Map
-import Data.Map.Strict (Map)
-import Data.Maybe
-import Data.Tuple.HT
+import Data.HashMap.Strict (HashMap)
+import Data.HashMap.Strict qualified as HMap
 import Hasskell.HomeAssistant.API
 import Hasskell.Language.AST
+import Hasskell.Language.CallStack
 import Hasskell.Language.Diagnostic
 import Hasskell.Language.Provenance
 import Hasskell.Language.World
@@ -44,7 +41,7 @@ instance HasLocations ReconciliationStep where
   extractLocations JustifyAction {stepReason} = extractLocations stepReason
 
 -- | An action that can be taken to alter the world.
-data ReconciliationAction = TurnOnEntity EntityId
+data ReconciliationAction = SetEntityState EntityId ToggleState
   deriving (Eq, Ord, Show)
 
 --------------------------------------------------------------------------------
@@ -52,50 +49,67 @@ data ReconciliationAction = TurnOnEntity EntityId
 -- | Computes the steps necessary to transform
 -- the observed world state into the specified world state.
 reconcile :: ObservedWorld -> Specification -> (ReconciliationPlan, ReconciliationReport)
-reconcile observedWorld spec =
-  let (unknowns, toTurnOn) = extractAllEntitiesToTurnOn spec observedWorld
-      steps = turnOnEntities toTurnOn observedWorld
-   in ( MkReconciliationPlan steps,
-        reportFromList unknowns
-      )
+reconcile (MkObserved _ (MkWorld {worldToggleables})) spec =
+  let desiredToggleables = HMap.unions (map computeDesiredStates (specPolicies spec))
+      unlocatedDesiredToggleables = HMap.mapKeys stripLocation desiredToggleables
+      warnings =
+        warnOfUnknownEntities
+          worldToggleables
+          unlocatedDesiredToggleables
+          desiredToggleables
+      needsToggling = reconcileToggleables worldToggleables unlocatedDesiredToggleables
+      steps = generateToggleSteps needsToggling
+   in (MkReconciliationPlan steps, reportFromList warnings)
 
-turnOnEntities :: [(Policy, Location, EntityId)] -> ObservedWorld -> [ReconciliationStep]
-turnOnEntities toTurnOn (MkObserved _ world) =
-  mapMaybe turnOn (worldToggleables world)
+type Detailed a = Explained (Located a)
+
+generateToggleSteps :: HashMap EntityId (Detailed ToggleState) -> [ReconciliationStep]
+generateToggleSteps = map toReconciliationStep . HMap.toList
   where
-    turnOn entity
-      | Just (_, turnOnLoc, entityId) <- List.find ((== toggleableId entity) . thd3) toTurnOn =
-          do
-            pure $
-              JustifyAction
-                (TurnOnEntity entityId)
-                ( Explain
-                    (differs turnOnLoc entityId Off On)
-                    [ Explain (observed entityId Off) [],
-                      Explain (desired turnOnLoc entityId On) []
-                    ]
-                )
+    toReconciliationStep :: (EntityId, Detailed ToggleState) -> ReconciliationStep
+    toReconciliationStep (eId, (state :@ _) :£ explanation) =
+      JustifyAction
+        { stepAction = SetEntityState eId state,
+          stepReason = explanation
+        }
+
+reconcileToggleables ::
+  HashMap EntityId ToggleState ->
+  HashMap EntityId (Detailed ToggleState) ->
+  HashMap EntityId (Detailed ToggleState)
+reconcileToggleables worldToggleables desiredToggleables =
+  desiredToggleables `reconcileStates` worldToggleables
+  where
+    reconcileStates = HMap.differenceWithKey dropIfStatesEqual
+    dropIfStatesEqual eId explained@((expected :@ _) :£ _) actual
+      | expected /= actual =
+          Just
+            ( explained
+                `elaborate` differs eId expected actual
+                `becauseMore` observed eId actual
+            )
       | otherwise = Nothing
 
-extractAllEntitiesToTurnOn :: Specification -> ObservedWorld -> ([ReconciliationDiagnostic], [(Policy, Location, EntityId)])
-extractAllEntitiesToTurnOn Specification {specPolicies} (MkObserved _ world) =
-  partitionEithers $ concatMap (extractEntitiesToTurnOn entityMap) specPolicies
-  where
-    entityMap = worldToggleableMap world
+warnOfUnknownEntities ::
+  HashMap EntityId w ->
+  HashMap EntityId v ->
+  HashMap (Located EntityId) v ->
+  [ReconciliationDiagnostic]
+warnOfUnknownEntities worldToggleables unlocatedDesiredToggleables desiredToggleables =
+  let unlocatedUnknownEntities = unlocatedDesiredToggleables `HMap.difference` worldToggleables
+      unknownEntities =
+        filter
+          ((`HMap.member` unlocatedUnknownEntities) . stripLocation)
+          (HMap.keys desiredToggleables)
+      knownEntities = HMap.keys worldToggleables
+   in map (warnUnknownEntity knownEntities) unknownEntities
 
-extractEntitiesToTurnOn ::
-  Map EntityId Toggleable ->
-  Policy ->
-  [Either ReconciliationDiagnostic (Policy, Location, EntityId)]
-extractEntitiesToTurnOn entityMap onPolicy@(Policy _ (EIsOn (EEntity entityId :@ positions) :@ isOnLocation)) =
-  maybe
-    [Left (warnUnknownEntity positions entityId (Map.keys entityMap))]
-    (\t -> [Right (onPolicy, isOnLocation, toggleableId t) | toggleableState t /= On])
-    (Map.lookup entityId entityMap)
+computeDesiredStates :: Policy -> HashMap (Located EntityId) (Detailed ToggleState)
+computeDesiredStates Policy {expression} = HMap.fromList [computeDesiredState expression]
 
-worldToggleableMap :: World -> Map EntityId Toggleable
-worldToggleableMap world =
-  Map.fromList
-    [ (toggleableId t, t)
-    | t <- worldToggleables world
-    ]
+computeDesiredState :: Located (Exp 'TVoid) -> (Located EntityId, Detailed ToggleState)
+computeDesiredState = \case
+  (EShouldBe (EEntity eId :@ eLoc) state) :@ loc ->
+    ( eId :@ eLoc,
+      (state :@ loc) `because` desired loc eId state
+    )

@@ -11,6 +11,13 @@ packages:
       size: 1401
   original:
     hackage: diagnose-2.5.1@sha256:853fd268d7fe0191b79d73187104bf7b4bc5ce3bc3483cb088dc10b09f18abc8,5977
+- completed:
+    hackage: unordered-containers-0.2.21@sha256:bcff64f48fba1e25bf9b5346d1c3545402cd2f1293b411435e7850ccb62884e5,3987
+    pantry-tree:
+      sha256: 5673571582a11c270ca0c7ebfb93b113e52f028b37b9c4feeceb930e61c1adbe
+      size: 1779
+  original:
+    hackage: unordered-containers-0.2.21@sha256:bcff64f48fba1e25bf9b5346d1c3545402cd2f1293b411435e7850ccb62884e5,3987
 snapshots:
 - completed:
     sha256: 5524530ac8c0fd4c9d7488442ff14edb0fcbf4989b928b86398f94f367e01ee3

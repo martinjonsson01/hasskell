@@ -11,6 +11,7 @@ module Hasskell.Effects.HASS
     getDevices,
     getServices,
     turnOnLight,
+    turnOffLight,
   )
 where
 
@@ -28,6 +29,7 @@ data HASS :: Effect where
   GetDevices :: HASS m [HASSDevice]
   GetServices :: HASS m HASSServiceActions
   TurnOnLight :: EntityId -> HASS m ()
+  TurnOffLight :: EntityId -> HASS m ()
 
 makeEffect ''HASS
 
@@ -42,6 +44,7 @@ runHASS = interpret_ $ \case
   GetDevices -> sendMessage CommandGetDeviceRegistry
   GetServices -> sendMessage CommandGetServices
   TurnOnLight entity -> callService domainLight serviceTurnOn entity
+  TurnOffLight entity -> callService domainLight serviceTurnOff entity
 
 callService :: (HASSConnection :> es) => HASSDomain -> HASSServiceName -> EntityId -> Eff es ()
 callService domain service entityId =

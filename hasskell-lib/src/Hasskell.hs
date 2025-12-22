@@ -7,7 +7,7 @@ module Hasskell
     -- Language
     Specification,
     policy,
-    isOn,
+    shouldBe,
     IntoEntity (..),
     ToggleState (..),
   )

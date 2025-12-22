@@ -1,18 +1,11 @@
-[0;93;1m[warning][0m: entity `lightB`: off /= on
-     [0;90;1m╭──▶[0m [0;32;1m/home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/TestUtils/Specifications.hs@10:52-10:56[0m
-     [0;90;1m│[0m
-[0;90;1m  10 │[0m [0;97ml[0m[0;97mi[0m[0;97mg[0m[0;97mh[0m[0;97mt[0m[0;97mA[0m[0;97ml[0m[0;97mw[0m[0;97ma[0m[0;97my[0m[0;97ms[0m[0;97mO[0m[0;97mn[0m[0;97m [0m[0;97ml[0m[0;97mi[0m[0;97mg[0m[0;97mh[0m[0;97mt[0m[0;97m [0m[0;97m=[0m[0;97m [0m[0;97mp[0m[0;97mo[0m[0;97ml[0m[0;97mi[0m[0;97mc[0m[0;97my[0m[0;97m [0m[0;97m"[0m[0;97ml[0m[0;97mi[0m[0;97mg[0m[0;97mh[0m[0;97mt[0m[0;97m [0m[0;97mi[0m[0;97ms[0m[0;97m [0m[0;97ma[0m[0;97ml[0m[0;97mw[0m[0;97ma[0m[0;97my[0m[0;97ms[0m[0;97m [0m[0;97mo[0m[0;97mn[0m[0;97m"[0m[0;97m [0m[0;97m([0m[0;93;1mi[0m[0;93;1ms[0m[0;93;1mO[0m[0;93;1mn[0m[0;97m [0m[0;97m$[0m[0;97m [0m[0;97mt[0m[0;97mo[0m[0;97mE[0m[0;97mn[0m[0;97mt[0m[0;97mi[0m[0;97mt[0m[0;97my[0m[0;97m [0m[0;97ml[0m[0;97mi[0m[0;97mg[0m[0;97mh[0m[0;97mt[0m[0;97m)[0m
-     [0;90;1m•[0m                                                    [0;93m┬[0m[0;93m─[0m[0;93m─[0m[0;93m─[0m 
-     [0;90;1m•[0m                                                    [0;93m╰╸[0m [0;93mentity `lightB`: off /= on[0m
-[0;90;1m─────╯[0m
-
+needs reconciling: on /= off
 
     -> because entity `lightB` is off
 
-    -> because [0;93;1m[warning][0m: entity `lightB` should be on
-         [0;90;1m╭──▶[0m [0;32;1m/home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/TestUtils/Specifications.hs@10:52-10:56[0m
+    -> because entity `lightB` should be on
+         [0;90;1m╭──▶[0m [0;32;1m/home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/TestUtils/Specifications.hs@17:21-17:31[0m
          [0;90;1m│[0m
-    [0;90;1m  10 │[0m [0;97ml[0m[0;97mi[0m[0;97mg[0m[0;97mh[0m[0;97mt[0m[0;97mA[0m[0;97ml[0m[0;97mw[0m[0;97ma[0m[0;97my[0m[0;97ms[0m[0;97mO[0m[0;97mn[0m[0;97m [0m[0;97ml[0m[0;97mi[0m[0;97mg[0m[0;97mh[0m[0;97mt[0m[0;97m [0m[0;97m=[0m[0;97m [0m[0;97mp[0m[0;97mo[0m[0;97ml[0m[0;97mi[0m[0;97mc[0m[0;97my[0m[0;97m [0m[0;97m"[0m[0;97ml[0m[0;97mi[0m[0;97mg[0m[0;97mh[0m[0;97mt[0m[0;97m [0m[0;97mi[0m[0;97ms[0m[0;97m [0m[0;97ma[0m[0;97ml[0m[0;97mw[0m[0;97ma[0m[0;97my[0m[0;97ms[0m[0;97m [0m[0;97mo[0m[0;97mn[0m[0;97m"[0m[0;97m [0m[0;97m([0m[0;93;1mi[0m[0;93;1ms[0m[0;93;1mO[0m[0;93;1mn[0m[0;97m [0m[0;97m$[0m[0;97m [0m[0;97mt[0m[0;97mo[0m[0;97mE[0m[0;97mn[0m[0;97mt[0m[0;97mi[0m[0;97mt[0m[0;97my[0m[0;97m [0m[0;97ml[0m[0;97mi[0m[0;97mg[0m[0;97mh[0m[0;97mt[0m[0;97m)[0m
-         [0;90;1m•[0m                                                    [0;93m┬[0m[0;93m─[0m[0;93m─[0m[0;93m─[0m 
-         [0;90;1m•[0m                                                    [0;93m╰╸[0m [0;93mentity `lightB` should be on[0m
+    [0;90;1m  17 │[0m [0;97m [0m[0;97m [0m[0;97m [0m[0;97m [0m[0;97m([0m[0;97mt[0m[0;97mo[0m[0;97mE[0m[0;97mn[0m[0;97mt[0m[0;97mi[0m[0;97mt[0m[0;97my[0m[0;97m [0m[0;97ml[0m[0;97mi[0m[0;97mg[0m[0;97mh[0m[0;97mt[0m[0;97m [0m[0;93;1m`[0m[0;93;1ms[0m[0;93;1mh[0m[0;93;1mo[0m[0;93;1mu[0m[0;93;1ml[0m[0;93;1md[0m[0;93;1mB[0m[0;93;1me[0m[0;93;1m`[0m[0;97m [0m[0;97ms[0m[0;97mt[0m[0;97ma[0m[0;97mt[0m[0;97me[0m[0;97m)[0m
+         [0;90;1m•[0m                     [0;93m┬[0m[0;93m─[0m[0;93m─[0m[0;93m─[0m[0;93m─[0m[0;93m─[0m[0;93m─[0m[0;93m─[0m[0;93m─[0m[0;93m─[0m 
+         [0;90;1m•[0m                     [0;93m╰╸[0m [0;93mentity `lightB` should be on[0m
     [0;90;1m─────╯[0m

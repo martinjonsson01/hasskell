@@ -30,4 +30,4 @@ run = do
             workingDir = Just $ currentDir </> "hasskell-cli"
           }
       )
-    $ (policy "light is always on" (isOn $ toEntity ("light.flaktlampa" :: Text)))
+    $ (policy "light is always on" (toEntity ("light.flaktlampa" :: Text) `shouldBe` On))

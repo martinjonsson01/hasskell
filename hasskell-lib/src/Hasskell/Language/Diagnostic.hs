@@ -60,8 +60,8 @@ hasWarnings (MkReconciliationReport reports) = length (reports) > 0
 -- TODO: don't create a real report here, just store the data so
 -- that we can create a real one later on (where we're free to rewrite
 -- the file paths as we like)
-warnUnknownEntity :: Location -> EntityId -> [EntityId] -> ReconciliationDiagnostic
-warnUnknownEntity positions (EntityId entityId) knownEntities =
+warnUnknownEntity :: [EntityId] -> Located EntityId -> ReconciliationDiagnostic
+warnUnknownEntity knownEntities (EntityId entityId :@ positions) =
   Diagnostic
     positions
     ( Warn

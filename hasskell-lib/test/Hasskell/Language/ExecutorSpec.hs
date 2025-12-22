@@ -11,6 +11,7 @@ import Hasskell.Effects.HASS qualified as HASS
 import Hasskell.HomeAssistant.API
 import Hasskell.Language.Executor
 import Hasskell.Language.Reconciler
+import Hasskell.Language.World
 import Hedgehog
 import Test.Syd
 import Test.Syd.Hedgehog ()
@@ -27,11 +28,18 @@ spec = do
     specify "turns on light" $
       property $ do
         let entityId = EntityId "entity"
-        let plan = MkReconciliationPlan [JustifyAction (TurnOnEntity entityId) undefined]
+        let plan = MkReconciliationPlan [JustifyAction (SetEntityState entityId On) undefined]
         let (_, executedCommands) = recordHASSCommands (executePlan plan)
         executedCommands === [TurnOnLight entityId]
 
-data HASSOp = Unknown | TurnOnLight EntityId
+    specify "turns off light" $
+      property $ do
+        let entityId = EntityId "entity"
+        let plan = MkReconciliationPlan [JustifyAction (SetEntityState entityId Off) undefined]
+        let (_, executedCommands) = recordHASSCommands (executePlan plan)
+        executedCommands === [TurnOffLight entityId]
+
+data HASSOp = Unknown | TurnOnLight EntityId | TurnOffLight EntityId
   deriving (Eq, Show)
 
 recordHASSCommands :: Eff '[HASS] a -> (a, [HASSOp])
@@ -56,4 +64,7 @@ runWithFakeHASS = reinterpret_ (runState []) $ \action -> case action of
     pure M.empty
   HASS.TurnOnLight entity -> do
     modify $ (TurnOnLight entity :)
+    pure ()
+  HASS.TurnOffLight entity -> do
+    modify $ (TurnOffLight entity :)
     pure ()

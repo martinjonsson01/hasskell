@@ -12,7 +12,8 @@ module Hasskell.Language.AST
     T (..),
     Exp (..),
     IntoEntity (..),
-    isOn,
+    -- Combinators
+    shouldBe,
     -- Reexports
     Located (..),
   )
@@ -29,6 +30,7 @@ import Data.Text (Text)
 import GHC.Stack
 import Hasskell.HomeAssistant.API
 import Hasskell.Language.CallStack
+import Hasskell.Language.World
 import Prelude.Singletons
 
 $( singletons
@@ -77,12 +79,12 @@ instance HasReferencedEntities Policy where
 instance HasReferencedEntities (Exp t) where
   referencedEntitiesIn = \case
     EEntity eId -> [eId]
-    EIsOn expr -> referencedEntitiesIn expr
+    EShouldBe expr _ -> referencedEntitiesIn expr
 
 instance HasLocations (Exp t) where
   extractLocations = \case
     EEntity _ -> []
-    EIsOn expr -> extractLocations expr
+    EShouldBe expr _ -> extractLocations expr
 
 data SomeExp :: Type where
   SomeExp :: (SingI (t :: T)) => Exp t -> SomeExp
@@ -104,7 +106,7 @@ instance Ord SomeExp where
 
 data Exp :: T -> Type where
   EEntity :: EntityId -> Exp 'TEntity
-  EIsOn :: Located (Exp 'TEntity) -> Exp 'TVoid
+  EShouldBe :: Located (Exp 'TEntity) -> ToggleState -> Exp 'TVoid
 
 deriving instance Show (Exp t)
 
@@ -124,6 +126,6 @@ instance IntoEntity Text where
 instance IntoEntity EntityId where
   toEntity = (:@ captureSrcSpan) . EEntity
 
--- | Turn on a given entity.
-isOn :: (HasCallStack) => Located (Exp 'TEntity) -> Located (Exp 'TVoid)
-isOn = (:@ captureSrcSpan) . EIsOn
+-- | Declare that a given entity should be in a given state.
+shouldBe :: (HasCallStack) => Located (Exp 'TEntity) -> ToggleState -> Located (Exp 'TVoid)
+shouldBe entity state = EShouldBe entity state :@ captureSrcSpan

@@ -7,6 +7,7 @@ where
 import Effectful
 import Hasskell.Effects.HASS
 import Hasskell.Language.Reconciler
+import Hasskell.Language.World
 
 -- | A summary of how the reconciliation went.
 data ExecutionReport = MkExecutionReport ()
@@ -21,4 +22,5 @@ executePlan (MkReconciliationPlan steps) = do
 
 executeAction :: (HASS :> es) => ReconciliationAction -> Eff es ()
 executeAction = \case
-  TurnOnEntity entity -> turnOnLight entity
+  SetEntityState entity On -> turnOnLight entity
+  SetEntityState entity Off -> turnOffLight entity

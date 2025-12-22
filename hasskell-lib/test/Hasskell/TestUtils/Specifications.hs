@@ -1,5 +1,6 @@
 module Hasskell.TestUtils.Specifications
   ( lightAlwaysOn,
+    lightAlways,
   )
 where
 
@@ -7,4 +8,10 @@ import GHC.Stack
 import Hasskell
 
 lightAlwaysOn :: (HasCallStack, IntoEntity a) => a -> Specification
-lightAlwaysOn light = policy "light is always on" (isOn $ toEntity light)
+lightAlwaysOn = lightAlways On
+
+lightAlways :: (HasCallStack, IntoEntity a) => ToggleState -> a -> Specification
+lightAlways state light =
+  policy
+    ("light is always " <> if state == On then "on" else "off")
+    (toEntity light `shouldBe` state)

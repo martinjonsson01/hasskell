@@ -1,6 +1,7 @@
 module Hasskell.Language.CallStack
   ( Location (..),
     Located (..),
+    stripLocation,
     HasLocations (..),
     captureSrcSpan,
     captureSrcSpan',
@@ -9,8 +10,10 @@ module Hasskell.Language.CallStack
 where
 
 import Data.Bifunctor (bimap)
+import Data.Hashable
 import Data.List qualified as List
 import Error.Diagnose
+import GHC.Generics
 import GHC.Stack
 
 -- | A main location, along with supplementary locations, in the user's source code.
@@ -18,12 +21,16 @@ data Location = Location
   { positionsPrimary :: Position,
     positionsSecondary :: [Position]
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic, Hashable)
 
 -- | Something that can be traced back to user's source code.
 data Located a
   = a :@ Location
-  deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
+  deriving (Show, Eq, Ord, Functor, Foldable, Traversable, Generic, Hashable)
+
+-- | Forget about the location.
+stripLocation :: Located a -> a
+stripLocation (a :@ _) = a
 
 class HasLocations a where
   extractLocations :: a -> [Location]

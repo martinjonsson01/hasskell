@@ -39,6 +39,7 @@ import Data.Aeson.KeyMap qualified as KeyMap
 import Data.Aeson.Types (typeMismatch)
 import Data.Char (toLower)
 import Data.Foldable (toList)
+import Data.Hashable
 import Data.Map.Lazy qualified as M
 import Data.Text (Text)
 import Data.Time (UTCTime)
@@ -252,7 +253,7 @@ instance ToJSON UnixUTC where
 
 newtype EntityId = EntityId Text
   deriving (Show, Eq, Ord)
-  deriving (FromJSON, ToJSON) via Text
+  deriving (FromJSON, ToJSON, Hashable) via Text
 
 instance Pretty EntityId where
   pretty (EntityId eId) = enclose backtick backtick (pretty eId)

@@ -1,5 +1,6 @@
 module Hasskell.Language.WorldSpec (spec) where
 
+import Data.HashMap.Strict qualified as HMap
 import Hasskell.Effects.HASS
 import Hasskell.HomeAssistant.API
 import Hasskell.Language.World
@@ -12,10 +13,10 @@ spec = do
     it "toggleable entities are real entities" $ do
       realEntityIds <- map stateEntityId <$> runWithClient getStates
       MkObserved _ world <- runWithClient collectCurrentState
-      let toggleableEntityIds = map toggleableId . worldToggleables $ world
+      let toggleableEntityIds = HMap.keys . worldToggleables $ world
       toggleableEntityIds `shouldBeSubsetOf` realEntityIds
 
     it "contains any toggleable entity" $ do
       MkObserved _ world <- runWithClient collectCurrentState
-      let toggleableEntityIds = map toggleableId . worldToggleables $ world
+      let toggleableEntityIds = HMap.keys . worldToggleables $ world
       length (toggleableEntityIds) `shouldNotBe` 0
