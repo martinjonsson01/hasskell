@@ -10,6 +10,7 @@ module Hasskell.Effects.HASSConnection
 where
 
 import Control.Monad (forever, unless)
+import Control.Placeholder
 import Data.Aeson
 import Data.Aeson.Encode.Pretty (encodePretty)
 import Data.ByteString.Lazy qualified as BL
@@ -225,7 +226,7 @@ parseEither s = case eitherDecode s of
 
 instance (FromJSON a) => WS.WebSocketsData (Either HASSWebSocketError a) where
   fromLazyByteString = parseEither
-  toLazyByteString = undefined
+  toLazyByteString = unimplemented
   fromDataMessage (WS.Text lbs _) = parseEither lbs
   fromDataMessage (WS.Binary lbs) = parseEither lbs
 

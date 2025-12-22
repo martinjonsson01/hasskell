@@ -8,6 +8,7 @@ copyright: 2025 Martin Jonsson
 
 dependencies:
   - base >= 4.7 && < 5
+  - placeholder >= 0
   - aeson >= 2.2.3 && < 2.3
   - deriving-aeson >= 0.2.10 && < 0.3
   - aeson-pretty >= 0.8.10 && < 1.0

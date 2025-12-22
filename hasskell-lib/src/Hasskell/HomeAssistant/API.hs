@@ -33,6 +33,7 @@ where
 
 --------------------------------------------------------------------------------
 
+import Control.Placeholder
 import Data.Aeson
 import Data.Aeson.KeyMap (KeyMap)
 import Data.Aeson.KeyMap qualified as KeyMap
@@ -97,8 +98,8 @@ data HASSAuthMessage = MessageAuth {messageAccessToken :: Text}
   deriving (FromJSON, ToJSON) via CustomJSON (HASSMessageJSONOptions "message") HASSAuthMessage
 
 instance WS.WebSocketsData HASSAuthMessage where
-  fromLazyByteString = undefined
-  fromDataMessage = undefined
+  fromLazyByteString = unimplemented
+  fromDataMessage = unimplemented
   toLazyByteString = encode
 
 -------------------------------------------------------------------------------
@@ -125,8 +126,8 @@ instance (ToJSON a) => ToJSON (Envelope a) where
       val -> error $ "Unknown envelope payload type: " ++ show val
 
 instance (ToJSON a) => WS.WebSocketsData (Envelope a) where
-  fromLazyByteString = undefined
-  fromDataMessage = undefined
+  fromLazyByteString = unimplemented
+  fromDataMessage = unimplemented
   toLazyByteString = encode
 
 -------------------------------------------------------------------------------
@@ -163,8 +164,8 @@ data HASSCommand
   deriving (FromJSON, ToJSON) via CustomJSON (HASSMessageJSONOptions "command") HASSCommand
 
 instance WS.WebSocketsData HASSCommand where
-  fromLazyByteString = undefined
-  fromDataMessage = undefined
+  fromLazyByteString = unimplemented
+  fromDataMessage = unimplemented
   toLazyByteString = encode
 
 data HASSTarget = Target

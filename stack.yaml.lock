@@ -18,6 +18,13 @@ packages:
       size: 1779
   original:
     hackage: unordered-containers-0.2.21@sha256:bcff64f48fba1e25bf9b5346d1c3545402cd2f1293b411435e7850ccb62884e5,3987
+- completed:
+    hackage: placeholder-0@sha256:dfb801d5121b8f277288b24b47a869f173f94323eb2e85c060ab6aa60fb61a6c,1270
+    pantry-tree:
+      sha256: e83adedb943563daf59925ebdd5ccea3660ef617fd754940fb30941bd3269f56
+      size: 330
+  original:
+    hackage: placeholder-0@sha256:dfb801d5121b8f277288b24b47a869f173f94323eb2e85c060ab6aa60fb61a6c,1270
 snapshots:
 - completed:
     sha256: 5524530ac8c0fd4c9d7488442ff14edb0fcbf4989b928b86398f94f367e01ee3

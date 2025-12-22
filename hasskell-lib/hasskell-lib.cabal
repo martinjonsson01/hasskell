@@ -118,6 +118,7 @@ library
     , hashable >=1.5
     , heap ==1.*
     , mtl >=2.3.1 && <3
+    , placeholder
     , pretty-show >=1.10 && <2
     , prettyprinter >=1.7 && <2
     , prettyprinter-ansi-terminal >=1.1 && <2
@@ -232,6 +233,7 @@ test-suite hasskell-lib-test
     , heap ==1.*
     , hedgehog >=1.5 && <2
     , mtl >=2.3.1 && <3
+    , placeholder
     , pretty-show >=1.10 && <2
     , prettyprinter >=1.7 && <2
     , prettyprinter-ansi-terminal >=1.1 && <2
