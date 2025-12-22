@@ -9,17 +9,25 @@ module Hasskell.Language.Reconciler
     ReconciliationReport,
     hasWarnings,
     renderReport,
+    -- Traces
+    renderPlanTrace,
   )
 where
 
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HMap
+import Data.Text (Text)
+import Effectful
+import Effectful.FileSystem qualified as File
 import Hasskell.HomeAssistant.API
 import Hasskell.Language.AST
 import Hasskell.Language.CallStack
 import Hasskell.Language.Diagnostic
 import Hasskell.Language.Provenance
+import Hasskell.Language.Report
 import Hasskell.Language.World
+import Prettyprinter
+import Prettyprinter.Render.Terminal
 
 --------------------------------------------------------------------------------
 
@@ -43,6 +51,28 @@ instance HasLocations ReconciliationStep where
 -- | An action that can be taken to alter the world.
 data ReconciliationAction = SetEntityState EntityId ToggleState
   deriving (Eq, Ord, Show)
+
+-- | Pretty-prints the plan, displaying justification for each step.
+renderPlanTrace :: (MonadIO m) => ReconciliationPlan -> m Text
+renderPlanTrace = liftIO . runEff . File.runFileSystem . innerRenderPlanTrace
+
+innerRenderPlanTrace :: (File.FileSystem :> es) => ReconciliationPlan -> Eff es Text
+innerRenderPlanTrace (MkReconciliationPlan steps) = do
+  prettySteps <- mapM prettifyStep steps
+  let doc = vsep prettySteps
+      rendered = layoutDoc doc
+      cleaned = cleanExplanation rendered
+  pure cleaned
+
+prettifyStep :: (File.FileSystem :> es) => ReconciliationStep -> Eff es (Doc AnsiStyle)
+prettifyStep JustifyAction {stepAction, stepReason} = do
+  prettyReason <- prettifyExplanation stepReason
+  pure
+    (vsep ["will" <+> pretty stepAction, "reason:", indent 4 prettyReason])
+
+instance Pretty ReconciliationAction where
+  pretty = \case
+    SetEntityState eId state -> "turn entity" <+> pretty eId <+> pretty state
 
 --------------------------------------------------------------------------------
 

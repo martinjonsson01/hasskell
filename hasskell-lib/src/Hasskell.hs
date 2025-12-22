@@ -13,8 +13,10 @@ module Hasskell
   )
 where
 
+import Control.Monad
 import Control.Monad.Except
 import Data.Either.HT
+import Data.Text qualified as T
 import Hasskell.Config
 import Hasskell.Effects.Logging
 import Hasskell.HomeAssistant.Client
@@ -42,6 +44,8 @@ innerRunHasskell spec = do
   observed <- collectCurrentState
   let (plan, report) = reconcile observed spec
   reportText <- renderReport report
-  logInfo reportText
+  unless (T.null reportText) $ logInfo reportText
+  renderedPlan <- renderPlanTrace plan
+  logDebug renderedPlan
   _ <- executePlan plan
   pure ()

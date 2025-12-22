@@ -10,7 +10,8 @@ module Hasskell.Language.Provenance
     observed,
     desired,
     -- Pretty-printing
-    renderExplanation,
+    prettifyExplanation,
+    cleanExplanation,
   )
 where
 
@@ -94,16 +95,11 @@ observed :: EntityId -> ToggleState -> Fact
 observed eId = SourcelessFact . ObservedState eId
 
 -- | Converts the given explanation into a human-readable format.
-renderExplanation :: (MonadIO m) => Explanation -> m Text
-renderExplanation = liftIO . runEff . File.runFileSystem . innerRenderExplanation
-
-innerRenderExplanation :: (File.FileSystem :> es) => Explanation -> Eff es Text
-innerRenderExplanation explanation = do
+prettifyExplanation :: (File.FileSystem :> es) => Explanation -> Eff es (Doc AnsiStyle)
+prettifyExplanation explanation = do
   let positions = extractLocations explanation
   baseDiagnostic <- loadReferencedFiles positions
-  let rendered = layoutDoc (renderExplanationTree baseDiagnostic explanation)
-      cleaned = cleanExplanation rendered
-  pure cleaned
+  pure (prettifyExplanationTree baseDiagnostic explanation)
 
 -- Hacky way to remove the "warnings" that we can't get rid of from Diagnostics.
 -- This is because we make use of Diagnostic warnings to pretty-print code references.
@@ -114,10 +110,10 @@ cleanExplanation =
     ""
     . T.replace "[warning]: " ""
 
-renderExplanationTree :: Diagnostic Fact -> Explanation -> Doc AnsiStyle
-renderExplanationTree baseDiagnostic Explain {what, why} =
+prettifyExplanationTree :: Diagnostic Fact -> Explanation -> Doc AnsiStyle
+prettifyExplanationTree baseDiagnostic Explain {what, why} =
   let prettyFact = renderFact baseDiagnostic what
-      childExplanations = map (renderExplanationTree baseDiagnostic) why
+      childExplanations = map (prettifyExplanationTree baseDiagnostic) why
       prefixSubExplanation = indent 4 . ("-> because" <+>)
       subExplanations = map prefixSubExplanation childExplanations
       explanations = List.intersperse mempty (prettyFact : subExplanations)

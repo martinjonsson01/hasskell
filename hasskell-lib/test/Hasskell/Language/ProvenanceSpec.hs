@@ -2,10 +2,7 @@
 
 module Hasskell.Language.ProvenanceSpec (spec) where
 
-import Data.List (uncons)
-import Data.Maybe (fromJust)
 import Hasskell.HomeAssistant.API
-import Hasskell.Language.Provenance
 import Hasskell.Language.Reconciler
 import Hasskell.Language.World
 import Hasskell.TestUtils.Gen
@@ -28,9 +25,8 @@ spec = do
       lightsSpec <-
         sampleDeterministic (Seed 0 1) $
           genSpecWithPolicy observedWorld lightOnSpec
-      let (MkReconciliationPlan steps, _) = reconcile observedWorld lightsSpec
-          (JustifyAction {stepReason}, _) = fromJust $ uncons steps
+      let (plan, _) = reconcile observedWorld lightsSpec
 
-      renderedExplanation <- renderExplanation stepReason
+      renderedPlan <- renderPlanTrace plan
 
-      goldenStage $ pureGoldenTextFile "test_resources/trace_light_always_on.golden" renderedExplanation
+      goldenStage $ pureGoldenTextFile "test_resources/trace_light_always_on.golden" renderedPlan

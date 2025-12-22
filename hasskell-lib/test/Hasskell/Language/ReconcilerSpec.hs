@@ -16,9 +16,11 @@ spec = do
       property $ do
         state <- forAll $ genToggleState
         (entity, observed) <- forAll $ genWorldWithToggled state
-        let (MkReconciliationPlan steps, report) = reconcile observed (lightAlways state entity)
+        let (plan@(MkReconciliationPlan steps), report) = reconcile observed (lightAlways state entity)
         renderedReport <- renderReport report
+        renderedPlan <- renderPlanTrace plan
         annotate (T.unpack renderedReport)
+        annotate (T.unpack renderedPlan)
         steps === []
 
     specify "generates toggle command for entity" $
@@ -26,9 +28,11 @@ spec = do
         state <- forAll $ genToggleState
         (entity, observed) <- forAll $ genWorldWithToggled state
         let opposite = if state == On then Off else On
-        let (MkReconciliationPlan steps, report) = reconcile observed (lightAlways opposite entity)
+        let (plan@(MkReconciliationPlan steps), report) = reconcile observed (lightAlways opposite entity)
         renderedReport <- renderReport report
+        renderedPlan <- renderPlanTrace plan
         annotate (T.unpack renderedReport)
+        annotate (T.unpack renderedPlan)
         (map stepAction steps) === [SetEntityState entity opposite]
 
   describe "Reconciler warnings" $ do
