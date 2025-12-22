@@ -37,7 +37,24 @@
     "root": {
       "inputs": {
         "flake-utils": "flake-utils",
-        "nixpkgs": "nixpkgs"
+        "nixpkgs": "nixpkgs",
+        "stacklock2nix": "stacklock2nix"
+      }
+    },
+    "stacklock2nix": {
+      "locked": {
+        "lastModified": 1758881683,
+        "narHash": "sha256-GZDAUJ3RGOjxB0KRbQMPZNQ0uTQKqcyQeVLyN8CrJtQ=",
+        "owner": "cdepillabout",
+        "repo": "stacklock2nix",
+        "rev": "246cae921545dfb340ba5776f2962bc5c2692097",
+        "type": "github"
+      },
+      "original": {
+        "owner": "cdepillabout",
+        "ref": "v5.2.1",
+        "repo": "stacklock2nix",
+        "type": "github"
       }
     },
     "systems": {

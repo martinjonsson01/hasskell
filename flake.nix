@@ -4,20 +4,25 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
+    stacklock2nix.url = "github:cdepillabout/stacklock2nix/v5.2.1";
   };
 
   outputs = {
     self,
     nixpkgs,
     flake-utils,
+    stacklock2nix,
   }:
     flake-utils.lib.eachDefaultSystem (system: let
-      pkgs = nixpkgs.legacyPackages.${system};
+      pkgs = import nixpkgs {
+        inherit system;
+        overlays = [stacklock2nix.overlay];
+      };
 
       haskellPackages = pkgs.haskell.packages.ghc9103;
+      hlib = pkgs.haskell.lib;
 
-      jailbreakUnbreak = pkg:
-        pkgs.haskell.lib.doJailbreak (pkg.overrideAttrs (_: {meta = {};}));
+      jailbreakUnbreak = pkg: hlib.doJailbreak (pkg.overrideAttrs (_: {meta = {};}));
 
       # Wrap Stack to work with our Nix integration. We do not want to modify
       # stack.yaml so non-Nix users do not notice anything.
@@ -37,19 +42,52 @@
             "
         '';
       };
-    in {
-      packages.hasskell = haskellPackages.callCabal2nix "hasskell" ./hasskell-cli {
-        # Dependency overrides go here
-        hasskell-lib = pkgs.haskell.lib.dontCheck ((haskellPackages.callCabal2nix "hasskell-lib" ./hasskell-lib {}).overrideAttrs (old: {
-          buildInputs = with pkgs; old.buildInputs ++ [zlib];
-        }));
+
+      hasskell-stacklock = pkgs.stacklock2nix {
+        stackYaml = ./stack.yaml;
+        all-cabal-hashes = pkgs.fetchFromGitHub {
+          owner = "commercialhaskell";
+          repo = "all-cabal-hashes";
+          rev = "1b97f47fdd2848b37ee653a377582159b43de1d0";
+          sha256 = "sha256-nI6lB1pnePu/yyxdPlAttI8d2++3qqdfAirxDgyJydA=";
+        };
       };
 
-      packages.default = self.packages.${system}.hasskell;
-      defaultPackage = self.packages.${system}.default;
+      hasskell-pkg-set = haskellPackages.override (oldAttrs: {
+        inherit (hasskell-stacklock) all-cabal-hashes;
 
-      devShells.default = pkgs.mkShell rec {
-        buildInputs = [
+        overrides = pkgs.lib.composeManyExtensions [
+          (oldAttrs.overrides or (_: _: {}))
+
+          hasskell-stacklock.stackYamlResolverOverlay
+          hasskell-stacklock.stackYamlExtraDepsOverlay
+          hasskell-stacklock.stackYamlLocalPkgsOverlay
+          hasskell-stacklock.suggestedOverlay
+
+          (hfinal: hprev: {
+            # Tests currently don't pass in Nix, since it depends on an
+            # external home assistant server to be running
+            # (should be changed to use an internally spawned test server).
+            hasskell-lib = hlib.dontCheck hprev.hasskell-lib;
+
+            # Tests don't build due to QuickCheck 2.15 not working with ghc 9.10
+            heap = hlib.dontCheck hprev.heap;
+            selective = hlib.dontCheck hprev.selective;
+            # Diagnose has an out of date upper bound on Text (<= 2.0)
+            diagnose = jailbreakUnbreak hprev.diagnose;
+            # Fails due to "`cc' failed in phase `Haskell C pre-processor'."
+            path = hlib.dontCheck hprev.path;
+          })
+        ];
+      });
+    in {
+      packages.hasskell = hasskell-pkg-set.hasskell-cli;
+
+      packages.default = self.packages.${system}.hasskell;
+
+      devShells.default = hasskell-pkg-set.shellFor {
+        packages = haskPkgs: hasskell-stacklock.localPkgsSelector haskPkgs;
+        nativeBuildInputs = [
           haskellPackages.haskell-language-server
           haskellPackages.ghc
           haskellPackages.hoogle
@@ -57,12 +95,6 @@
           stack-wrapped
           pkgs.zlib
         ];
-        inputsFrom = map (__getAttr "env") (__attrValues self.packages.${system});
-
-        NIX_CFLAGS_COMPILE = "-I${pkgs.zlib.dev}/include";
-        NIX_LDFLAGS = "-L${pkgs.zlib.dev}/lib";
-        LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath buildInputs;
       };
-      devShell = self.devShells.${system}.default;
     });
 }
