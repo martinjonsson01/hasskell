@@ -16,6 +16,7 @@ where
 import Data.Foldable
 import Data.Heap (MaxPrioHeap)
 import Data.Heap qualified as Heap
+import Data.List qualified as List
 import Data.Maybe
 import Data.Ratio
 import Data.Text (Text)
@@ -28,7 +29,8 @@ import Hasskell.Language.CallStack
 import Hasskell.Language.Report
 
 -- | Non-fatal details about how the reconciliation went.
-data ReconciliationReport = MkReconciliationReport [ReconciliationDiagnostic]
+newtype ReconciliationReport = MkReconciliationReport [ReconciliationDiagnostic] -- TODO: make into set
+  deriving (Semigroup, Monoid) via [ReconciliationDiagnostic]
 
 reportFromList :: [ReconciliationDiagnostic] -> ReconciliationReport
 reportFromList = MkReconciliationReport
@@ -60,16 +62,18 @@ hasWarnings (MkReconciliationReport reports) = length (reports) > 0
 -- TODO: don't create a real report here, just store the data so
 -- that we can create a real one later on (where we're free to rewrite
 -- the file paths as we like)
-warnUnknownEntity :: [EntityId] -> Located EntityId -> ReconciliationDiagnostic
+warnUnknownEntity :: [EntityId] -> Located EntityId -> ReconciliationReport
 warnUnknownEntity knownEntities (EntityId entityId :@ positions) =
-  Diagnostic
-    positions
-    ( Warn
-        Nothing
-        "Unknown entity referenced"
-        (mainMarker : contextMarkers <> suggestionMarker)
-        ["The entity ID may be misspelled."]
-    )
+  MkReconciliationReport $
+    List.singleton $
+      Diagnostic
+        positions
+        ( Warn
+            Nothing
+            "Unknown entity referenced"
+            (mainMarker : contextMarkers <> suggestionMarker)
+            ["The entity ID may be misspelled."]
+        )
   where
     message = This $ mconcat ["Unknown entity ID `", entityId, "`"]
     mainMarker = (positionsPrimary positions, message)

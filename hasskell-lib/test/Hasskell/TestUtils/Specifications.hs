@@ -14,4 +14,4 @@ lightAlways :: (HasCallStack, IntoEntity a) => ToggleState -> a -> Specification
 lightAlways state light =
   policy
     ("light is always " <> if state == On then "on" else "off")
-    (toEntity light `shouldBe` state)
+    (light `shouldBe` state)

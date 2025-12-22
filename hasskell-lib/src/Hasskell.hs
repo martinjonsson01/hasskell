@@ -8,6 +8,10 @@ module Hasskell
     Specification,
     policy,
     shouldBe,
+    toggledStateOf,
+    is,
+    eIf,
+    ifElse,
     IntoEntity (..),
     ToggleState (..),
   )

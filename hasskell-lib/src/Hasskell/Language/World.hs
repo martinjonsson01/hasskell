@@ -33,7 +33,7 @@ instance Pretty ToggleState where
 --------------------------------------------------------------------------------
 
 -- | A recorded observation of a given world state.
-data ObservedWorld = MkObserved UTCTime World
+data ObservedWorld = MkObserved {observedTime :: UTCTime, observedWorld :: World}
   deriving (Eq, Ord, Show)
 
 -- | Gathers information about the current state of the world from Home Assistant.

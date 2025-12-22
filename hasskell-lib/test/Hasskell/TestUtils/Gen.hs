@@ -114,18 +114,24 @@ genPolicy knownEntities = policy <$> genPolicyName <*> genVoidExp knownEntities
 genPolicyName :: Gen Text
 genPolicyName = Gen.text (Range.constant 1 10) Gen.alphaNum
 
-genVoidExp :: NonEmpty EntityId -> Gen (Located (Exp 'TVoid))
+genStateExp :: Gen (Located (Exp 'TState))
+genStateExp = do
+  loc <- genLocation
+  state <- genToggleState
+  pure (ELitState state :@ loc)
+
+genVoidExp :: NonEmpty EntityId -> Gen (Located (Exp 'TAction))
 genVoidExp knownEntities = do
   loc <- genLocation
   expr <- genEntityExp knownEntities
-  state <- genToggleState
-  pure (EShouldBe expr state :@ loc)
+  state <- genStateExp
+  pure (ESetState expr state :@ loc)
 
 genEntityExp :: NonEmpty EntityId -> Gen (Located (Exp 'TEntity))
 genEntityExp knownEntities = do
   loc <- genLocation
   eId <- genKnownEntityId knownEntities
-  pure (EEntity eId :@ loc)
+  pure (ELitEntity eId :@ loc)
 
 genKnownEntityId :: NonEmpty EntityId -> Gen EntityId
 genKnownEntityId knownEntities = do

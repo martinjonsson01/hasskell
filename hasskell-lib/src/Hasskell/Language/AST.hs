@@ -14,6 +14,10 @@ module Hasskell.Language.AST
     IntoEntity (..),
     -- Combinators
     shouldBe,
+    toggledStateOf,
+    eIf,
+    ifElse,
+    is,
     -- Reexports
     Located (..),
   )
@@ -35,7 +39,7 @@ import Prelude.Singletons
 
 $( singletons
      [d|
-       data T = TEntity | TVoid
+       data T = TEntity | TAction | TBool | TState
 
        deriving instance (Eq T)
 
@@ -57,11 +61,11 @@ instance Semigroup Specification where
 instance Monoid Specification where
   mempty = Specification []
 
-data Policy = Policy {name :: Text, expression :: Located (Exp 'TVoid)}
+data Policy = Policy {name :: Text, expression :: Located (Exp 'TAction)}
   deriving (Eq, Ord, Show)
 
 -- | Declare a desired state.
-policy :: Text -> Located (Exp 'TVoid) -> Specification
+policy :: Text -> Located (Exp 'TAction) -> Specification
 policy name expr = Specification . singleton $ Policy name expr
 
 class HasReferencedEntities a where
@@ -78,13 +82,13 @@ instance HasReferencedEntities Policy where
 
 instance HasReferencedEntities (Exp t) where
   referencedEntitiesIn = \case
-    EEntity eId -> [eId]
-    EShouldBe expr _ -> referencedEntitiesIn expr
+    ELitEntity eId -> [eId]
+    ESetState expr _ -> referencedEntitiesIn expr
 
 instance HasLocations (Exp t) where
   extractLocations = \case
-    EEntity _ -> []
-    EShouldBe expr _ -> extractLocations expr
+    ELitEntity _ -> []
+    ESetState expr _ -> extractLocations expr
 
 data SomeExp :: Type where
   SomeExp :: (SingI (t :: T)) => Exp t -> SomeExp
@@ -105,8 +109,17 @@ instance Ord SomeExp where
       Disproved _ -> fromSing $ sCompare (sing @t1) (sing @t2)
 
 data Exp :: T -> Type where
-  EEntity :: EntityId -> Exp 'TEntity
-  EShouldBe :: Located (Exp 'TEntity) -> ToggleState -> Exp 'TVoid
+  -- Literals
+  ELitEntity :: EntityId -> Exp 'TEntity
+  ELitState :: ToggleState -> Exp 'TState
+  -- Entity properties
+  EGetState :: Located (Exp 'TEntity) -> Exp 'TState
+  -- Actions
+  ESetState :: Located (Exp 'TEntity) -> Located (Exp 'TState) -> Exp 'TAction
+  EDoNothing :: Exp 'TAction
+  -- Boolean logic
+  EEqual :: Located (Exp 'TState) -> Located (Exp 'TState) -> Exp 'TBool
+  EIf :: Located (Exp 'TBool) -> Located (Exp 'TAction) -> Located (Exp 'TAction) -> Exp 'TAction
 
 deriving instance Show (Exp t)
 
@@ -120,12 +133,38 @@ class IntoEntity a where
 
 -- | A named entity.
 instance IntoEntity Text where
-  toEntity = (:@ captureSrcSpan) . EEntity . EntityId
+  toEntity = (:@ captureSrcSpan) . ELitEntity . EntityId
 
 -- | An identified entity.
 instance IntoEntity EntityId where
-  toEntity = (:@ captureSrcSpan) . EEntity
+  toEntity = (:@ captureSrcSpan) . ELitEntity
+
+-- | Things that describe a specific state.
+class IntoState a where
+  toState :: (HasCallStack) => a -> Located (Exp 'TState)
+
+instance IntoState ToggleState where
+  toState = (:@ captureSrcSpan) . ELitState
+
+instance IntoState (Located (Exp 'TState)) where
+  toState = id
 
 -- | Declare that a given entity should be in a given state.
-shouldBe :: (HasCallStack) => Located (Exp 'TEntity) -> ToggleState -> Located (Exp 'TVoid)
-shouldBe entity state = EShouldBe entity state :@ captureSrcSpan
+shouldBe :: (HasCallStack, IntoEntity e, IntoState s) => e -> s -> Located (Exp 'TAction)
+shouldBe entity state = ESetState (toEntity entity) (toState state) :@ captureSrcSpan
+
+-- | Gets the current toggle state of the given entity.
+toggledStateOf :: (HasCallStack, IntoEntity e) => e -> Located (Exp 'TState)
+toggledStateOf entity = EGetState (toEntity entity) :@ captureSrcSpan
+
+-- | Check for equality.
+is :: (HasCallStack, IntoState s1, IntoState s2) => s1 -> s2 -> Located (Exp 'TBool)
+is s1 s2 = EEqual (toState s1) (toState s2) :@ captureSrcSpan
+
+-- | Make a policy conditional on something.
+eIf :: (HasCallStack) => Located (Exp 'TBool) -> Located (Exp 'TAction) -> Located (Exp 'TAction)
+eIf cond action = ifElse cond action (EDoNothing :@ captureSrcSpan)
+
+-- | Choose an action depending on a condition.
+ifElse :: (HasCallStack) => Located (Exp 'TBool) -> Located (Exp 'TAction) -> Located (Exp 'TAction) -> Located (Exp 'TAction)
+ifElse cond thenExp elseExp = EIf cond thenExp elseExp :@ captureSrcSpan

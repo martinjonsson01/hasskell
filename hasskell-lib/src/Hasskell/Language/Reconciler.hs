@@ -16,9 +16,16 @@ where
 
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HMap
+import Data.Maybe (catMaybes)
 import Data.Text (Text)
 import Effectful
+import Effectful.Error.Static (Error)
+import Effectful.Error.Static qualified as Error
 import Effectful.FileSystem qualified as File
+import Effectful.State.Static.Local (State)
+import Effectful.State.Static.Local qualified as State
+import Effectful.Writer.Static.Local (Writer)
+import Effectful.Writer.Static.Local qualified as Writer
 import Hasskell.HomeAssistant.API
 import Hasskell.Language.AST
 import Hasskell.Language.CallStack
@@ -79,17 +86,29 @@ instance Pretty ReconciliationAction where
 -- | Computes the steps necessary to transform
 -- the observed world state into the specified world state.
 reconcile :: ObservedWorld -> Specification -> (ReconciliationPlan, ReconciliationReport)
-reconcile (MkObserved _ (MkWorld {worldToggleables})) spec =
-  let desiredToggleables = HMap.unions (map computeDesiredStates (specPolicies spec))
-      unlocatedDesiredToggleables = HMap.mapKeys stripLocation desiredToggleables
-      warnings =
-        warnOfUnknownEntities
-          worldToggleables
-          unlocatedDesiredToggleables
-          desiredToggleables
-      needsToggling = reconcileToggleables worldToggleables unlocatedDesiredToggleables
-      steps = generateToggleSteps needsToggling
-   in (MkReconciliationPlan steps, reportFromList warnings)
+reconcile observedWorld spec =
+  runPureEff
+    . Writer.runWriter
+    . State.evalState observedWorld
+    . State.evalState spec
+    $ reconcileInner
+
+reconcileInner ::
+  ( State ObservedWorld :> es,
+    State Specification :> es,
+    Writer ReconciliationReport :> es
+  ) =>
+  Eff es ReconciliationPlan
+reconcileInner = do
+  spec <- State.get
+  desiredToggleables <- HMap.unions <$> mapM computeDesiredStates (specPolicies spec)
+
+  let unlocatedDesiredToggleables = HMap.mapKeys stripLocation desiredToggleables
+  needsToggling <- reconcileToggleables unlocatedDesiredToggleables
+
+  let steps = generateToggleSteps needsToggling
+
+  pure (MkReconciliationPlan steps)
 
 type Detailed a = Explained (Located a)
 
@@ -104,11 +123,12 @@ generateToggleSteps = map toReconciliationStep . HMap.toList
         }
 
 reconcileToggleables ::
-  HashMap EntityId ToggleState ->
+  (State ObservedWorld :> es) =>
   HashMap EntityId (Detailed ToggleState) ->
-  HashMap EntityId (Detailed ToggleState)
-reconcileToggleables worldToggleables desiredToggleables =
-  desiredToggleables `reconcileStates` worldToggleables
+  Eff es (HashMap EntityId (Detailed ToggleState))
+reconcileToggleables desiredToggleables = do
+  worldToggleables <- State.gets (worldToggleables . observedWorld)
+  pure (desiredToggleables `reconcileStates` worldToggleables)
   where
     reconcileStates = HMap.differenceWithKey dropIfStatesEqual
     dropIfStatesEqual eId explained@((expected :@ _) :£ _) actual
@@ -120,26 +140,87 @@ reconcileToggleables worldToggleables desiredToggleables =
             )
       | otherwise = Nothing
 
-warnOfUnknownEntities ::
-  HashMap EntityId w ->
-  HashMap EntityId v ->
-  HashMap (Located EntityId) v ->
-  [ReconciliationDiagnostic]
-warnOfUnknownEntities worldToggleables unlocatedDesiredToggleables desiredToggleables =
-  let unlocatedUnknownEntities = unlocatedDesiredToggleables `HMap.difference` worldToggleables
-      unknownEntities =
-        filter
-          ((`HMap.member` unlocatedUnknownEntities) . stripLocation)
-          (HMap.keys desiredToggleables)
-      knownEntities = HMap.keys worldToggleables
-   in map (warnUnknownEntity knownEntities) unknownEntities
+computeDesiredStates ::
+  ( State ObservedWorld :> es,
+    Writer ReconciliationReport :> es
+  ) =>
+  Policy ->
+  Eff es (HashMap (Located EntityId) (Detailed ToggleState))
+computeDesiredStates Policy {expression} = do
+  desiredState <- computeDesiredState expression
+  pure $ HMap.fromList (catMaybes [desiredState])
 
-computeDesiredStates :: Policy -> HashMap (Located EntityId) (Detailed ToggleState)
-computeDesiredStates Policy {expression} = HMap.fromList [computeDesiredState expression]
+data ReconciliationError = UnknownEntity (Located EntityId)
+  deriving (Eq, Ord, Show)
 
-computeDesiredState :: Located (Exp 'TVoid) -> (Located EntityId, Detailed ToggleState)
-computeDesiredState = \case
-  (EShouldBe (EEntity eId :@ eLoc) state) :@ loc ->
-    ( eId :@ eLoc,
-      (state :@ loc) `because` desired loc eId state
+unknownEntity :: (Error ReconciliationError :> es) => Located EntityId -> Eff es a
+unknownEntity = Error.throwError . UnknownEntity
+
+computeDesiredState ::
+  ( State ObservedWorld :> es,
+    Writer ReconciliationReport :> es
+  ) =>
+  Located (Exp 'TAction) ->
+  Eff es (Maybe (Located EntityId, Detailed ToggleState))
+computeDesiredState action =
+  Error.runErrorNoCallStack
+    ( case action of
+        ESetState (ELitEntity eId :@ eLoc) (ELitState state :@ stateLoc) :@ loc -> do
+          ensureEntityExists (eId :@ eLoc)
+          pure $
+            Just
+              ( eId :@ eLoc,
+                state :@ stateLoc `because` desired loc eId state
+              )
+        ESetState (ELitEntity _ :@ _) (EGetState _ :@ _) :@ _ -> todo
+        EIf condExp thenExp elseExp :@ _ ->
+          evalBool condExp >>= \case
+            (True :@ _) :£ _ -> computeDesiredState thenExp
+            (False :@ _) :£ _ -> computeDesiredState elseExp
+        EDoNothing :@ _ -> pure Nothing
     )
+    >>= \case
+      Left (UnknownEntity eId) -> do
+        knownEntities <- State.gets (HMap.keys . worldToggleables . observedWorld)
+        Writer.tell (warnUnknownEntity knownEntities eId)
+        pure Nothing
+      Right result -> pure result
+
+ensureEntityExists ::
+  (State ObservedWorld :> es, Error ReconciliationError :> es) =>
+  Located EntityId -> Eff es ()
+ensureEntityExists entity@(eId :@ _) = do
+  worldToggleables <- State.gets (worldToggleables . observedWorld)
+  case HMap.lookup eId worldToggleables of
+    Just _ -> pure ()
+    Nothing -> unknownEntity entity
+
+evalBool ::
+  ( State ObservedWorld :> es,
+    Error ReconciliationError :> es
+  ) =>
+  Located (Exp 'TBool) ->
+  Eff es (Detailed Bool)
+evalBool = \case
+  EEqual e1 e2 :@ loc -> do
+    s1 :@ _ :£ _ <- evalState e1
+    s2 :@ _ :£ _ <- evalState e2
+    pure $ (s1 == s2) :@ loc :£ todo
+
+evalState ::
+  ( State ObservedWorld :> es,
+    Error ReconciliationError :> es
+  ) =>
+  Located (Exp 'TState) -> Eff es (Detailed ToggleState)
+evalState = \case
+  ELitState s :@ loc -> pure (s :@ loc :£ todo)
+  EGetState entity :@ _ -> do
+    eId :@ eloc :£ _ <- evalEntity entity
+    worldToggleables <- State.gets (worldToggleables . observedWorld)
+    case HMap.lookup eId worldToggleables of
+      Just state -> pure (state :@ eloc :£ todo)
+      Nothing -> unknownEntity (eId :@ eloc)
+
+evalEntity :: Located (Exp 'TEntity) -> Eff es (Detailed EntityId)
+evalEntity = \case
+  ELitEntity e :@ loc -> pure (e :@ loc :£ todo)
