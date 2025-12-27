@@ -6,6 +6,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Hasskell.HomeAssistant.API
 import Hasskell.Language.Reconciler
+import Hasskell.Language.Report
 import Hasskell.TestUtils.Gen
 import Hasskell.TestUtils.Specifications
 import Hasskell.TestUtils.Utils
@@ -19,7 +20,7 @@ spec = do
     it "warns about unknown entity" $ stagedGolden $ \goldenStage -> do
       (unknownEntity, observed) <- sampleDeterministic (Seed 0 1) genWorldWithoutEntity
       let (_, report) = reconcile observed (lightAlwaysOn unknownEntity)
-      renderedReport <- renderReport report
+      renderedReport <- renderReport unadornedStyle report
       goldenStage $ pureGoldenTextFile "test_resources/DiagnosticSpec/warn_unknown_entity.golden" renderedReport
 
     specify "suggests correct entity on typos" $
@@ -28,7 +29,7 @@ spec = do
             knownEntities = map EntityId $ expectedMatch : ["light.some_other"]
         observed <- forAll (genWorldWithKnownEntities knownEntities)
         let (_, report) = reconcile observed (lightAlwaysOn ("some_titynamr" :: Text))
-        renderedReport <- renderReport report
+        renderedReport <- renderReport unadornedStyle report
         annotate (T.unpack renderedReport)
         let expectedSuggestion = "did you mean `" <> expectedMatch <> "`?"
         annotate (T.unpack expectedSuggestion)
@@ -40,7 +41,7 @@ spec = do
             knownEntities = map EntityId $ expectedMatch : ["light.some_other"]
         observed <- forAll (genWorldWithKnownEntities knownEntities)
         let (_, report) = reconcile observed (lightAlwaysOn ("some_entity_name" :: Text))
-        renderedReport <- renderReport report
+        renderedReport <- renderReport unadornedStyle report
         annotate (T.unpack renderedReport)
         let expectedSuggestion = "did you mean `" <> expectedMatch <> "`?"
         annotate (T.unpack expectedSuggestion)

@@ -1,10 +1,10 @@
 module Hasskell.Language.Report
   ( loadReferencedFiles,
-    renderInANSIColor,
-    renderColorless,
-    toDocWithColor,
-    toDocWithoutColor,
+    annotateDoc,
+    defaultStyle,
+    unadornedStyle,
     layoutDoc,
+    ReportStyle,
   )
 where
 
@@ -19,7 +19,6 @@ import Error.Diagnose
 import Hasskell.Language.CallStack
 import Prettyprinter
 import Prettyprinter.Render.Terminal qualified as Terminal
-import Prettyprinter.Render.Text qualified as PrettyText
 
 -- | Loads all the files referenced in the given positions into an empty diagnostic.
 loadReferencedFiles :: (File.FileSystem :> es) => [Location] -> Eff es (Diagnostic msg)
@@ -39,20 +38,13 @@ loadReferencedFiles allLocations = do
           else pure "file does not exist"
       pure $ addFile diagnostic path contents
 
-toDoc :: (Pretty msg) => Diagnostic msg -> Doc (Annotation ann)
-toDoc = prettyDiagnostic WithUnicode (TabSize 2)
+toAnnotatedDoc :: (Pretty msg) => Diagnostic msg -> Doc (Annotation ann)
+toAnnotatedDoc = prettyDiagnostic WithUnicode (TabSize 2)
 
-toDocWithoutColor :: (Pretty msg) => Diagnostic msg -> Doc ann
-toDocWithoutColor = unAnnotate . toDoc
-
-toDocWithColor :: (Pretty msg) => Diagnostic msg -> Doc Terminal.AnsiStyle
-toDocWithColor = reAnnotate defaultStyle . toDoc
+type ReportStyle = Error.Diagnose.Style Terminal.AnsiStyle
 
 layoutDoc :: Doc Terminal.AnsiStyle -> Text
 layoutDoc = Terminal.renderStrict . layoutPretty defaultLayoutOptions
 
-renderInANSIColor :: (Pretty msg) => Diagnostic msg -> Text
-renderInANSIColor = layoutDoc . toDocWithColor
-
-renderColorless :: (Pretty msg) => Diagnostic msg -> Text
-renderColorless = PrettyText.renderStrict . layoutPretty defaultLayoutOptions . toDoc
+annotateDoc :: (Pretty msg) => ReportStyle -> Diagnostic msg -> Doc Terminal.AnsiStyle
+annotateDoc style = reAnnotate style . toAnnotatedDoc

@@ -62,20 +62,20 @@ data ReconciliationAction = SetEntityState EntityId ToggleState
   deriving (Eq, Ord, Show)
 
 -- | Pretty-prints the plan, displaying justification for each step.
-renderPlanTrace :: (MonadIO m) => ReconciliationPlan -> m Text
-renderPlanTrace = liftIO . runEff . File.runFileSystem . innerRenderPlanTrace
+renderPlanTrace :: (MonadIO m) => ReportStyle -> ReconciliationPlan -> m Text
+renderPlanTrace style = liftIO . runEff . File.runFileSystem . innerRenderPlanTrace style
 
-innerRenderPlanTrace :: (File.FileSystem :> es) => ReconciliationPlan -> Eff es Text
-innerRenderPlanTrace (MkReconciliationPlan steps) = do
-  prettySteps <- mapM prettifyStep steps
+innerRenderPlanTrace :: (File.FileSystem :> es) => ReportStyle -> ReconciliationPlan -> Eff es Text
+innerRenderPlanTrace style (MkReconciliationPlan steps) = do
+  prettySteps <- mapM (prettifyStep style) steps
   let doc = vsep prettySteps
       rendered = layoutDoc doc
       cleaned = cleanExplanation rendered
   pure cleaned
 
-prettifyStep :: (File.FileSystem :> es) => ReconciliationStep -> Eff es (Doc AnsiStyle)
-prettifyStep JustifyAction {stepAction, stepReason} = do
-  prettyReason <- prettifyExplanation stepReason
+prettifyStep :: (File.FileSystem :> es) => ReportStyle -> ReconciliationStep -> Eff es (Doc AnsiStyle)
+prettifyStep style JustifyAction {stepAction, stepReason} = do
+  prettyReason <- prettifyExplanation style stepReason
   pure
     (vsep ["will" <+> pretty stepAction, "reason:", indent 4 prettyReason])
 

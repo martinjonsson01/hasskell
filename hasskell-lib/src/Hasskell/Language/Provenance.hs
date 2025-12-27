@@ -128,11 +128,11 @@ observed :: EntityId -> ToggleState -> Fact
 observed eId = SourcelessFact . ObservedState eId
 
 -- | Converts the given explanation into a human-readable format.
-prettifyExplanation :: (File.FileSystem :> es) => Explanation -> Eff es (Doc AnsiStyle)
-prettifyExplanation explanation = do
+prettifyExplanation :: (File.FileSystem :> es) => ReportStyle -> Explanation -> Eff es (Doc AnsiStyle)
+prettifyExplanation style explanation = do
   let positions = extractLocations explanation
   baseDiagnostic <- loadReferencedFiles positions
-  pure (prettifyExplanationTree baseDiagnostic explanation)
+  pure (prettifyExplanationTree style baseDiagnostic explanation)
 
 -- Hacky way to remove the "warnings" that we can't get rid of from Diagnostics.
 -- This is because we make use of Diagnostic warnings to pretty-print code references.
@@ -143,19 +143,19 @@ cleanExplanation =
     ""
     . T.replace "[warning]: " ""
 
-prettifyExplanationTree :: Diagnostic Fact -> Explanation -> Doc AnsiStyle
-prettifyExplanationTree baseDiagnostic Explain {what, why} =
-  let prettyFact = renderFact baseDiagnostic what
-      childExplanations = map (prettifyExplanationTree baseDiagnostic) why
+prettifyExplanationTree :: ReportStyle -> Diagnostic Fact -> Explanation -> Doc AnsiStyle
+prettifyExplanationTree style baseDiagnostic Explain {what, why} =
+  let prettyFact = renderFact style baseDiagnostic what
+      childExplanations = map (prettifyExplanationTree style baseDiagnostic) why
       prefixSubExplanation = indent 4 . ("├─▶ because" <+>)
       subExplanations = map prefixSubExplanation childExplanations
       explanations = List.intersperse (indent 4 "│") (prettyFact : subExplanations)
    in vsep explanations
 
-renderFact :: Diagnostic Fact -> Fact -> Doc AnsiStyle
-renderFact baseDiagnostic fact = case fact of
+renderFact :: ReportStyle -> Diagnostic Fact -> Fact -> Doc AnsiStyle
+renderFact style baseDiagnostic fact = case fact of
   DeclaredFact (_ :@ loc) ->
-    toDocWithoutColor $
+    annotateDoc style $
       baseDiagnostic
         `addReport` Warn
           Nothing

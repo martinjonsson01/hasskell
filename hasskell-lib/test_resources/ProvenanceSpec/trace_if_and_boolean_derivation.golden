@@ -1,18 +1,18 @@
 will turn entity `lightB` on
 reason:
     [0m[warning][0m: entity `lightB` should be on
-         [0m╭──▶[0m [0m/home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@27:35-27:45[0m
+         [0m╭──▶[0m [0m/home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@28:35-28:45[0m
          [0m│[0m
-    [0m  27 │[0m [0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m`[0m[0me[0m[0ml[0m[0ms[0m[0me[0m[0m_[0m[0m`[0m[0m [0m[0m([0m[0ml[0m[0mi[0m[0mg[0m[0mh[0m[0mt[0m[0mB[0m[0m [0m[0m`[0m[0ms[0m[0mh[0m[0mo[0m[0mu[0m[0ml[0m[0md[0m[0mB[0m[0me[0m[0m`[0m[0m [0m[0mo[0m[0mn[0m[0m)[0m
+    [0m  28 │[0m [0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m`[0m[0me[0m[0ml[0m[0ms[0m[0me[0m[0m_[0m[0m`[0m[0m [0m[0m([0m[0ml[0m[0mi[0m[0mg[0m[0mh[0m[0mt[0m[0mB[0m[0m [0m[0m`[0m[0ms[0m[0mh[0m[0mo[0m[0mu[0m[0ml[0m[0md[0m[0mB[0m[0me[0m[0m`[0m[0m [0m[0mo[0m[0mn[0m[0m)[0m
          [0m•[0m                                   [0m┬[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m 
          [0m•[0m                                   [0m╰╸[0m [0mentity `lightB` should be on[0m
     [0m─────╯[0m
 
         │
         ├─▶ because [0m[warning][0m: literal
-             [0m╭──▶[0m [0m/home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@27:46-27:48[0m
+             [0m╭──▶[0m [0m/home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@28:46-28:48[0m
              [0m│[0m
-        [0m  27 │[0m [0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m`[0m[0me[0m[0ml[0m[0ms[0m[0me[0m[0m_[0m[0m`[0m[0m [0m[0m([0m[0ml[0m[0mi[0m[0mg[0m[0mh[0m[0mt[0m[0mB[0m[0m [0m[0m`[0m[0ms[0m[0mh[0m[0mo[0m[0mu[0m[0ml[0m[0md[0m[0mB[0m[0me[0m[0m`[0m[0m [0m[0mo[0m[0mn[0m[0m)[0m
+        [0m  28 │[0m [0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m`[0m[0me[0m[0ml[0m[0ms[0m[0me[0m[0m_[0m[0m`[0m[0m [0m[0m([0m[0ml[0m[0mi[0m[0mg[0m[0mh[0m[0mt[0m[0mB[0m[0m [0m[0m`[0m[0ms[0m[0mh[0m[0mo[0m[0mu[0m[0ml[0m[0md[0m[0mB[0m[0me[0m[0m`[0m[0m [0m[0mo[0m[0mn[0m[0m)[0m
              [0m•[0m                                              [0m┬[0m[0m─[0m 
              [0m•[0m                                              [0m╰╸[0m [0mliteral[0m
         [0m─────╯[0m
@@ -21,27 +21,27 @@ reason:
         ├─▶ because entity `lightB` is off
         │
         ├─▶ because [0m[warning][0m: branch was taken
-             [0m╭──▶[0m [0m/home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@27:19-27:26[0m
+             [0m╭──▶[0m [0m/home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@28:19-28:26[0m
              [0m│[0m
-        [0m  27 │[0m [0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m`[0m[0me[0m[0ml[0m[0ms[0m[0me[0m[0m_[0m[0m`[0m[0m [0m[0m([0m[0ml[0m[0mi[0m[0mg[0m[0mh[0m[0mt[0m[0mB[0m[0m [0m[0m`[0m[0ms[0m[0mh[0m[0mo[0m[0mu[0m[0ml[0m[0md[0m[0mB[0m[0me[0m[0m`[0m[0m [0m[0mo[0m[0mn[0m[0m)[0m
+        [0m  28 │[0m [0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m`[0m[0me[0m[0ml[0m[0ms[0m[0me[0m[0m_[0m[0m`[0m[0m [0m[0m([0m[0ml[0m[0mi[0m[0mg[0m[0mh[0m[0mt[0m[0mB[0m[0m [0m[0m`[0m[0ms[0m[0mh[0m[0mo[0m[0mu[0m[0ml[0m[0md[0m[0mB[0m[0me[0m[0m`[0m[0m [0m[0mo[0m[0mn[0m[0m)[0m
              [0m•[0m                   [0m┬[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m 
              [0m•[0m                   [0m╰╸[0m [0mbranch was taken[0m
         [0m─────╯[0m
 
             │
             ├─▶ because [0m[warning][0m: False
-                 [0m╭──▶[0m [0m/home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@25:44-25:48[0m
+                 [0m╭──▶[0m [0m/home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@26:44-26:48[0m
                  [0m│[0m
-            [0m  25 │[0m [0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m([0m[0m [0m[0mi[0m[0mf[0m[0m_[0m[0m [0m[0m([0m[0mt[0m[0mo[0m[0mg[0m[0mg[0m[0ml[0m[0me[0m[0md[0m[0mS[0m[0mt[0m[0ma[0m[0mt[0m[0me[0m[0mO[0m[0mf[0m[0m [0m[0ml[0m[0mi[0m[0mg[0m[0mh[0m[0mt[0m[0mA[0m[0m [0m[0m`[0m[0mi[0m[0ms[0m[0m`[0m[0m [0m[0mo[0m[0mn[0m[0m)[0m
+            [0m  26 │[0m [0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m([0m[0m [0m[0mi[0m[0mf[0m[0m_[0m[0m [0m[0m([0m[0mt[0m[0mo[0m[0mg[0m[0mg[0m[0ml[0m[0me[0m[0md[0m[0mS[0m[0mt[0m[0ma[0m[0mt[0m[0me[0m[0mO[0m[0mf[0m[0m [0m[0ml[0m[0mi[0m[0mg[0m[0mh[0m[0mt[0m[0mA[0m[0m [0m[0m`[0m[0mi[0m[0ms[0m[0m`[0m[0m [0m[0mo[0m[0mn[0m[0m)[0m
                  [0m•[0m                                            [0m┬[0m[0m─[0m[0m─[0m[0m─[0m 
                  [0m•[0m                                            [0m╰╸[0m [0mFalse[0m
             [0m─────╯[0m
 
                 │
                 ├─▶ because [0m[warning][0m: off
-                     [0m╭──▶[0m [0m/home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@25:22-25:36[0m
+                     [0m╭──▶[0m [0m/home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@26:22-26:36[0m
                      [0m│[0m
-                [0m  25 │[0m [0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m([0m[0m [0m[0mi[0m[0mf[0m[0m_[0m[0m [0m[0m([0m[0mt[0m[0mo[0m[0mg[0m[0mg[0m[0ml[0m[0me[0m[0md[0m[0mS[0m[0mt[0m[0ma[0m[0mt[0m[0me[0m[0mO[0m[0mf[0m[0m [0m[0ml[0m[0mi[0m[0mg[0m[0mh[0m[0mt[0m[0mA[0m[0m [0m[0m`[0m[0mi[0m[0ms[0m[0m`[0m[0m [0m[0mo[0m[0mn[0m[0m)[0m
+                [0m  26 │[0m [0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m([0m[0m [0m[0mi[0m[0mf[0m[0m_[0m[0m [0m[0m([0m[0mt[0m[0mo[0m[0mg[0m[0mg[0m[0ml[0m[0me[0m[0md[0m[0mS[0m[0mt[0m[0ma[0m[0mt[0m[0me[0m[0mO[0m[0mf[0m[0m [0m[0ml[0m[0mi[0m[0mg[0m[0mh[0m[0mt[0m[0mA[0m[0m [0m[0m`[0m[0mi[0m[0ms[0m[0m`[0m[0m [0m[0mo[0m[0mn[0m[0m)[0m
                      [0m•[0m                      [0m┬[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m 
                      [0m•[0m                      [0m╰╸[0m [0moff[0m
                 [0m─────╯[0m
@@ -50,18 +50,18 @@ reason:
                     ├─▶ because entity `lightA` is off
                 │
                 ├─▶ because [0m[warning][0m: on
-                     [0m╭──▶[0m [0m/home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@25:49-25:51[0m
+                     [0m╭──▶[0m [0m/home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@26:49-26:51[0m
                      [0m│[0m
-                [0m  25 │[0m [0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m([0m[0m [0m[0mi[0m[0mf[0m[0m_[0m[0m [0m[0m([0m[0mt[0m[0mo[0m[0mg[0m[0mg[0m[0ml[0m[0me[0m[0md[0m[0mS[0m[0mt[0m[0ma[0m[0mt[0m[0me[0m[0mO[0m[0mf[0m[0m [0m[0ml[0m[0mi[0m[0mg[0m[0mh[0m[0mt[0m[0mA[0m[0m [0m[0m`[0m[0mi[0m[0ms[0m[0m`[0m[0m [0m[0mo[0m[0mn[0m[0m)[0m
+                [0m  26 │[0m [0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m([0m[0m [0m[0mi[0m[0mf[0m[0m_[0m[0m [0m[0m([0m[0mt[0m[0mo[0m[0mg[0m[0mg[0m[0ml[0m[0me[0m[0md[0m[0mS[0m[0mt[0m[0ma[0m[0mt[0m[0me[0m[0mO[0m[0mf[0m[0m [0m[0ml[0m[0mi[0m[0mg[0m[0mh[0m[0mt[0m[0mA[0m[0m [0m[0m`[0m[0mi[0m[0ms[0m[0m`[0m[0m [0m[0mo[0m[0mn[0m[0m)[0m
                      [0m•[0m                                                 [0m┬[0m[0m─[0m 
                      [0m•[0m                                                 [0m╰╸[0m [0mon[0m
                 [0m─────╯[0m
 
                     │
                     ├─▶ because [0m[warning][0m: literal
-                         [0m╭──▶[0m [0m/home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@25:49-25:51[0m
+                         [0m╭──▶[0m [0m/home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@26:49-26:51[0m
                          [0m│[0m
-                    [0m  25 │[0m [0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m([0m[0m [0m[0mi[0m[0mf[0m[0m_[0m[0m [0m[0m([0m[0mt[0m[0mo[0m[0mg[0m[0mg[0m[0ml[0m[0me[0m[0md[0m[0mS[0m[0mt[0m[0ma[0m[0mt[0m[0me[0m[0mO[0m[0mf[0m[0m [0m[0ml[0m[0mi[0m[0mg[0m[0mh[0m[0mt[0m[0mA[0m[0m [0m[0m`[0m[0mi[0m[0ms[0m[0m`[0m[0m [0m[0mo[0m[0mn[0m[0m)[0m
+                    [0m  26 │[0m [0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m([0m[0m [0m[0mi[0m[0mf[0m[0m_[0m[0m [0m[0m([0m[0mt[0m[0mo[0m[0mg[0m[0mg[0m[0ml[0m[0me[0m[0md[0m[0mS[0m[0mt[0m[0ma[0m[0mt[0m[0me[0m[0mO[0m[0mf[0m[0m [0m[0ml[0m[0mi[0m[0mg[0m[0mh[0m[0mt[0m[0mA[0m[0m [0m[0m`[0m[0mi[0m[0ms[0m[0m`[0m[0m [0m[0mo[0m[0mn[0m[0m)[0m
                          [0m•[0m                                                 [0m┬[0m[0m─[0m 
                          [0m•[0m                                                 [0m╰╸[0m [0mliteral[0m
                     [0m─────╯[0m

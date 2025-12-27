@@ -31,6 +31,7 @@ import Hasskell.HomeAssistant.Client
 import Hasskell.Language.AST
 import Hasskell.Language.Executor
 import Hasskell.Language.Reconciler
+import Hasskell.Language.Report
 import Hasskell.Language.World
 import System.Directory qualified as Dir
 
@@ -51,9 +52,9 @@ innerRunHasskell :: Specification -> ClientM ()
 innerRunHasskell spec = do
   observed <- collectCurrentState
   let (plan, report) = reconcile observed spec
-  reportText <- renderReport report
+  reportText <- renderReport defaultStyle report
   unless (T.null reportText) $ logInfo reportText
-  renderedPlan <- renderPlanTrace plan
+  renderedPlan <- renderPlanTrace defaultStyle plan
   logDebug renderedPlan
   _ <- executePlan plan
   pure ()

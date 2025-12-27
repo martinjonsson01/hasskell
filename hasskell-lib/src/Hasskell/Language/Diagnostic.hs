@@ -43,18 +43,18 @@ data ReconciliationDiagnostic = Diagnostic
 
 -- | Converts the given report from a data representation into a pretty
 -- user-presentable representation.
-renderReport :: (MonadIO m) => ReconciliationReport -> m Text
-renderReport = liftIO . runEff . File.runFileSystem . innerRenderReport
+renderReport :: (MonadIO m) => ReportStyle -> ReconciliationReport -> m Text
+renderReport style = liftIO . runEff . File.runFileSystem . innerRenderReport style
 
-innerRenderReport :: (File.FileSystem :> es) => ReconciliationReport -> Eff es Text
-innerRenderReport (MkReconciliationReport diagnostics) = do
+innerRenderReport :: (File.FileSystem :> es) => ReportStyle -> ReconciliationReport -> Eff es Text
+innerRenderReport style (MkReconciliationReport diagnostics) = do
   let referencedLocation = map diagnosticLocation diagnostics
   baseDiagnostic <- loadReferencedFiles referencedLocation
 
   let reports = map diagnosticReport diagnostics
       fullDiagnostic = foldl' addReport baseDiagnostic reports
 
-  pure (renderInANSIColor fullDiagnostic)
+  pure (layoutDoc $ annotateDoc style fullDiagnostic)
 
 hasWarnings :: ReconciliationReport -> Bool
 hasWarnings (MkReconciliationReport reports) = length (reports) > 0
