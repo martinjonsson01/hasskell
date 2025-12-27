@@ -83,6 +83,18 @@ spec = do
         (MkReconciliationPlan steps, _) <- reconcileAnnotated observedOn boolPolicy
         (map stepAction steps) === [SetEntityState lightB Off]
 
+    specify "sets state depending on current time" $
+      property $ do
+        (entity, observed) <- forAll $ genWorldWithToggledAndTime Off (14, 39)
+        let timePolicy =
+              policy
+                "turn light on at 14:39"
+                ( if_ (currentTime `is` time @14 @39)
+                    `then_` (entity `shouldBe` on)
+                )
+        (MkReconciliationPlan steps, _) <- reconcileAnnotated observed timePolicy
+        (map stepAction steps) === [SetEntityState entity On]
+
   describe "Reconciler warnings" $ do
     specify "are generated when referencing unknown entity" $
       property $ do

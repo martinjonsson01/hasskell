@@ -16,6 +16,8 @@ module Hasskell
     if_,
     then_,
     else_,
+    currentTime,
+    time,
     IntoEntity (..),
     ToggleState (..),
   )

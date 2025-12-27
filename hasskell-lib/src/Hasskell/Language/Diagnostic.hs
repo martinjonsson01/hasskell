@@ -10,6 +10,8 @@ module Hasskell.Language.Diagnostic
     -- Warnings
     hasWarnings,
     warnUnknownEntity,
+    -- Errors
+    errorTypeMismatch,
   )
 where
 
@@ -20,11 +22,13 @@ import Data.List qualified as List
 import Data.Maybe
 import Data.Ratio
 import Data.Text (Text)
+import Data.Text qualified as T
 import Data.Text.Metrics
 import Effectful
 import Effectful.FileSystem qualified as File
 import Error.Diagnose
 import Hasskell.HomeAssistant.API
+import Hasskell.Language.AST
 import Hasskell.Language.CallStack
 import Hasskell.Language.Report
 
@@ -88,6 +92,31 @@ warnUnknownEntity knownEntities (EntityId entityId :@ positions) =
         unwrapEntity (EntityId entityInner) = entityInner
         closestMatch = findClosestMatch entityId (map unwrapEntity knownEntities)
     contextMarkers = map (,Where "via") (positionsSecondary positions)
+
+errorTypeMismatch :: T -> Located T -> ReconciliationReport
+errorTypeMismatch expectedT (actualT :@ loc) =
+  MkReconciliationReport $
+    List.singleton $
+      Diagnostic
+        loc
+        ( Err
+            Nothing
+            "Type mismatch"
+            (mainMarker : contextMarkers)
+            []
+        )
+  where
+    message =
+      This $
+        mconcat
+          [ "Expected `",
+            T.show expectedT,
+            "` but got `",
+            T.show actualT,
+            "`"
+          ]
+    mainMarker = (positionsPrimary loc, message)
+    contextMarkers = map (,Where "via") (positionsSecondary loc)
 
 findClosestMatch :: Text -> [Text] -> Maybe Text
 findClosestMatch text candidates =

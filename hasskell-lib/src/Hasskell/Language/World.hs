@@ -9,7 +9,7 @@ where
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HMap
 import Data.Maybe (mapMaybe)
-import Data.Time (UTCTime, getCurrentTime)
+import Data.Time
 import Effectful
 import Hasskell.Effects.HASS
 import Hasskell.HomeAssistant.API
@@ -33,7 +33,10 @@ instance Pretty ToggleState where
 --------------------------------------------------------------------------------
 
 -- | A recorded observation of a given world state.
-data ObservedWorld = MkObserved {observedTime :: UTCTime, observedWorld :: World}
+data ObservedWorld = MkObserved
+  { observedTimeOfDay :: TimeOfDay,
+    observedWorld :: World
+  }
   deriving (Eq, Ord, Show)
 
 -- | Gathers information about the current state of the world from Home Assistant.
@@ -43,7 +46,12 @@ data ObservedWorld = MkObserved {observedTime :: UTCTime, observedWorld :: World
 collectCurrentState :: (IOE :> es, HASS :> es) => Eff es ObservedWorld
 collectCurrentState = do
   states <- getStates
-  time <- liftIO $ getCurrentTime
+  time <- liftIO $ do
+    time <- getCurrentTime
+    timeZone <- getTimeZone time
+    let utcTimeOfDay = timeToTimeOfDay (utctDayTime time)
+        (_dayOffset, timeOfDay) = localToUTCTimeOfDay timeZone utcTimeOfDay
+    pure timeOfDay
   pure $
     MkObserved time $
       MkWorld

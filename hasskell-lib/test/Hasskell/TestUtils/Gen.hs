@@ -1,6 +1,7 @@
 module Hasskell.TestUtils.Gen
   ( -- | World generators
     genWorldWithToggled,
+    genWorldWithToggledAndTime,
     genWorldWithoutEntity,
     genWorldWithKnownEntities,
     genWorldWithToggleds,
@@ -49,21 +50,33 @@ genWorldWithToggled state = do
   world <- genWorldWithToggleds [(entityId, state)]
   pure (entityId, world)
 
+genWorldWithToggledAndTime :: ToggleState -> (Int, Int) -> Gen (EntityId, ObservedWorld)
+genWorldWithToggledAndTime state (hours, mins) = do
+  entityId <- genEntityId
+  let timeOfDay = TimeOfDay hours mins 0
+  world <- genTimedWorldWithToggleds timeOfDay [(entityId, state)]
+  pure (entityId, world)
+
 genWorldWithToggleds :: [(EntityId, ToggleState)] -> Gen ObservedWorld
 genWorldWithToggleds entitiesAndStates = do
-  MkObserved time world <- genObservedWorld
+  timeOfDay <- genTimeOfDay
+  genTimedWorldWithToggleds timeOfDay entitiesAndStates
+
+genTimedWorldWithToggleds :: TimeOfDay -> [(EntityId, ToggleState)] -> Gen ObservedWorld
+genTimedWorldWithToggleds timeOfDay entitiesAndStates = do
+  world <- genWorld
   let toggleables = HMap.fromList (map (uncurry (,)) entitiesAndStates)
       newToggleables = toggleables `HMap.union` (worldToggleables world)
-  pure $ MkObserved time world {worldToggleables = newToggleables}
+  pure $ MkObserved timeOfDay world {worldToggleables = newToggleables}
 
 genWorldWithKnownEntities :: [EntityId] -> Gen ObservedWorld
 genWorldWithKnownEntities known = do
-  MkObserved time world <- genObservedWorld
+  MkObserved timeOfDay world <- genObservedWorld
   knownEntities <- HMap.fromList <$> mapM genEntityWithId known
-  pure $ MkObserved time world {worldToggleables = knownEntities <> (worldToggleables world)}
+  pure $ MkObserved timeOfDay world {worldToggleables = knownEntities <> (worldToggleables world)}
 
 genObservedWorld :: Gen ObservedWorld
-genObservedWorld = MkObserved <$> genTime <*> genWorld
+genObservedWorld = MkObserved <$> genTimeOfDay <*> genWorld
 
 genWorldWithoutEntity :: Gen (EntityId, ObservedWorld)
 genWorldWithoutEntity = do
@@ -73,6 +86,9 @@ genWorldWithoutEntity = do
 
 genWorld :: Gen World
 genWorld = MkWorld . HMap.fromList <$> Gen.list (Range.linear 0 10) genToggleable
+
+genTimeOfDay :: Gen TimeOfDay
+genTimeOfDay = genTime >>= pure . timeToTimeOfDay . utctDayTime
 
 genTime :: Gen UTCTime
 genTime =

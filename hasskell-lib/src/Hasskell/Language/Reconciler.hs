@@ -17,9 +17,12 @@ where
 import Control.Applicative
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HMap
+import Data.Kind
 import Data.Maybe (catMaybes)
 import Data.Text (Text)
+import Data.Time
 import Data.Tuple.HT (mapSnd)
+import Data.Typeable
 import Effectful
 import Effectful.Error.Static (Error)
 import Effectful.Error.Static qualified as Error
@@ -132,11 +135,24 @@ computeDesiredStates Policy {expression} = do
   desiredState <- computeDesiredState expression
   pure $ HMap.fromList (catMaybes [desiredState])
 
-data ReconciliationError = UnknownEntity (Located EntityId)
-  deriving (Eq, Ord, Show)
+data ReconciliationError where
+  UnknownEntity :: Located EntityId -> ReconciliationError
+  TypeMismatch :: T -> Located T -> ReconciliationError
+
+deriving instance Eq ReconciliationError
+
+deriving instance Ord ReconciliationError
+
+deriving instance Show ReconciliationError
 
 unknownEntity :: (Error ReconciliationError :> es) => Located EntityId -> Eff es a
 unknownEntity = Error.throwError . UnknownEntity
+
+type family Denote (t :: T) :: Type where
+  Denote 'TBool = Bool
+  Denote 'TState = ToggleState
+  Denote 'TEntity = EntityId
+  Denote 'TTime = TimeOfDay
 
 computeDesiredState ::
   ( State ObservedWorld :> es,
@@ -171,6 +187,9 @@ computeDesiredState action =
       Left (UnknownEntity eId) -> do
         knownEntities <- State.gets (HMap.keys . worldToggleables . observedWorld)
         Writer.tell (warnUnknownEntity knownEntities eId)
+        pure Nothing
+      Left (TypeMismatch expectedT actualT) -> do
+        Writer.tell (errorTypeMismatch expectedT actualT)
         pure Nothing
       Right result -> pure result
 
@@ -209,8 +228,8 @@ evalBool ::
   Eff es (Detailed Bool)
 evalBool = \case
   EEqual e1 e2 :@ loc -> do
-    s1 :@ s1Loc :£ s1Expl <- evalState e1
-    s2 :@ s2Loc :£ s2Expl <- evalState e2
+    EqVal (s1 :@ s1Loc :£ s1Expl) <- evalEq e1
+    EqVal (s2 :@ s2Loc :£ s2Expl) <- evalEq e2
     let areEqual = s1 == s2
     pure $
       (areEqual :@ loc)
@@ -218,11 +237,34 @@ evalBool = \case
         `becauseMore` (evaluated s1Loc s1 `explain` s1Expl)
         `becauseMore` (evaluated s2Loc s2 `explain` s2Expl)
 
+data EquatableVal t where
+  EqVal ::
+    ( Eq (Denote t),
+      Pretty (Denote t),
+      Show (Denote t),
+      Ord (Denote t),
+      Typeable (Denote t)
+    ) =>
+    Detailed (Denote t) -> EquatableVal t
+
+evalEq ::
+  ( Proved Equatable t,
+    State ObservedWorld :> es,
+    Error ReconciliationError :> es
+  ) =>
+  Located (Exp t) ->
+  Eff es (EquatableVal t)
+evalEq @t expr =
+  case (auto @Equatable @t) of
+    EqState -> EqVal <$> evalState expr
+    EqTime -> EqVal <$> evalTime expr
+
 evalState ::
   ( State ObservedWorld :> es,
     Error ReconciliationError :> es
   ) =>
-  Located (Exp 'TState) -> Eff es (Detailed ToggleState)
+  Located (Exp 'TState) ->
+  Eff es (Detailed ToggleState)
 evalState = \case
   ELitState s :@ loc -> pure (s :@ loc `because` literal loc)
   EGetState entity :@ _ -> do
@@ -231,6 +273,16 @@ evalState = \case
     case HMap.lookup eId worldToggleables of
       Just state -> pure (state :@ eloc `because` observed eId state)
       Nothing -> unknownEntity (eId :@ eloc)
+
+evalTime ::
+  (State ObservedWorld :> es) =>
+  Located (Exp 'TTime) ->
+  Eff es (Detailed TimeOfDay)
+evalTime = \case
+  ELitTime timeOfDay :@ loc -> pure $ timeOfDay :@ loc `because` literal loc
+  EGetTime :@ loc -> do
+    timeOfDay <- State.gets observedTimeOfDay
+    pure (timeOfDay :@ loc `because` observedTime timeOfDay)
 
 evalEntity ::
   ( State ObservedWorld :> es,

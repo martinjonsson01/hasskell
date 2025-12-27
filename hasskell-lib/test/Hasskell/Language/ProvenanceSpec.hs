@@ -44,5 +44,19 @@ spec = do
 
       goldenStage $ pureGoldenTextFile "test_resources/ProvenanceSpec/trace_shouldBe.golden" renderedPlan
 
+    it "renders time references correctly" $ stagedGolden $ \goldenStage -> do
+      (entity, observed) <- sample $ genWorldWithToggledAndTime Off (14, 39)
+      let timePolicy =
+            policy
+              "turn light on at 14:39"
+              ( if_ (currentTime `is` time @14 @39)
+                  `then_` (entity `shouldBe` on)
+              )
+      let (plan, _) = reconcile observed timePolicy
+
+      renderedPlan <- renderPlanTrace unadornedStyle plan
+
+      goldenStage $ pureGoldenTextFile "test_resources/ProvenanceSpec/trace_time.golden" renderedPlan
+
 sample :: Gen a -> IO a
 sample = sampleDeterministic (Seed 0 1)

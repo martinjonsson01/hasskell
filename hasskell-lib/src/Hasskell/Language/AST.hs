@@ -1,5 +1,9 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NoOverloadedStrings #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
+-- The ValidHour/Minute is marked 'redundant'
+{-# OPTIONS_GHC -Wno-redundant-constraints #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
 module Hasskell.Language.AST
@@ -12,7 +16,9 @@ module Hasskell.Language.AST
     T (..),
     Exp (..),
     IntoEntity (..),
-    -- Combinators
+    Equatable (..),
+    Proved (..),
+    -- Syntax
     fromState,
     on,
     off,
@@ -22,6 +28,10 @@ module Hasskell.Language.AST
     then_,
     else_,
     is,
+    currentTime,
+    time,
+    -- Singleton types
+    ST (..),
     -- Reexports
     Located (..),
   )
@@ -35,15 +45,20 @@ import Data.Singletons
 import Data.Singletons.Decide
 import Data.Singletons.TH
 import Data.Text (Text)
+import Data.Time
+import Data.Time.Format.ISO8601
 import GHC.Stack
+import GHC.TypeLits hiding (Text)
+import GHC.TypeLits qualified as TypeLits
 import Hasskell.HomeAssistant.API
 import Hasskell.Language.CallStack
 import Hasskell.Language.World
 import Prelude.Singletons
+import Prettyprinter
 
 $( singletons
      [d|
-       data T = TEntity | TAction | TBool | TState
+       data T = TEntity | TAction | TBool | TState | TTime
 
        deriving instance (Eq T)
 
@@ -98,7 +113,9 @@ instance HasReferencedEntities (Exp t) where
   referencedEntitiesIn = \case
     ELitEntity eId -> [eId]
     ELitState _ -> []
+    ELitTime _ -> []
     EGetState e -> referencedEntitiesIn e
+    EGetTime -> []
     ESetState expr _ -> referencedEntitiesIn expr
     EDoNothing -> []
     EEqual e1 e2 -> referencedEntitiesIn e1 ++ referencedEntitiesIn e2
@@ -111,7 +128,9 @@ instance HasLocations (Exp t) where
   extractLocations = \case
     ELitEntity _ -> []
     ELitState _ -> []
+    ELitTime _ -> []
     EGetState (_ :@ loc) -> [loc]
+    EGetTime -> []
     ESetState expr _ -> extractLocations expr
     EDoNothing -> []
     EEqual e1 e2 -> extractLocations e1 ++ extractLocations e2
@@ -142,13 +161,20 @@ data Exp :: T -> Type where
   -- Literals
   ELitEntity :: EntityId -> Exp 'TEntity
   ELitState :: ToggleState -> Exp 'TState
+  ELitTime :: TimeOfDay -> Exp 'TTime
   -- Entity properties
   EGetState :: Located (Exp 'TEntity) -> Exp 'TState
+  -- Time
+  EGetTime :: Exp 'TTime
   -- Actions
   ESetState :: Located (Exp 'TEntity) -> Located (Exp 'TState) -> Exp 'TAction
   EDoNothing :: Exp 'TAction
   -- Boolean logic
-  EEqual :: Located (Exp 'TState) -> Located (Exp 'TState) -> Exp 'TBool
+  EEqual ::
+    (SingI t, Proved Equatable t) =>
+    Located (Exp t) ->
+    Located (Exp t) ->
+    Exp 'TBool
   EIf :: -- Nested locs to record both the if-then-else syntax and its operands.
     Located (Located (Exp 'TBool)) ->
     Located (Located (Exp 'TAction)) ->
@@ -157,9 +183,73 @@ data Exp :: T -> Type where
 
 deriving instance Show (Exp t)
 
-deriving instance Eq (Exp t)
+instance Eq (Exp t) where
+  ELitEntity x == ELitEntity y = x == y
+  ELitState x == ELitState y = x == y
+  ELitTime x == ELitTime y = x == y
+  EGetState x == EGetState y = x == y
+  EGetTime == EGetTime = True
+  ESetState e s == ESetState e' s' = e == e' && s == s'
+  EDoNothing == EDoNothing = True
+  EEqual @t1 a1 b1 == EEqual @t2 a2 b2 =
+    case (sing @t1) %~ (sing @t2) of
+      Proved Refl -> a1 == a2 && b1 == b2
+      Disproved _ -> False
+  EIf eCond1 eThen1 eElse1 == EIf eCond2 eThen2 eElse2 =
+    eCond1 == eCond2
+      && eThen1 == eThen2
+      && eElse1 == eElse2
+  _ == _ = False
 
-deriving instance Ord (Exp t)
+instance Ord (Exp t) where
+  compare x y =
+    case (x, y) of
+      -- Literals
+      (ELitEntity x1, ELitEntity x2) -> compare x1 x2
+      (ELitState x1, ELitState x2) -> compare x1 x2
+      (ELitState _, _) -> LT
+      (_, ELitState _) -> GT
+      (ELitTime x1, ELitTime x2) -> compare x1 x2
+      (ELitTime _, _) -> LT
+      (_, ELitTime _) -> GT
+      -- Entity properties
+      (EGetState e1, EGetState e2) -> compare e1 e2
+      -- Time
+      (EGetTime, EGetTime) -> EQ
+      -- Actions
+      (ESetState e1 s1, ESetState e2 s2) ->
+        compare e1 e2 <> compare s1 s2
+      (ESetState _ _, _) -> LT
+      (_, ESetState _ _) -> GT
+      (EDoNothing, EDoNothing) -> EQ
+      (EDoNothing, _) -> LT
+      (_, EDoNothing) -> GT
+      -- Boolean logic
+      (EEqual @t1 a1 b1, EEqual @t2 a2 b2) ->
+        case (sing @t1) %~ (sing @t2) of
+          Proved Refl -> compare a1 a2 <> compare b1 b2
+          Disproved _ ->
+            compare
+              (fromSing (sing @t1))
+              (fromSing (sing @t2))
+      (EIf eCond1 eThen1 eElse1, EIf eCond2 eThen2 eElse2) ->
+        compare eCond1 eCond2
+          <> compare eThen1 eThen2
+          <> compare eElse1 eElse2
+
+-- | Whether values of a given type can be compared using equality checks.
+data Equatable :: T -> Type where
+  EqState :: Equatable 'TState
+  EqTime :: Equatable 'TTime
+
+class Proved p a where
+  auto :: p a
+
+instance Proved Equatable 'TState where
+  auto = EqState
+
+instance Proved Equatable 'TTime where
+  auto = EqTime
 
 --------------------------------------------------------------------------------
 -- Syntax
@@ -196,9 +286,62 @@ shouldBe entity state = ESetState (toEntity entity) state :@ captureSrcSpan
 toggledStateOf :: (HasCallStack, IntoEntity e) => e -> Located (Exp 'TState)
 toggledStateOf entity = EGetState (toEntity entity) :@ captureSrcSpan
 
+--------------------------------------------------------------------------------
+
 -- | Check for equality.
-is :: (HasCallStack) => Located (Exp 'TState) -> Located (Exp 'TState) -> Located (Exp 'TBool)
+is ::
+  (HasCallStack, SingI t, Proved Equatable t) =>
+  Located (Exp t) ->
+  Located (Exp t) ->
+  Located (Exp 'TBool)
 is s1 s2 = EEqual s1 s2 :@ captureSrcSpan
+
+--------------------------------------------------------------------------------
+
+-- | Gets the current world time.
+currentTime :: (HasCallStack) => Located (Exp 'TTime)
+currentTime = EGetTime :@ captureSrcSpan
+
+-- | An hour in the 0-23 (inclusive) range.
+type family ValidHour (h :: Nat) :: Constraint where
+  ValidHour h =
+    If
+      (h <=? 23)
+      (() :: Constraint)
+      (TypeError (TypeLits.Text "Invalid hour: " :<>: ShowType h))
+
+-- | A minute in the 0-59 (inclusive) range.
+type family ValidMinute (m :: Nat) :: Constraint where
+  ValidMinute m =
+    If
+      (m <=? 59)
+      (() :: Constraint)
+      (TypeError (TypeLits.Text "Invalid minute: " :<>: ShowType m))
+
+-- | Need an orphan instance here to allow it to be pretty-printed in the trace.
+-- TODO: use newtype instead
+instance Pretty TimeOfDay where
+  pretty = pretty . formatShow (timeOfDayFormat ExtendedFormat)
+
+-- | Refer to a dateless time of day (24-hour clock).
+time ::
+  ( HasCallStack,
+    KnownNat h,
+    ValidHour h,
+    KnownNat m,
+    ValidMinute m
+  ) =>
+  Located (Exp 'TTime)
+time @h @m =
+  ( ELitTime $
+      TimeOfDay
+        (fromEnum $ natVal (Proxy :: Proxy h))
+        (fromEnum $ natVal (Proxy :: Proxy m))
+        0
+  )
+    :@ captureSrcSpan
+
+--------------------------------------------------------------------------------
 
 -- | An incomplete if that only has a condition.
 data IfCond
@@ -248,3 +391,5 @@ instance BuildableIf IfThenElse where
 instance BuildableIf IfThen where
   buildIf (IfThenB condExp thenExp) =
     EIf condExp thenExp (EDoNothing :@ captureSrcSpan :@ captureSrcSpan) :@ captureSrcSpan
+
+--------------------------------------------------------------------------------

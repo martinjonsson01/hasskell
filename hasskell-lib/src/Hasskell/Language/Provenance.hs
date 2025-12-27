@@ -8,6 +8,7 @@ module Hasskell.Language.Provenance
     stripExplanation,
     -- Facts
     observed,
+    observedTime,
     desired,
     branched,
     equality,
@@ -16,12 +17,16 @@ module Hasskell.Language.Provenance
     -- Pretty-printing
     prettifyExplanation,
     cleanExplanation,
+    -- Values
+    PrettyVal (..),
   )
 where
 
 import Data.List qualified as List
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Time
+import Data.Type.Equality
 import Effectful
 import Effectful.FileSystem qualified as File
 import Error.Diagnose
@@ -32,6 +37,7 @@ import Hasskell.Language.Report
 import Hasskell.Language.World
 import Prettyprinter
 import Prettyprinter.Render.Terminal
+import Type.Reflection
 
 -- | A motivated reasoning behind why something is the case.
 data Explanation = Explain
@@ -42,7 +48,7 @@ data Explanation = Explain
 
 -- | Something that has been given an explanation.
 data Explained a = a :£ Explanation
-  deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
+  deriving (Show, Functor, Foldable, Traversable)
 
 -- | Things that are explanations.
 class IntoExplanation a where
@@ -90,13 +96,28 @@ instance HasLocations Fact where
     SourcelessFact _ -> []
 
 -- | A fact stemming from the user's declarations.
-data DeclaredFact
-  = DesiredState EntityId ToggleState
-  | BranchTaken
-  | Equality Bool
-  | Evaluated ToggleState
-  | Literal
+data DeclaredFact where
+  DesiredState :: EntityId -> ToggleState -> DeclaredFact
+  BranchTaken :: DeclaredFact
+  Equality :: Bool -> DeclaredFact
+  Evaluated :: PrettyVal -> DeclaredFact
+  Literal :: DeclaredFact
   deriving (Eq, Ord, Show)
+
+data PrettyVal where
+  PrettyVal :: (Typeable a, Pretty a, Show a, Eq a, Ord a) => a -> PrettyVal
+
+deriving instance Show PrettyVal
+
+instance Eq PrettyVal where
+  PrettyVal a == PrettyVal b = case eqTypeRep (typeOf a) (typeOf b) of
+    Just HRefl -> a == b
+    Nothing -> False
+
+instance Ord PrettyVal where
+  compare (PrettyVal a) (PrettyVal b) = case eqTypeRep (typeOf a) (typeOf b) of
+    Just HRefl -> compare a b
+    Nothing -> compare (typeRepTyCon (typeOf a)) (typeRepTyCon (typeOf b))
 
 -- | There is a desired state for an entity.
 desired :: Location -> EntityId -> ToggleState -> Fact
@@ -111,8 +132,14 @@ equality :: Location -> Bool -> Fact
 equality loc = DeclaredFact . (:@ loc) . Equality
 
 -- | A given state was evaluated.
-evaluated :: Location -> ToggleState -> Fact
-evaluated loc = DeclaredFact . (:@ loc) . Evaluated
+evaluated ::
+  ( Typeable val,
+    Show val,
+    Ord val,
+    Pretty val
+  ) =>
+  Location -> val -> Fact
+evaluated loc = DeclaredFact . (:@ loc) . Evaluated . PrettyVal
 
 -- | The state was specified with a source code literal.
 literal :: Location -> Fact
@@ -121,11 +148,16 @@ literal = DeclaredFact . (Literal :@)
 -- | A fact that does not stem from the user's declarations.
 data SourcelessFact
   = ObservedState EntityId ToggleState
+  | ObservedTime TimeOfDay
   deriving (Eq, Ord, Show)
 
 -- | A specific state has been observed.
 observed :: EntityId -> ToggleState -> Fact
 observed eId = SourcelessFact . ObservedState eId
+
+-- | A time has been observed.
+observedTime :: TimeOfDay -> Fact
+observedTime = SourcelessFact . ObservedTime
 
 -- | Converts the given explanation into a human-readable format.
 prettifyExplanation :: (File.FileSystem :> es) => ReportStyle -> Explanation -> Eff es (Doc AnsiStyle)
@@ -175,9 +207,10 @@ instance Pretty DeclaredFact where
       "entity" <+> pretty eId <+> "should be" <+> pretty state
     BranchTaken -> "branch was taken"
     Equality equal -> pretty equal
-    Evaluated state -> pretty state
+    Evaluated (PrettyVal val) -> pretty val
     Literal -> "literal"
 
 instance Pretty SourcelessFact where
   pretty = \case
     ObservedState eId current -> "entity" <+> pretty eId <+> "is" <+> pretty current
+    ObservedTime timeOfDay -> "current time is" <+> pretty timeOfDay
