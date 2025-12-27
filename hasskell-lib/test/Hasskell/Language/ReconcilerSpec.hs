@@ -91,6 +91,22 @@ spec = do
         annotate (T.unpack renderedPlan)
         (map stepAction steps) === []
 
+    specify "mirrors state of two lights" $
+      property $ do
+        let lightA = EntityId "lightA"
+            lightB = EntityId "lightB"
+        observedOn <- forAll $ genWorldWithToggleds [(lightA, Off), (lightB, On)]
+        let boolPolicy =
+              policy
+                "mirror lightA state to lightB"
+                (lightB `shouldBe` toggledStateOf lightA)
+        let (plan@(MkReconciliationPlan steps), report) = reconcile observedOn boolPolicy
+        renderedReport <- renderReport report
+        renderedPlan <- renderPlanTrace plan
+        annotate (T.unpack renderedReport)
+        annotate (T.unpack renderedPlan)
+        (map stepAction steps) === [SetEntityState lightB Off]
+
   describe "Reconciler warnings" $ do
     specify "are generated when referencing unknown entity" $
       property $ do

@@ -166,14 +166,14 @@ computeDesiredState ::
 computeDesiredState action =
   Error.runErrorNoCallStack
     ( case action of
-        ESetState (ELitEntity eId :@ eLoc) (ELitState state :@ stateLoc) :@ loc -> do
+        ESetState (ELitEntity eId :@ eLoc) eState :@ loc -> do
           ensureEntityExists (eId :@ eLoc)
+          state :@ stateLoc :£ stateExpl <- evalState eState
           pure $
             Just
               ( eId :@ eLoc,
-                state :@ stateLoc `because` desired loc eId state
+                state :@ stateLoc `because` (desired loc eId state `explain` stateExpl)
               )
-        ESetState (ELitEntity _ :@ _) (EGetState _ :@ _) :@ _ -> todo
         EIf (condExp :@ _) (thenExp :@ thenLoc) (elseExp :@ elseLoc) :@ _ ->
           evalBool condExp >>= \case
             (True :@ _) :£ trueExpl -> evalBranch trueExpl thenLoc thenExp
