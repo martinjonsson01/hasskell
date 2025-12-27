@@ -7,7 +7,6 @@ module Hasskell.Language.Provenance
     elaborate,
     stripExplanation,
     -- Facts
-    differs,
     observed,
     desired,
     branched,
@@ -65,7 +64,7 @@ because a expl = a :£ (toExplanation expl)
 
 -- | Add a sibling explanation.
 becauseMore :: (IntoExplanation expl) => Explained a -> expl -> Explained a
-becauseMore (a :£ expl) new = a :£ expl {why = toExplanation new : why expl}
+becauseMore (a :£ expl) new = a :£ expl {why = why expl ++ [toExplanation new]}
 
 -- | Give another level of explanation to something.
 elaborate :: Explained a -> Fact -> Explained a
@@ -99,10 +98,6 @@ data DeclaredFact
   | Literal
   deriving (Eq, Ord, Show)
 
--- | There is a difference between two states.
-differs :: EntityId -> ToggleState -> ToggleState -> Fact
-differs eId s1 s2 = SourcelessFact (Diff eId s1 s2)
-
 -- | There is a desired state for an entity.
 desired :: Location -> EntityId -> ToggleState -> Fact
 desired loc eId = DeclaredFact . (:@ loc) . DesiredState eId
@@ -126,7 +121,6 @@ literal = DeclaredFact . (Literal :@)
 -- | A fact that does not stem from the user's declarations.
 data SourcelessFact
   = ObservedState EntityId ToggleState
-  | Diff EntityId ToggleState ToggleState
   deriving (Eq, Ord, Show)
 
 -- | A specific state has been observed.
@@ -161,7 +155,7 @@ prettifyExplanationTree baseDiagnostic Explain {what, why} =
 renderFact :: Diagnostic Fact -> Fact -> Doc AnsiStyle
 renderFact baseDiagnostic fact = case fact of
   DeclaredFact (_ :@ loc) ->
-    toDocWithColor $
+    toDocWithoutColor $
       baseDiagnostic
         `addReport` Warn
           Nothing
@@ -186,6 +180,4 @@ instance Pretty DeclaredFact where
 
 instance Pretty SourcelessFact where
   pretty = \case
-    Diff _ s1 s2 -> "needs reconciling:" <+> pretty s1 <+> "/=" <+> pretty s2
-    ObservedState eId current ->
-      "entity" <+> pretty eId <+> "is" <+> pretty current
+    ObservedState eId current -> "entity" <+> pretty eId <+> "is" <+> pretty current

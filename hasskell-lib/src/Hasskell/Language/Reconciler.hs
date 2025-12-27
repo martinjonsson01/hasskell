@@ -14,6 +14,7 @@ module Hasskell.Language.Reconciler
   )
 where
 
+import Control.Applicative
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HMap
 import Data.Maybe (catMaybes)
@@ -104,10 +105,8 @@ reconcileInner = do
   spec <- State.get
   desiredToggleables <- HMap.unions <$> mapM computeDesiredStates (specPolicies spec)
 
-  let unlocatedDesiredToggleables = HMap.mapKeys stripLocation desiredToggleables
-  needsToggling <- reconcileToggleables unlocatedDesiredToggleables
-
-  let steps = generateToggleSteps needsToggling
+  let needsToggling = HMap.mapKeys stripLocation desiredToggleables
+      steps = generateToggleSteps needsToggling
 
   pure (MkReconciliationPlan steps)
 
@@ -122,24 +121,6 @@ generateToggleSteps = map toReconciliationStep . HMap.toList
         { stepAction = SetEntityState eId state,
           stepReason = explanation
         }
-
-reconcileToggleables ::
-  (State ObservedWorld :> es) =>
-  HashMap EntityId (Detailed ToggleState) ->
-  Eff es (HashMap EntityId (Detailed ToggleState))
-reconcileToggleables desiredToggleables = do
-  worldToggleables <- State.gets (worldToggleables . observedWorld)
-  pure (desiredToggleables `reconcileStates` worldToggleables)
-  where
-    reconcileStates = HMap.differenceWithKey dropIfStatesEqual
-    dropIfStatesEqual eId explained@((expected :@ _) :£ _) actual
-      | expected /= actual =
-          Just
-            ( explained
-                `elaborate` differs eId expected actual
-                `becauseMore` observed eId actual
-            )
-      | otherwise = Nothing
 
 computeDesiredStates ::
   ( State ObservedWorld :> es,
@@ -166,19 +147,25 @@ computeDesiredState ::
 computeDesiredState action =
   Error.runErrorNoCallStack
     ( case action of
-        ESetState (ELitEntity eId :@ eLoc) eState :@ loc -> do
-          ensureEntityExists (eId :@ eLoc)
-          state :@ stateLoc :£ stateExpl <- evalState eState
+        ESetState eEntity eDesiredState :@ loc -> do
+          eId :@ eLoc :£ _ <- evalEntity eEntity
+          desiredState :@ desiredStateLoc :£ desiredStateExpl <- evalState eDesiredState
+          currentState :@ _ :£ _ <- evalState (toggledStateOf eId)
           pure $
-            Just
-              ( eId :@ eLoc,
-                state :@ stateLoc `because` (desired loc eId state `explain` stateExpl)
-              )
+            if desiredState == currentState
+              then empty
+              else
+                Just
+                  ( eId :@ eLoc,
+                    (desiredState :@ desiredStateLoc)
+                      `because` (desired loc eId desiredState `explain` desiredStateExpl)
+                      `becauseMore` (observed eId currentState)
+                  )
         EIf (condExp :@ _) (thenExp :@ thenLoc) (elseExp :@ elseLoc) :@ _ ->
           evalBool condExp >>= \case
             (True :@ _) :£ trueExpl -> evalBranch trueExpl thenLoc thenExp
             (False :@ _) :£ falseExpl -> evalBranch falseExpl elseLoc elseExp
-        EDoNothing :@ _ -> pure Nothing
+        EDoNothing :@ _ -> pure empty
     )
     >>= \case
       Left (UnknownEntity eId) -> do
@@ -204,7 +191,9 @@ evalBranch conditionExplanation ifLoc expr = do
           (`becauseMore` (branched ifLoc `explain` conditionExplanation))
 
 ensureEntityExists ::
-  (State ObservedWorld :> es, Error ReconciliationError :> es) =>
+  ( State ObservedWorld :> es,
+    Error ReconciliationError :> es
+  ) =>
   Located EntityId -> Eff es ()
 ensureEntityExists entity@(eId :@ _) = do
   worldToggleables <- State.gets (worldToggleables . observedWorld)
@@ -243,6 +232,12 @@ evalState = \case
       Just state -> pure (state :@ eloc `because` observed eId state)
       Nothing -> unknownEntity (eId :@ eloc)
 
-evalEntity :: Located (Exp 'TEntity) -> Eff es (Detailed EntityId)
+evalEntity ::
+  ( State ObservedWorld :> es,
+    Error ReconciliationError :> es
+  ) =>
+  Located (Exp 'TEntity) -> Eff es (Detailed EntityId)
 evalEntity = \case
-  ELitEntity e :@ loc -> pure (e :@ loc `because` literal loc)
+  ELitEntity eId :@ loc -> do
+    ensureEntityExists (eId :@ loc)
+    pure (eId :@ loc `because` literal loc)

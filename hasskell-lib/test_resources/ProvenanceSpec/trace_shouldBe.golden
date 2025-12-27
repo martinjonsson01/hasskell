@@ -1,27 +1,63 @@
 will turn entity `blfK7S` off
 reason:
-    needs reconciling: off /= on
+    [0m[warning][0m: entity `blfK7S` should be off
+         [0m╭──▶[0m [0mGenerated@-1:-1--1:-1[0m
+         [0m│[0m
+    [0m  -1 │[0m [0m<no line>[0m
+         [0m•[0m 
+         [0m•[0m [0m╰╸[0m [0mentity `blfK7S` should be off[0m
+    [0m─────╯[0m
+
+        │
+        ├─▶ because [0m[warning][0m: literal
+             [0m╭──▶[0m [0mGenerated@-1:-1--1:-1[0m
+             [0m│[0m
+        [0m  -1 │[0m [0m<no line>[0m
+             [0m•[0m 
+             [0m•[0m [0m╰╸[0m [0mliteral[0m
+        [0m─────╯[0m
+
         │
         ├─▶ because entity `blfK7S` is on
-        │
-        ├─▶ because entity `blfK7S` should be off
-             [0;90;1m╭──▶[0m [0;32;1mGenerated@-1:-1--1:-1[0m
-             [0;90;1m│[0m
-        [0;90;1m  -1 │[0m [0;35;1m<no line>[0m
-             [0;90;1m•[0m 
-             [0;90;1m•[0m [0;93m╰╸[0m [0;93mentity `blfK7S` should be off[0m
-        [0;90;1m─────╯[0m
-
 will turn entity `lightB` on
 reason:
-    needs reconciling: on /= off
+    [0m[warning][0m: entity `lightB` should be on
+         [0m╭──▶[0m [0m/home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/TestUtils/Specifications.hs@17:12-17:22[0m
+         [0m│[0m
+    [0m  17 │[0m [0m [0m[0m [0m[0m [0m[0m [0m[0m([0m[0ml[0m[0mi[0m[0mg[0m[0mh[0m[0mt[0m[0m [0m[0m`[0m[0ms[0m[0mh[0m[0mo[0m[0mu[0m[0ml[0m[0md[0m[0mB[0m[0me[0m[0m`[0m[0m [0m[0mf[0m[0mr[0m[0mo[0m[0mm[0m[0mS[0m[0mt[0m[0ma[0m[0mt[0m[0me[0m[0m [0m[0ms[0m[0mt[0m[0ma[0m[0mt[0m[0me[0m[0m)[0m
+         [0m•[0m            [0m┬[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m 
+         [0m•[0m            [0m╰╸[0m [0mentity `lightB` should be on[0m
+    [0m─────╯[0m
+
+        │
+        ├─▶ because [0m[warning][0m: literal
+             [0m╭──▶[0m [0m/home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/TestUtils/Specifications.hs@17:23-17:32[0m
+             [0m│[0m
+        [0m  17 │[0m [0m [0m[0m [0m[0m [0m[0m [0m[0m([0m[0ml[0m[0mi[0m[0mg[0m[0mh[0m[0mt[0m[0m [0m[0m`[0m[0ms[0m[0mh[0m[0mo[0m[0mu[0m[0ml[0m[0md[0m[0mB[0m[0me[0m[0m`[0m[0m [0m[0mf[0m[0mr[0m[0mo[0m[0mm[0m[0mS[0m[0mt[0m[0ma[0m[0mt[0m[0me[0m[0m [0m[0ms[0m[0mt[0m[0ma[0m[0mt[0m[0me[0m[0m)[0m
+             [0m•[0m                       [0m┬[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m 
+             [0m•[0m                       [0m╰╸[0m [0mliteral[0m
+        [0m─────╯[0m
+
         │
         ├─▶ because entity `lightB` is off
+will turn entity `WhlNpMw` off
+reason:
+    [0m[warning][0m: entity `WhlNpMw` should be off
+         [0m╭──▶[0m [0mGenerated@-1:-1--1:-1[0m
+         [0m│[0m
+    [0m  -1 │[0m [0m<no line>[0m
+         [0m•[0m 
+         [0m•[0m [0m╰╸[0m [0mentity `WhlNpMw` should be off[0m
+    [0m─────╯[0m
+
         │
-        ├─▶ because entity `lightB` should be on
-             [0;90;1m╭──▶[0m [0;32;1m/home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/TestUtils/Specifications.hs@17:12-17:22[0m
-             [0;90;1m│[0m
-        [0;90;1m  17 │[0m [0;97m [0m[0;97m [0m[0;97m [0m[0;97m [0m[0;97m([0m[0;97ml[0m[0;97mi[0m[0;97mg[0m[0;97mh[0m[0;97mt[0m[0;97m [0m[0;93;1m`[0m[0;93;1ms[0m[0;93;1mh[0m[0;93;1mo[0m[0;93;1mu[0m[0;93;1ml[0m[0;93;1md[0m[0;93;1mB[0m[0;93;1me[0m[0;93;1m`[0m[0;97m [0m[0;97mf[0m[0;97mr[0m[0;97mo[0m[0;97mm[0m[0;97mS[0m[0;97mt[0m[0;97ma[0m[0;97mt[0m[0;97me[0m[0;97m [0m[0;97ms[0m[0;97mt[0m[0;97ma[0m[0;97mt[0m[0;97me[0m[0;97m)[0m
-             [0;90;1m•[0m            [0;93m┬[0m[0;93m─[0m[0;93m─[0m[0;93m─[0m[0;93m─[0m[0;93m─[0m[0;93m─[0m[0;93m─[0m[0;93m─[0m[0;93m─[0m 
-             [0;90;1m•[0m            [0;93m╰╸[0m [0;93mentity `lightB` should be on[0m
-        [0;90;1m─────╯[0m
+        ├─▶ because [0m[warning][0m: literal
+             [0m╭──▶[0m [0mGenerated@-1:-1--1:-1[0m
+             [0m│[0m
+        [0m  -1 │[0m [0m<no line>[0m
+             [0m•[0m 
+             [0m•[0m [0m╰╸[0m [0mliteral[0m
+        [0m─────╯[0m
+
+        │
+        ├─▶ because entity `WhlNpMw` is on
