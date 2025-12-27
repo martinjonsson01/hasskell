@@ -20,7 +20,7 @@ spec = do
     it "warns about unknown entity" $ stagedGolden $ \goldenStage -> do
       (unknownEntity, observed) <- sampleDeterministic (Seed 0 1) genWorldWithoutEntity
       let (_, report) = reconcile observed (lightAlwaysOn unknownEntity)
-      renderedReport <- renderReport unadornedStyle report
+      renderedReport <- renderReport Plain report
       goldenStage $ pureGoldenTextFile "test_resources/DiagnosticSpec/warn_unknown_entity.golden" renderedReport
 
     specify "suggests correct entity on typos" $
@@ -29,7 +29,7 @@ spec = do
             knownEntities = map EntityId $ expectedMatch : ["light.some_other"]
         observed <- forAll (genWorldWithKnownEntities knownEntities)
         (_, report) <- reconcileAnnotated observed (lightAlwaysOn ("some_titynamr" :: Text))
-        renderedReport <- renderReport unadornedStyle report
+        renderedReport <- renderReport Plain report
         let expectedSuggestion = "did you mean `" <> expectedMatch <> "`?"
         annotate (T.unpack expectedSuggestion)
         assert (expectedSuggestion `T.isInfixOf` renderedReport)
@@ -40,7 +40,7 @@ spec = do
             knownEntities = map EntityId $ expectedMatch : ["light.some_other"]
         observed <- forAll (genWorldWithKnownEntities knownEntities)
         (_, report) <- reconcileAnnotated observed (lightAlwaysOn ("some_entity_name" :: Text))
-        renderedReport <- renderReport unadornedStyle report
+        renderedReport <- renderReport Plain report
         let expectedSuggestion = "did you mean `" <> expectedMatch <> "`?"
         annotate (T.unpack expectedSuggestion)
         assert (expectedSuggestion `T.isInfixOf` renderedReport)

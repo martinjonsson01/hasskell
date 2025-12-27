@@ -24,8 +24,8 @@ import Test.Syd
 reconcileAnnotated :: (HasCallStack, MonadIO m, MonadTest m) => ObservedWorld -> Specification -> m (ReconciliationPlan, ReconciliationReport)
 reconcileAnnotated observed spec = do
   let result@(plan, report) = reconcile observed spec
-  renderedReport <- renderReport defaultStyle report
-  renderedPlan <- renderPlanTrace defaultStyle plan
+  renderedReport <- renderReport Plain report
+  renderedPlan <- renderPlanTrace Plain plan
   withFrozenCallStack $ annotate (T.unpack renderedReport)
   withFrozenCallStack $ annotate (T.unpack renderedPlan)
   pure result

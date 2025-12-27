@@ -1,67 +1,67 @@
 will turn entity `l1QB` on
 reason:
-    [0m[warning][0m: entity `l1QB` should be on
-         [0m╭──▶[0m [0m/home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@53:35-53:45[0m
-         [0m│[0m
-    [0m  53 │[0m [0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m`[0m[0mt[0m[0mh[0m[0me[0m[0mn[0m[0m_[0m[0m`[0m[0m [0m[0m([0m[0me[0m[0mn[0m[0mt[0m[0mi[0m[0mt[0m[0my[0m[0m [0m[0m`[0m[0ms[0m[0mh[0m[0mo[0m[0mu[0m[0ml[0m[0md[0m[0mB[0m[0me[0m[0m`[0m[0m [0m[0mo[0m[0mn[0m[0m)[0m
-         [0m•[0m                                   [0m┬[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m 
-         [0m•[0m                                   [0m╰╸[0m [0mentity `l1QB` should be on[0m
-    [0m─────╯[0m
+    entity `l1QB` should be on
+         ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@53:35-53:45
+         │
+      53 │                   `then_` (entity `shouldBe` on)
+         •                                   ┬───────── 
+         •                                   ╰╸ entity `l1QB` should be on
+    ─────╯
 
         │
-        ├─▶ because [0m[warning][0m: literal
-             [0m╭──▶[0m [0m/home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@53:46-53:48[0m
-             [0m│[0m
-        [0m  53 │[0m [0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m`[0m[0mt[0m[0mh[0m[0me[0m[0mn[0m[0m_[0m[0m`[0m[0m [0m[0m([0m[0me[0m[0mn[0m[0mt[0m[0mi[0m[0mt[0m[0my[0m[0m [0m[0m`[0m[0ms[0m[0mh[0m[0mo[0m[0mu[0m[0ml[0m[0md[0m[0mB[0m[0me[0m[0m`[0m[0m [0m[0mo[0m[0mn[0m[0m)[0m
-             [0m•[0m                                              [0m┬[0m[0m─[0m 
-             [0m•[0m                                              [0m╰╸[0m [0mliteral[0m
-        [0m─────╯[0m
+        ├─▶ because literal
+             ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@53:46-53:48
+             │
+          53 │                   `then_` (entity `shouldBe` on)
+             •                                              ┬─ 
+             •                                              ╰╸ literal
+        ─────╯
 
         │
         ├─▶ because entity `l1QB` is off
         │
-        ├─▶ because [0m[warning][0m: branch was taken
-             [0m╭──▶[0m [0m/home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@53:19-53:26[0m
-             [0m│[0m
-        [0m  53 │[0m [0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m`[0m[0mt[0m[0mh[0m[0me[0m[0mn[0m[0m_[0m[0m`[0m[0m [0m[0m([0m[0me[0m[0mn[0m[0mt[0m[0mi[0m[0mt[0m[0my[0m[0m [0m[0m`[0m[0ms[0m[0mh[0m[0mo[0m[0mu[0m[0ml[0m[0md[0m[0mB[0m[0me[0m[0m`[0m[0m [0m[0mo[0m[0mn[0m[0m)[0m
-             [0m•[0m                   [0m┬[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m 
-             [0m•[0m                   [0m╰╸[0m [0mbranch was taken[0m
-        [0m─────╯[0m
+        ├─▶ because branch was taken
+             ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@53:19-53:26
+             │
+          53 │                   `then_` (entity `shouldBe` on)
+             •                   ┬────── 
+             •                   ╰╸ branch was taken
+        ─────╯
 
             │
-            ├─▶ because [0m[warning][0m: True
-                 [0m╭──▶[0m [0m/home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@52:34-52:38[0m
-                 [0m│[0m
-            [0m  52 │[0m [0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m([0m[0m [0m[0mi[0m[0mf[0m[0m_[0m[0m [0m[0m([0m[0mc[0m[0mu[0m[0mr[0m[0mr[0m[0me[0m[0mn[0m[0mt[0m[0mT[0m[0mi[0m[0mm[0m[0me[0m[0m [0m[0m`[0m[0mi[0m[0ms[0m[0m`[0m[0m [0m[0mt[0m[0mi[0m[0mm[0m[0me[0m[0m [0m[0m@[0m[0m1[0m[0m4[0m[0m [0m[0m@[0m[0m3[0m[0m9[0m[0m)[0m
-                 [0m•[0m                                  [0m┬[0m[0m─[0m[0m─[0m[0m─[0m 
-                 [0m•[0m                                  [0m╰╸[0m [0mTrue[0m
-            [0m─────╯[0m
+            ├─▶ because True
+                 ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@52:34-52:38
+                 │
+              52 │               ( if_ (currentTime `is` time @14 @39)
+                 •                                  ┬─── 
+                 •                                  ╰╸ True
+            ─────╯
 
                 │
-                ├─▶ because [0m[warning][0m: 14:39:00
-                     [0m╭──▶[0m [0m/home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@52:22-52:33[0m
-                     [0m│[0m
-                [0m  52 │[0m [0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m([0m[0m [0m[0mi[0m[0mf[0m[0m_[0m[0m [0m[0m([0m[0mc[0m[0mu[0m[0mr[0m[0mr[0m[0me[0m[0mn[0m[0mt[0m[0mT[0m[0mi[0m[0mm[0m[0me[0m[0m [0m[0m`[0m[0mi[0m[0ms[0m[0m`[0m[0m [0m[0mt[0m[0mi[0m[0mm[0m[0me[0m[0m [0m[0m@[0m[0m1[0m[0m4[0m[0m [0m[0m@[0m[0m3[0m[0m9[0m[0m)[0m
-                     [0m•[0m                      [0m┬[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m 
-                     [0m•[0m                      [0m╰╸[0m [0m14:39:00[0m
-                [0m─────╯[0m
+                ├─▶ because 14:39:00
+                     ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@52:22-52:33
+                     │
+                  52 │               ( if_ (currentTime `is` time @14 @39)
+                     •                      ┬────────── 
+                     •                      ╰╸ 14:39:00
+                ─────╯
 
                     │
                     ├─▶ because current time is 14:39:00
                 │
-                ├─▶ because [0m[warning][0m: 14:39:00
-                     [0m╭──▶[0m [0m/home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@52:39-52:43[0m
-                     [0m│[0m
-                [0m  52 │[0m [0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m([0m[0m [0m[0mi[0m[0mf[0m[0m_[0m[0m [0m[0m([0m[0mc[0m[0mu[0m[0mr[0m[0mr[0m[0me[0m[0mn[0m[0mt[0m[0mT[0m[0mi[0m[0mm[0m[0me[0m[0m [0m[0m`[0m[0mi[0m[0ms[0m[0m`[0m[0m [0m[0mt[0m[0mi[0m[0mm[0m[0me[0m[0m [0m[0m@[0m[0m1[0m[0m4[0m[0m [0m[0m@[0m[0m3[0m[0m9[0m[0m)[0m
-                     [0m•[0m                                       [0m┬[0m[0m─[0m[0m─[0m[0m─[0m 
-                     [0m•[0m                                       [0m╰╸[0m [0m14:39:00[0m
-                [0m─────╯[0m
+                ├─▶ because 14:39:00
+                     ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@52:39-52:43
+                     │
+                  52 │               ( if_ (currentTime `is` time @14 @39)
+                     •                                       ┬─── 
+                     •                                       ╰╸ 14:39:00
+                ─────╯
 
                     │
-                    ├─▶ because [0m[warning][0m: literal
-                         [0m╭──▶[0m [0m/home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@52:39-52:43[0m
-                         [0m│[0m
-                    [0m  52 │[0m [0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m([0m[0m [0m[0mi[0m[0mf[0m[0m_[0m[0m [0m[0m([0m[0mc[0m[0mu[0m[0mr[0m[0mr[0m[0me[0m[0mn[0m[0mt[0m[0mT[0m[0mi[0m[0mm[0m[0me[0m[0m [0m[0m`[0m[0mi[0m[0ms[0m[0m`[0m[0m [0m[0mt[0m[0mi[0m[0mm[0m[0me[0m[0m [0m[0m@[0m[0m1[0m[0m4[0m[0m [0m[0m@[0m[0m3[0m[0m9[0m[0m)[0m
-                         [0m•[0m                                       [0m┬[0m[0m─[0m[0m─[0m[0m─[0m 
-                         [0m•[0m                                       [0m╰╸[0m [0mliteral[0m
-                    [0m─────╯[0m
+                    ├─▶ because literal
+                         ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@52:39-52:43
+                         │
+                      52 │               ( if_ (currentTime `is` time @14 @39)
+                         •                                       ┬─── 
+                         •                                       ╰╸ literal
+                    ─────╯

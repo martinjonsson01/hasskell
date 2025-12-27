@@ -28,7 +28,7 @@ spec = do
                   `else_` (lightB `shouldBe` on)
               )
       let (plan, _) = reconcile observedOn boolPolicy
-      renderedPlan <- renderPlanTrace unadornedStyle plan
+      renderedPlan <- renderPlanTrace Plain plan
 
       goldenStage $ pureGoldenTextFile "test_resources/ProvenanceSpec/trace_if_and_boolean_derivation.golden" renderedPlan
 
@@ -40,7 +40,7 @@ spec = do
       lightsSpec <- sample $ genSpecWithPolicy observedWorld lightOnSpec
       let (plan, _) = reconcile observedWorld lightsSpec
 
-      renderedPlan <- renderPlanTrace unadornedStyle plan
+      renderedPlan <- renderPlanTrace Plain plan
 
       goldenStage $ pureGoldenTextFile "test_resources/ProvenanceSpec/trace_shouldBe.golden" renderedPlan
 
@@ -54,7 +54,7 @@ spec = do
               )
       let (plan, _) = reconcile observed timePolicy
 
-      renderedPlan <- renderPlanTrace unadornedStyle plan
+      renderedPlan <- renderPlanTrace Plain plan
 
       goldenStage $ pureGoldenTextFile "test_resources/ProvenanceSpec/trace_time.golden" renderedPlan
 

@@ -1,21 +1,21 @@
 will turn entity `lightB` on
 reason:
-    [0m[warning][0m: entity `lightB` should be on
-         [0m╭──▶[0m [0m/home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/TestUtils/Specifications.hs@17:12-17:22[0m
-         [0m│[0m
-    [0m  17 │[0m [0m [0m[0m [0m[0m [0m[0m [0m[0m([0m[0ml[0m[0mi[0m[0mg[0m[0mh[0m[0mt[0m[0m [0m[0m`[0m[0ms[0m[0mh[0m[0mo[0m[0mu[0m[0ml[0m[0md[0m[0mB[0m[0me[0m[0m`[0m[0m [0m[0mf[0m[0mr[0m[0mo[0m[0mm[0m[0mS[0m[0mt[0m[0ma[0m[0mt[0m[0me[0m[0m [0m[0ms[0m[0mt[0m[0ma[0m[0mt[0m[0me[0m[0m)[0m
-         [0m•[0m            [0m┬[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m 
-         [0m•[0m            [0m╰╸[0m [0mentity `lightB` should be on[0m
-    [0m─────╯[0m
+    entity `lightB` should be on
+         ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/TestUtils/Specifications.hs@17:12-17:22
+         │
+      17 │     (light `shouldBe` fromState state)
+         •            ┬───────── 
+         •            ╰╸ entity `lightB` should be on
+    ─────╯
 
         │
-        ├─▶ because [0m[warning][0m: literal
-             [0m╭──▶[0m [0m/home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/TestUtils/Specifications.hs@17:23-17:32[0m
-             [0m│[0m
-        [0m  17 │[0m [0m [0m[0m [0m[0m [0m[0m [0m[0m([0m[0ml[0m[0mi[0m[0mg[0m[0mh[0m[0mt[0m[0m [0m[0m`[0m[0ms[0m[0mh[0m[0mo[0m[0mu[0m[0ml[0m[0md[0m[0mB[0m[0me[0m[0m`[0m[0m [0m[0mf[0m[0mr[0m[0mo[0m[0mm[0m[0mS[0m[0mt[0m[0ma[0m[0mt[0m[0me[0m[0m [0m[0ms[0m[0mt[0m[0ma[0m[0mt[0m[0me[0m[0m)[0m
-             [0m•[0m                       [0m┬[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m 
-             [0m•[0m                       [0m╰╸[0m [0mliteral[0m
-        [0m─────╯[0m
+        ├─▶ because literal
+             ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/TestUtils/Specifications.hs@17:23-17:32
+             │
+          17 │     (light `shouldBe` fromState state)
+             •                       ┬──────── 
+             •                       ╰╸ literal
+        ─────╯
 
         │
         ├─▶ because entity `lightB` is off

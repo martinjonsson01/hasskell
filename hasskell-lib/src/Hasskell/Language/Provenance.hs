@@ -173,6 +173,9 @@ cleanExplanation =
   T.replace
     "\ESC[0;93;1m[warning]\ESC[0m: "
     ""
+    . T.replace
+      "\ESC[0m[warning]\ESC[0m: "
+      ""
     . T.replace "[warning]: " ""
 
 prettifyExplanationTree :: ReportStyle -> Diagnostic Fact -> Explanation -> Doc AnsiStyle

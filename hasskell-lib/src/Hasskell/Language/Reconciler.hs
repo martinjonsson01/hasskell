@@ -72,7 +72,7 @@ innerRenderPlanTrace :: (File.FileSystem :> es) => ReportStyle -> Reconciliation
 innerRenderPlanTrace style (MkReconciliationPlan steps) = do
   prettySteps <- mapM (prettifyStep style) steps
   let doc = vsep prettySteps
-      rendered = layoutDoc doc
+      rendered = layoutDoc style doc
       cleaned = cleanExplanation rendered
   pure cleaned
 

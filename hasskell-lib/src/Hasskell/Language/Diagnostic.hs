@@ -58,7 +58,7 @@ innerRenderReport style (MkReconciliationReport diagnostics) = do
   let reports = map diagnosticReport diagnostics
       fullDiagnostic = foldl' addReport baseDiagnostic reports
 
-  pure (layoutDoc $ annotateDoc style fullDiagnostic)
+  pure (layoutDoc style $ annotateDoc style fullDiagnostic)
 
 hasWarnings :: ReconciliationReport -> Bool
 hasWarnings (MkReconciliationReport reports) = length (reports) > 0

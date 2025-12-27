@@ -54,9 +54,9 @@ innerRunHasskell :: Specification -> ClientM ()
 innerRunHasskell spec = do
   observed <- collectCurrentState
   let (plan, report) = reconcile observed spec
-  reportText <- renderReport defaultStyle report
+  reportText <- renderReport Rich report
   unless (T.null reportText) $ logInfo reportText
-  renderedPlan <- renderPlanTrace defaultStyle plan
+  renderedPlan <- renderPlanTrace Rich plan
   logDebug renderedPlan
   _ <- executePlan plan
   pure ()

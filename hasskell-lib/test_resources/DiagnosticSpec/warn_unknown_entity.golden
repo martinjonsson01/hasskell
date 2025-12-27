@@ -1,19 +1,19 @@
-[0m[warning][0m: Unknown entity referenced
-     [0m╭──▶[0m [0m/home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/TestUtils/Specifications.hs@17:12-17:22[0m
-     [0m│[0m
-[0m  11 │[0m [0ml[0m[0mi[0m[0mg[0m[0mh[0m[0mt[0m[0mA[0m[0ml[0m[0mw[0m[0ma[0m[0my[0m[0ms[0m[0mO[0m[0mn[0m[0m [0m[0m=[0m[0m [0m[0ml[0m[0mi[0m[0mg[0m[0mh[0m[0mt[0m[0mA[0m[0ml[0m[0mw[0m[0ma[0m[0my[0m[0ms[0m[0m [0m[0mO[0m[0mn[0m
-     [0m•[0m                 [0m┬[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m 
-     [0m•[0m                 [0m╰╸[0m [0mvia[0m
-     [0m•[0m
-[0m  17 │[0m [0m [0m[0m [0m[0m [0m[0m [0m[0m([0m[0ml[0m[0mi[0m[0mg[0m[0mh[0m[0mt[0m[0m [0m[0m`[0m[0ms[0m[0mh[0m[0mo[0m[0mu[0m[0ml[0m[0md[0m[0mB[0m[0me[0m[0m`[0m[0m [0m[0mf[0m[0mr[0m[0mo[0m[0mm[0m[0mS[0m[0mt[0m[0ma[0m[0mt[0m[0me[0m[0m [0m[0ms[0m[0mt[0m[0ma[0m[0mt[0m[0me[0m[0m)[0m
-     [0m•[0m            [0m┬[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m 
-     [0m•[0m            [0m╰╸[0m [0mUnknown entity ID `X`[0m
-     [0m•[0m
-[0m─────[0m[0m┼──▶[0m [0m/home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/DiagnosticSpec.hs@22:45-22:58[0m
-     [0m│[0m
-[0m  22 │[0m [0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0ml[0m[0me[0m[0mt[0m[0m [0m[0m([0m[0m_[0m[0m,[0m[0m [0m[0mr[0m[0me[0m[0mp[0m[0mo[0m[0mr[0m[0mt[0m[0m)[0m[0m [0m[0m=[0m[0m [0m[0mr[0m[0me[0m[0mc[0m[0mo[0m[0mn[0m[0mc[0m[0mi[0m[0ml[0m[0me[0m[0m [0m[0mo[0m[0mb[0m[0ms[0m[0me[0m[0mr[0m[0mv[0m[0me[0m[0md[0m[0m [0m[0m([0m[0ml[0m[0mi[0m[0mg[0m[0mh[0m[0mt[0m[0mA[0m[0ml[0m[0mw[0m[0ma[0m[0my[0m[0ms[0m[0mO[0m[0mn[0m[0m [0m[0mu[0m[0mn[0m[0mk[0m[0mn[0m[0mo[0m[0mw[0m[0mn[0m[0mE[0m[0mn[0m[0mt[0m[0mi[0m[0mt[0m[0my[0m[0m)[0m
-     [0m•[0m                                             [0m┬[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m[0m─[0m 
-     [0m•[0m                                             [0m╰╸[0m [0mvia[0m
-     [0m•[0m
-     [0m│[0m [0mNote: The entity ID may be misspelled.[0m
-[0m─────╯[0m
+[warning]: Unknown entity referenced
+     ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/TestUtils/Specifications.hs@17:12-17:22
+     │
+  11 │ lightAlwaysOn = lightAlways On
+     •                 ┬────────── 
+     •                 ╰╸ via
+     •
+  17 │     (light `shouldBe` fromState state)
+     •            ┬───────── 
+     •            ╰╸ Unknown entity ID `X`
+     •
+─────┼──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/DiagnosticSpec.hs@22:45-22:58
+     │
+  22 │       let (_, report) = reconcile observed (lightAlwaysOn unknownEntity)
+     •                                             ┬──────────── 
+     •                                             ╰╸ via
+     •
+     │ Note: The entity ID may be misspelled.
+─────╯
