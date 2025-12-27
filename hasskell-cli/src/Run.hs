@@ -4,7 +4,7 @@
 module Run (run) where
 
 import Hasskell
-import Import
+import Import hiding (on)
 import RIO.FilePath
 import System.Directory qualified as Dir
 import System.IO.Error (userError)
@@ -35,7 +35,7 @@ run = do
       )
     $ policy
       "toggle light"
-      ( if_ (toggledStateOf flaktlampa `is` On)
-          `then_` (flaktlampa `shouldBe` Off)
-          `else_` (flaktlampa `shouldBe` On)
+      ( if_ (toggledStateOf flaktlampa `is` on)
+          `then_` (flaktlampa `shouldBe` off)
+          `else_` (flaktlampa `shouldBe` on)
       )

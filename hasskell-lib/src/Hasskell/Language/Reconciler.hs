@@ -18,6 +18,7 @@ import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HMap
 import Data.Maybe (catMaybes)
 import Data.Text (Text)
+import Data.Tuple.HT (mapSnd)
 import Effectful
 import Effectful.Error.Static (Error)
 import Effectful.Error.Static qualified as Error
@@ -173,10 +174,10 @@ computeDesiredState action =
                 state :@ stateLoc `because` desired loc eId state
               )
         ESetState (ELitEntity _ :@ _) (EGetState _ :@ _) :@ _ -> todo
-        EIf condExp thenExp elseExp :@ _ ->
+        EIf (condExp :@ _) (thenExp :@ thenLoc) (elseExp :@ elseLoc) :@ _ ->
           evalBool condExp >>= \case
-            (True :@ _) :£ _ -> computeDesiredState thenExp
-            (False :@ _) :£ _ -> computeDesiredState elseExp
+            (True :@ _) :£ trueExpl -> evalBranch trueExpl thenLoc thenExp
+            (False :@ _) :£ falseExpl -> evalBranch falseExpl elseLoc elseExp
         EDoNothing :@ _ -> pure Nothing
     )
     >>= \case
@@ -185,6 +186,22 @@ computeDesiredState action =
         Writer.tell (warnUnknownEntity knownEntities eId)
         pure Nothing
       Right result -> pure result
+
+evalBranch ::
+  ( State ObservedWorld :> es,
+    Writer ReconciliationReport :> es
+  ) =>
+  Explanation ->
+  Location ->
+  Located (Exp TAction) ->
+  Eff es (Maybe (Located EntityId, Explained (Located ToggleState)))
+evalBranch conditionExplanation ifLoc expr = do
+  maybeDesiredState <- computeDesiredState expr
+  pure $
+    maybeDesiredState
+      >>= pure
+        . mapSnd
+          (`becauseMore` (branched ifLoc `explain` conditionExplanation))
 
 ensureEntityExists ::
   (State ObservedWorld :> es, Error ReconciliationError :> es) =>
@@ -203,9 +220,14 @@ evalBool ::
   Eff es (Detailed Bool)
 evalBool = \case
   EEqual e1 e2 :@ loc -> do
-    s1 :@ _ :£ _ <- evalState e1
-    s2 :@ _ :£ _ <- evalState e2
-    pure $ (s1 == s2) :@ loc :£ todo
+    s1 :@ s1Loc :£ _ <- evalState e1
+    s2 :@ s2Loc :£ _ <- evalState e2
+    let areEqual = s1 == s2
+    pure $
+      (areEqual :@ loc)
+        `because` equality loc areEqual
+        `becauseMore` evaluated s1Loc s1
+        `becauseMore` evaluated s2Loc s2
 
 evalState ::
   ( State ObservedWorld :> es,

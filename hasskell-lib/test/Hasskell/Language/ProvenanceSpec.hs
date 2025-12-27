@@ -2,31 +2,46 @@
 
 module Hasskell.Language.ProvenanceSpec (spec) where
 
+import Hasskell
 import Hasskell.HomeAssistant.API
 import Hasskell.Language.Reconciler
-import Hasskell.Language.World
 import Hasskell.TestUtils.Gen
 import Hasskell.TestUtils.Specifications
 import Hasskell.TestUtils.Utils
 import Hedgehog
-import Test.Syd
+import Test.Syd hiding (shouldBe)
 import Test.Syd.Hedgehog ()
 
 spec :: Spec
 spec = do
   describe "Reason trace" $ do
-    it "shows derivation chain leading to action" $ stagedGolden $ \goldenStage -> do
+    it "includes if expression and boolean derivation" $ stagedGolden $ \goldenStage -> do
+      let lightA = EntityId "lightA"
+          lightB = EntityId "lightB"
+      observedOn <- sample $ genWorldWithToggleds [(lightA, Off), (lightB, Off)]
+      let boolPolicy =
+            policy
+              "make lightB the inverse of lightA"
+              ( if_ (toggledStateOf lightA `is` on)
+                  `then_` (lightB `shouldBe` off)
+                  `else_` (lightB `shouldBe` on)
+              )
+      let (plan, _) = reconcile observedOn boolPolicy
+      renderedPlan <- renderPlanTrace plan
+
+      goldenStage $ pureGoldenTextFile "test_resources/trace_if_and_boolean_derivation.golden" renderedPlan
+
+    it "includes shouldBe" $ stagedGolden $ \goldenStage -> do
       let onEntity = EntityId "lightA"
           offEntity = EntityId "lightB"
-      observedWorld <-
-        sampleDeterministic (Seed 0 1) $
-          genWorldWithToggleds [(onEntity, On), (offEntity, Off)]
+      observedWorld <- sample $ genWorldWithToggleds [(onEntity, On), (offEntity, Off)]
       let lightOnSpec = lightAlwaysOn offEntity
-      lightsSpec <-
-        sampleDeterministic (Seed 0 1) $
-          genSpecWithPolicy observedWorld lightOnSpec
+      lightsSpec <- sample $ genSpecWithPolicy observedWorld lightOnSpec
       let (plan, _) = reconcile observedWorld lightsSpec
 
       renderedPlan <- renderPlanTrace plan
 
-      goldenStage $ pureGoldenTextFile "test_resources/trace_light_always_on.golden" renderedPlan
+      goldenStage $ pureGoldenTextFile "test_resources/trace_shouldBe.golden" renderedPlan
+
+sample :: Gen a -> IO a
+sample = sampleDeterministic (Seed 0 1)

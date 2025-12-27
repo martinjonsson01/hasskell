@@ -44,8 +44,8 @@ spec = do
         let boolPolicy =
               policy
                 "if lightA is on, turn lightB off"
-                ( if_ (toggledStateOf lightA `is` On)
-                    `then_` (lightB `shouldBe` Off)
+                ( if_ (toggledStateOf lightA `is` on)
+                    `then_` (lightB `shouldBe` off)
                 )
         let (plan@(MkReconciliationPlan steps), report) = reconcile observedOn boolPolicy
         renderedReport <- renderReport report
@@ -62,9 +62,9 @@ spec = do
         let boolPolicy =
               policy
                 "make lightB the inverse of lightA"
-                ( if_ (toggledStateOf lightA `is` On)
-                    `then_` (lightB `shouldBe` Off)
-                    `else_` (lightB `shouldBe` On)
+                ( if_ (toggledStateOf lightA `is` on)
+                    `then_` (lightB `shouldBe` off)
+                    `else_` (lightB `shouldBe` on)
                 )
         let (plan@(MkReconciliationPlan steps), report) = reconcile observedOn boolPolicy
         renderedReport <- renderReport report
@@ -81,8 +81,8 @@ spec = do
         let boolPolicy =
               policy
                 "if lightA is on, turn lightB off"
-                ( if_ (toggledStateOf lightA `is` On)
-                    `then_` (lightB `shouldBe` Off)
+                ( if_ (toggledStateOf lightA `is` on)
+                    `then_` (lightB `shouldBe` off)
                 )
         let (plan@(MkReconciliationPlan steps), report) = reconcile observedOn boolPolicy
         renderedReport <- renderReport report

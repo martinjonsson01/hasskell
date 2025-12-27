@@ -1,6 +1,7 @@
 module Hasskell.Language.Provenance
   ( Explanation (..),
     Explained (..),
+    explain,
     because,
     becauseMore,
     elaborate,
@@ -9,6 +10,9 @@ module Hasskell.Language.Provenance
     differs,
     observed,
     desired,
+    branched,
+    equality,
+    evaluated,
     -- Pretty-printing
     prettifyExplanation,
     cleanExplanation,
@@ -40,13 +44,27 @@ data Explanation = Explain
 data Explained a = a :£ Explanation
   deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
--- | Give an explanation to something.
-because :: a -> Fact -> Explained a
-because a fact = a :£ Explain {what = fact, why = []}
+-- | Things that are explanations.
+class IntoExplanation a where
+  toExplanation :: a -> Explanation
 
--- | Add a fact to an explanation.
-becauseMore :: Explained a -> Fact -> Explained a
-becauseMore (a :£ expl) newFact = a :£ expl {why = Explain newFact [] : why expl}
+instance IntoExplanation Explanation where
+  toExplanation = id
+
+instance IntoExplanation Fact where
+  toExplanation fact = Explain fact mempty
+
+-- | Explain a fact.
+explain :: Fact -> Explanation -> Explanation
+explain fact = Explain fact . List.singleton
+
+-- | Give an explanation to something.
+because :: (IntoExplanation expl) => a -> expl -> Explained a
+because a expl = a :£ (toExplanation expl)
+
+-- | Add a sibling explanation.
+becauseMore :: (IntoExplanation expl) => Explained a -> expl -> Explained a
+becauseMore (a :£ expl) new = a :£ expl {why = toExplanation new : why expl}
 
 -- | Give another level of explanation to something.
 elaborate :: Explained a -> Fact -> Explained a
@@ -74,6 +92,9 @@ instance HasLocations Fact where
 -- | A fact stemming from the user's declarations.
 data DeclaredFact
   = DesiredState EntityId ToggleState
+  | BranchTaken
+  | Equality Bool
+  | Evaluated ToggleState
   deriving (Eq, Ord, Show)
 
 -- | There is a difference between two states.
@@ -83,6 +104,18 @@ differs eId s1 s2 = SourcelessFact (Diff eId s1 s2)
 -- | There is a desired state for an entity.
 desired :: Location -> EntityId -> ToggleState -> Fact
 desired loc eId = DeclaredFact . (:@ loc) . DesiredState eId
+
+-- | A branch was taken.
+branched :: Location -> Fact
+branched = DeclaredFact . (BranchTaken :@)
+
+-- | Values are equal.
+equality :: Location -> Bool -> Fact
+equality loc = DeclaredFact . (:@ loc) . Equality
+
+-- | A given state was evaluated.
+evaluated :: Location -> ToggleState -> Fact
+evaluated loc = DeclaredFact . (:@ loc) . Evaluated
 
 -- | A fact that does not stem from the user's declarations.
 data SourcelessFact
@@ -114,9 +147,9 @@ prettifyExplanationTree :: Diagnostic Fact -> Explanation -> Doc AnsiStyle
 prettifyExplanationTree baseDiagnostic Explain {what, why} =
   let prettyFact = renderFact baseDiagnostic what
       childExplanations = map (prettifyExplanationTree baseDiagnostic) why
-      prefixSubExplanation = indent 4 . ("-> because" <+>)
+      prefixSubExplanation = indent 4 . ("├─▶ because" <+>)
       subExplanations = map prefixSubExplanation childExplanations
-      explanations = List.intersperse mempty (prettyFact : subExplanations)
+      explanations = List.intersperse (indent 4 "│") (prettyFact : subExplanations)
    in vsep explanations
 
 renderFact :: Diagnostic Fact -> Fact -> Doc AnsiStyle
@@ -140,6 +173,9 @@ instance Pretty DeclaredFact where
   pretty = \case
     DesiredState eId state ->
       "entity" <+> pretty eId <+> "should be" <+> pretty state
+    BranchTaken -> "branch was taken"
+    Equality equal -> pretty equal
+    Evaluated state -> pretty state
 
 instance Pretty SourcelessFact where
   pretty = \case

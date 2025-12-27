@@ -13,6 +13,9 @@ module Hasskell.Language.AST
     Exp (..),
     IntoEntity (..),
     -- Combinators
+    fromState,
+    on,
+    off,
     shouldBe,
     toggledStateOf,
     if_,
@@ -130,7 +133,11 @@ data Exp :: T -> Type where
   EDoNothing :: Exp 'TAction
   -- Boolean logic
   EEqual :: Located (Exp 'TState) -> Located (Exp 'TState) -> Exp 'TBool
-  EIf :: Located (Exp 'TBool) -> Located (Exp 'TAction) -> Located (Exp 'TAction) -> Exp 'TAction
+  EIf :: -- Nested locs to record both the if-then-else syntax and its operands.
+    Located (Located (Exp 'TBool)) ->
+    Located (Located (Exp 'TAction)) ->
+    Located (Located (Exp 'TAction)) ->
+    Exp 'TAction
 
 deriving instance Show (Exp t)
 
@@ -153,27 +160,29 @@ instance IntoEntity Text where
 instance IntoEntity EntityId where
   toEntity = (:@ captureSrcSpan) . ELitEntity
 
--- | Things that describe a specific state.
-class IntoState a where
-  toState :: (HasCallStack) => a -> Located (Exp 'TState)
+-- | A specific state.
+fromState :: (HasCallStack) => ToggleState -> Located (Exp 'TState)
+fromState = (:@ captureSrcSpan) . ELitState
 
-instance IntoState ToggleState where
-  toState = (:@ captureSrcSpan) . ELitState
+-- | The 'on' state.
+on :: (HasCallStack) => Located (Exp 'TState)
+on = fromState On
 
-instance IntoState (Located (Exp 'TState)) where
-  toState = id
+-- | The 'off' state.
+off :: (HasCallStack) => Located (Exp TState)
+off = fromState Off
 
 -- | Declare that a given entity should be in a given state.
-shouldBe :: (HasCallStack, IntoEntity e, IntoState s) => e -> s -> Located (Exp 'TAction)
-shouldBe entity state = ESetState (toEntity entity) (toState state) :@ captureSrcSpan
+shouldBe :: (HasCallStack, IntoEntity e) => e -> Located (Exp 'TState) -> Located (Exp 'TAction)
+shouldBe entity state = ESetState (toEntity entity) state :@ captureSrcSpan
 
 -- | Gets the current toggle state of the given entity.
 toggledStateOf :: (HasCallStack, IntoEntity e) => e -> Located (Exp 'TState)
 toggledStateOf entity = EGetState (toEntity entity) :@ captureSrcSpan
 
 -- | Check for equality.
-is :: (HasCallStack, IntoState s1, IntoState s2) => s1 -> s2 -> Located (Exp 'TBool)
-is s1 s2 = EEqual (toState s1) (toState s2) :@ captureSrcSpan
+is :: (HasCallStack) => Located (Exp 'TState) -> Located (Exp 'TState) -> Located (Exp 'TBool)
+is s1 s2 = EEqual s1 s2 :@ captureSrcSpan
 
 -- | An incomplete if that only has a condition.
 data IfCond
@@ -186,33 +195,33 @@ data IfThenElse
 
 data IfBuilder stage where
   IfCondB ::
-    Located (Exp 'TBool) ->
+    Located (Located (Exp 'TBool)) ->
     IfBuilder IfCond
   IfThenB ::
-    Located (Exp 'TBool) ->
-    Located (Exp 'TAction) ->
+    Located (Located (Exp 'TBool)) ->
+    Located (Located (Exp 'TAction)) ->
     IfBuilder IfThen
   IfThenElseB ::
-    Located (Exp 'TBool) ->
-    Located (Exp 'TAction) ->
-    Located (Exp 'TAction) ->
+    Located (Located (Exp 'TBool)) ->
+    Located (Located (Exp 'TAction)) ->
+    Located (Located (Exp 'TAction)) ->
     IfBuilder IfThenElse
 
 -- | Make a policy conditional on something.
-if_ :: Located (Exp 'TBool) -> IfBuilder IfCond
-if_ cond = IfCondB cond
+if_ :: (HasCallStack) => Located (Exp 'TBool) -> IfBuilder IfCond
+if_ cond = IfCondB (cond :@ captureSrcSpan)
 
 -- | Define what should happen if the condition holds.
-then_ :: IfBuilder IfCond -> Located (Exp 'TAction) -> IfBuilder IfThen
-then_ (IfCondB condExp) thenExp = IfThenB condExp thenExp
+then_ :: (HasCallStack) => IfBuilder IfCond -> Located (Exp 'TAction) -> IfBuilder IfThen
+then_ (IfCondB condExp) thenExp = IfThenB condExp (thenExp :@ captureSrcSpan)
 
 -- | Define what should happen if the condition fails.
-else_ :: IfBuilder IfThen -> Located (Exp 'TAction) -> IfBuilder IfThenElse
-else_ (IfThenB cond thenExp) elseExp = IfThenElseB cond thenExp elseExp
+else_ :: (HasCallStack) => IfBuilder IfThen -> Located (Exp 'TAction) -> IfBuilder IfThenElse
+else_ (IfThenB cond thenExp) elseExp = IfThenElseB cond thenExp (elseExp :@ captureSrcSpan)
 
 -- | Defines a stage at which the if-builder can construct a valid if expression.
 class BuildableIf stage where
-  buildIf :: IfBuilder stage -> Located (Exp 'TAction)
+  buildIf :: (HasCallStack) => IfBuilder stage -> Located (Exp 'TAction)
 
 -- | Fully qualified if-then-else expressions are valid.
 instance BuildableIf IfThenElse where
@@ -222,4 +231,4 @@ instance BuildableIf IfThenElse where
 -- | If-then expressions can be valid as well (the else is just a null action).
 instance BuildableIf IfThen where
   buildIf (IfThenB condExp thenExp) =
-    EIf condExp thenExp (EDoNothing :@ captureSrcSpan) :@ captureSrcSpan
+    EIf condExp thenExp (EDoNothing :@ captureSrcSpan :@ captureSrcSpan) :@ captureSrcSpan

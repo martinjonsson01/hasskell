@@ -7,6 +7,9 @@ module Hasskell
     -- Language
     Specification,
     policy,
+    fromState,
+    on,
+    off,
     shouldBe,
     toggledStateOf,
     is,
