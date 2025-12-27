@@ -97,12 +97,28 @@ instance HasReferencedEntities Policy where
 instance HasReferencedEntities (Exp t) where
   referencedEntitiesIn = \case
     ELitEntity eId -> [eId]
+    ELitState _ -> []
+    EGetState e -> referencedEntitiesIn e
     ESetState expr _ -> referencedEntitiesIn expr
+    EDoNothing -> []
+    EEqual e1 e2 -> referencedEntitiesIn e1 ++ referencedEntitiesIn e2
+    EIf eCond eThen eElse ->
+      referencedEntitiesIn eCond
+        ++ referencedEntitiesIn eThen
+        ++ referencedEntitiesIn eElse
 
 instance HasLocations (Exp t) where
   extractLocations = \case
     ELitEntity _ -> []
+    ELitState _ -> []
+    EGetState (_ :@ loc) -> [loc]
     ESetState expr _ -> extractLocations expr
+    EDoNothing -> []
+    EEqual e1 e2 -> extractLocations e1 ++ extractLocations e2
+    EIf eCond eThen eElse ->
+      extractLocations eCond
+        ++ extractLocations eThen
+        ++ extractLocations eElse
 
 data SomeExp :: Type where
   SomeExp :: (SingI (t :: T)) => Exp t -> SomeExp
