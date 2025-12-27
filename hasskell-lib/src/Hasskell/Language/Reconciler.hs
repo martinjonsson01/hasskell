@@ -245,4 +245,4 @@ evalState = \case
 
 evalEntity :: Located (Exp 'TEntity) -> Eff es (Detailed EntityId)
 evalEntity = \case
-  ELitEntity e :@ loc -> pure (e :@ loc :£ todo)
+  ELitEntity e :@ loc -> pure (e :@ loc `because` literal loc)
