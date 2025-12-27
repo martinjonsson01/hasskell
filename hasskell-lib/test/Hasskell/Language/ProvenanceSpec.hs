@@ -29,7 +29,7 @@ spec = do
       let (plan, _) = reconcile observedOn boolPolicy
       renderedPlan <- renderPlanTrace plan
 
-      goldenStage $ pureGoldenTextFile "test_resources/trace_if_and_boolean_derivation.golden" renderedPlan
+      goldenStage $ pureGoldenTextFile "test_resources/ProvenanceSpec/trace_if_and_boolean_derivation.golden" renderedPlan
 
     it "includes shouldBe" $ stagedGolden $ \goldenStage -> do
       let onEntity = EntityId "lightA"
@@ -41,7 +41,7 @@ spec = do
 
       renderedPlan <- renderPlanTrace plan
 
-      goldenStage $ pureGoldenTextFile "test_resources/trace_shouldBe.golden" renderedPlan
+      goldenStage $ pureGoldenTextFile "test_resources/ProvenanceSpec/trace_shouldBe.golden" renderedPlan
 
 sample :: Gen a -> IO a
 sample = sampleDeterministic (Seed 0 1)

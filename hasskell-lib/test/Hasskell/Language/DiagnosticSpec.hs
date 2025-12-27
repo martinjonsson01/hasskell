@@ -20,7 +20,7 @@ spec = do
       (unknownEntity, observed) <- sampleDeterministic (Seed 0 1) genWorldWithoutEntity
       let (_, report) = reconcile observed (lightAlwaysOn unknownEntity)
       renderedReport <- renderReport report
-      goldenStage $ pureGoldenTextFile "test_resources/warn_unknown_entity.golden" renderedReport
+      goldenStage $ pureGoldenTextFile "test_resources/DiagnosticSpec/warn_unknown_entity.golden" renderedReport
 
     specify "suggests correct entity on typos" $
       property $ do
