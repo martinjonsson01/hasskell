@@ -28,9 +28,8 @@ spec = do
         let expectedMatch = "some_entity_name"
             knownEntities = map EntityId $ expectedMatch : ["light.some_other"]
         observed <- forAll (genWorldWithKnownEntities knownEntities)
-        let (_, report) = reconcile observed (lightAlwaysOn ("some_titynamr" :: Text))
+        (_, report) <- reconcileAnnotated observed (lightAlwaysOn ("some_titynamr" :: Text))
         renderedReport <- renderReport unadornedStyle report
-        annotate (T.unpack renderedReport)
         let expectedSuggestion = "did you mean `" <> expectedMatch <> "`?"
         annotate (T.unpack expectedSuggestion)
         assert (expectedSuggestion `T.isInfixOf` renderedReport)
@@ -40,9 +39,8 @@ spec = do
         let expectedMatch = "light.some_entity_name"
             knownEntities = map EntityId $ expectedMatch : ["light.some_other"]
         observed <- forAll (genWorldWithKnownEntities knownEntities)
-        let (_, report) = reconcile observed (lightAlwaysOn ("some_entity_name" :: Text))
+        (_, report) <- reconcileAnnotated observed (lightAlwaysOn ("some_entity_name" :: Text))
         renderedReport <- renderReport unadornedStyle report
-        annotate (T.unpack renderedReport)
         let expectedSuggestion = "did you mean `" <> expectedMatch <> "`?"
         annotate (T.unpack expectedSuggestion)
         assert (expectedSuggestion `T.isInfixOf` renderedReport)

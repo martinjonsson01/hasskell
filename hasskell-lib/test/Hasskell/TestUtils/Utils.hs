@@ -2,19 +2,33 @@ module Hasskell.TestUtils.Utils
   ( runWithClient,
     shouldBeSubsetOf,
     sampleDeterministic,
+    reconcileAnnotated,
   )
 where
 
 import Data.Text qualified as T
-import GHC.Stack (HasCallStack)
+import GHC.Stack (HasCallStack, withFrozenCallStack)
 import Hasskell.Config (Config (..), LoggingConfig (..))
 import Hasskell.Effects.HASSConnection (HASSWebSocketError (ParserError))
 import Hasskell.HomeAssistant.Client
-import Hedgehog (Gen, Seed)
+import Hasskell.Language.AST
+import Hasskell.Language.Reconciler
+import Hasskell.Language.Report
+import Hasskell.Language.World
+import Hedgehog
 import Hedgehog.Internal.Gen qualified as InternalGen
 import Hedgehog.Internal.Tree qualified as InternalTree
 import System.Environment (lookupEnv)
 import Test.Syd
+
+reconcileAnnotated :: (HasCallStack, MonadIO m, MonadTest m) => ObservedWorld -> Specification -> m (ReconciliationPlan, ReconciliationReport)
+reconcileAnnotated observed spec = do
+  let result@(plan, report) = reconcile observed spec
+  renderedReport <- renderReport defaultStyle report
+  renderedPlan <- renderPlanTrace defaultStyle plan
+  withFrozenCallStack $ annotate (T.unpack renderedReport)
+  withFrozenCallStack $ annotate (T.unpack renderedPlan)
+  pure result
 
 sampleDeterministic :: Seed -> Gen a -> IO a
 sampleDeterministic seed gen =

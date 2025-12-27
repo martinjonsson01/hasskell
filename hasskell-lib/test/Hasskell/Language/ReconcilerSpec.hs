@@ -1,12 +1,11 @@
 module Hasskell.Language.ReconcilerSpec (spec) where
 
-import Data.Text qualified as T
 import Hasskell
 import Hasskell.HomeAssistant.API
 import Hasskell.Language.Reconciler
-import Hasskell.Language.Report
 import Hasskell.TestUtils.Gen
 import Hasskell.TestUtils.Specifications
+import Hasskell.TestUtils.Utils
 import Hedgehog
 import Test.Syd hiding (shouldBe)
 import Test.Syd.Hedgehog ()
@@ -18,11 +17,7 @@ spec = do
       property $ do
         state <- forAll $ genToggleState
         (entity, observed) <- forAll $ genWorldWithToggled state
-        let (plan@(MkReconciliationPlan steps), report) = reconcile observed (lightAlways state entity)
-        renderedReport <- renderReport unadornedStyle report
-        renderedPlan <- renderPlanTrace unadornedStyle plan
-        annotate (T.unpack renderedReport)
-        annotate (T.unpack renderedPlan)
+        (MkReconciliationPlan steps, _) <- reconcileAnnotated observed (lightAlways state entity)
         steps === []
 
     specify "generates toggle command for entity" $
@@ -30,11 +25,7 @@ spec = do
         state <- forAll $ genToggleState
         (entity, observed) <- forAll $ genWorldWithToggled state
         let opposite = if state == On then Off else On
-        let (plan@(MkReconciliationPlan steps), report) = reconcile observed (lightAlways opposite entity)
-        renderedReport <- renderReport unadornedStyle report
-        renderedPlan <- renderPlanTrace unadornedStyle plan
-        annotate (T.unpack renderedReport)
-        annotate (T.unpack renderedPlan)
+        (MkReconciliationPlan steps, _) <- reconcileAnnotated observed (lightAlways opposite entity)
         (map stepAction steps) === [SetEntityState entity opposite]
 
     specify "conditionally turns off one light when another light is on" $
@@ -48,11 +39,7 @@ spec = do
                 ( if_ (toggledStateOf lightA `is` on)
                     `then_` (lightB `shouldBe` off)
                 )
-        let (plan@(MkReconciliationPlan steps), report) = reconcile observedOn boolPolicy
-        renderedReport <- renderReport unadornedStyle report
-        renderedPlan <- renderPlanTrace unadornedStyle plan
-        annotate (T.unpack renderedReport)
-        annotate (T.unpack renderedPlan)
+        (MkReconciliationPlan steps, _) <- reconcileAnnotated observedOn boolPolicy
         (map stepAction steps) === [SetEntityState lightB Off]
 
     specify "conditionally inverts light based on another" $
@@ -67,11 +54,7 @@ spec = do
                     `then_` (lightB `shouldBe` off)
                     `else_` (lightB `shouldBe` on)
                 )
-        let (plan@(MkReconciliationPlan steps), report) = reconcile observedOn boolPolicy
-        renderedReport <- renderReport unadornedStyle report
-        renderedPlan <- renderPlanTrace unadornedStyle plan
-        annotate (T.unpack renderedReport)
-        annotate (T.unpack renderedPlan)
+        (MkReconciliationPlan steps, _) <- reconcileAnnotated observedOn boolPolicy
         (map stepAction steps) === [SetEntityState lightB On]
 
     specify "does nothing when condition evaluates to false" $
@@ -85,11 +68,7 @@ spec = do
                 ( if_ (toggledStateOf lightA `is` on)
                     `then_` (lightB `shouldBe` off)
                 )
-        let (plan@(MkReconciliationPlan steps), report) = reconcile observedOn boolPolicy
-        renderedReport <- renderReport unadornedStyle report
-        renderedPlan <- renderPlanTrace unadornedStyle plan
-        annotate (T.unpack renderedReport)
-        annotate (T.unpack renderedPlan)
+        (MkReconciliationPlan steps, _) <- reconcileAnnotated observedOn boolPolicy
         (map stepAction steps) === []
 
     specify "mirrors state of two lights" $
@@ -101,26 +80,18 @@ spec = do
               policy
                 "mirror lightA state to lightB"
                 (lightB `shouldBe` toggledStateOf lightA)
-        let (plan@(MkReconciliationPlan steps), report) = reconcile observedOn boolPolicy
-        renderedReport <- renderReport unadornedStyle report
-        renderedPlan <- renderPlanTrace unadornedStyle plan
-        annotate (T.unpack renderedReport)
-        annotate (T.unpack renderedPlan)
+        (MkReconciliationPlan steps, _) <- reconcileAnnotated observedOn boolPolicy
         (map stepAction steps) === [SetEntityState lightB Off]
 
   describe "Reconciler warnings" $ do
     specify "are generated when referencing unknown entity" $
       property $ do
         (unknownEntity, observed) <- forAll $ genWorldWithoutEntity
-        let (_, report) = reconcile observed (lightAlwaysOn unknownEntity)
-        renderedReport <- renderReport unadornedStyle report
-        annotate (T.unpack renderedReport)
+        (_, report) <- reconcileAnnotated observed (lightAlwaysOn unknownEntity)
         assert (hasWarnings report)
 
     specify "are not generated when referencing known entity" $
       property $ do
         (offEntity, observed) <- forAll $ genWorldWithToggled Off
-        let (_, report) = reconcile observed (lightAlwaysOn offEntity)
-        renderedReport <- renderReport unadornedStyle report
-        annotate (T.unpack renderedReport)
+        (_, report) <- reconcileAnnotated observed (lightAlwaysOn offEntity)
         assert (not . hasWarnings $ report)
