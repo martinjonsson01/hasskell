@@ -13,6 +13,7 @@ module Hasskell.Language.Provenance
     branched,
     equality,
     evaluated,
+    literal,
     -- Pretty-printing
     prettifyExplanation,
     cleanExplanation,
@@ -95,6 +96,7 @@ data DeclaredFact
   | BranchTaken
   | Equality Bool
   | Evaluated ToggleState
+  | Literal
   deriving (Eq, Ord, Show)
 
 -- | There is a difference between two states.
@@ -116,6 +118,10 @@ equality loc = DeclaredFact . (:@ loc) . Equality
 -- | A given state was evaluated.
 evaluated :: Location -> ToggleState -> Fact
 evaluated loc = DeclaredFact . (:@ loc) . Evaluated
+
+-- | The state was specified with a source code literal.
+literal :: Location -> Fact
+literal = DeclaredFact . (Literal :@)
 
 -- | A fact that does not stem from the user's declarations.
 data SourcelessFact
@@ -176,6 +182,7 @@ instance Pretty DeclaredFact where
     BranchTaken -> "branch was taken"
     Equality equal -> pretty equal
     Evaluated state -> pretty state
+    Literal -> "literal"
 
 instance Pretty SourcelessFact where
   pretty = \case

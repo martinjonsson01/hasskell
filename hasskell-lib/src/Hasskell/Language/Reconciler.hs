@@ -220,14 +220,14 @@ evalBool ::
   Eff es (Detailed Bool)
 evalBool = \case
   EEqual e1 e2 :@ loc -> do
-    s1 :@ s1Loc :£ _ <- evalState e1
-    s2 :@ s2Loc :£ _ <- evalState e2
+    s1 :@ s1Loc :£ s1Expl <- evalState e1
+    s2 :@ s2Loc :£ s2Expl <- evalState e2
     let areEqual = s1 == s2
     pure $
       (areEqual :@ loc)
         `because` equality loc areEqual
-        `becauseMore` evaluated s1Loc s1
-        `becauseMore` evaluated s2Loc s2
+        `becauseMore` (evaluated s1Loc s1 `explain` s1Expl)
+        `becauseMore` (evaluated s2Loc s2 `explain` s2Expl)
 
 evalState ::
   ( State ObservedWorld :> es,
@@ -235,12 +235,12 @@ evalState ::
   ) =>
   Located (Exp 'TState) -> Eff es (Detailed ToggleState)
 evalState = \case
-  ELitState s :@ loc -> pure (s :@ loc :£ todo)
+  ELitState s :@ loc -> pure (s :@ loc `because` literal loc)
   EGetState entity :@ _ -> do
     eId :@ eloc :£ _ <- evalEntity entity
     worldToggleables <- State.gets (worldToggleables . observedWorld)
     case HMap.lookup eId worldToggleables of
-      Just state -> pure (state :@ eloc :£ todo)
+      Just state -> pure (state :@ eloc `because` observed eId state)
       Nothing -> unknownEntity (eId :@ eloc)
 
 evalEntity :: Located (Exp 'TEntity) -> Eff es (Detailed EntityId)
