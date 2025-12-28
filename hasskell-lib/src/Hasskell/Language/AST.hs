@@ -35,6 +35,7 @@ module Hasskell.Language.AST
     is,
     isGreaterThan,
     isGreaterOrEqualTo,
+    isLessThan,
     -- Time
     currentTime,
     time,
@@ -168,7 +169,7 @@ instance Ord SomeExp where
       Disproved _ -> fromSing $ sCompare (sing @t1) (sing @t2)
 
 -- | Different ways of comparing totally ordered values.
-data ComparisonOp = GreaterThan | GreaterOrEqual
+data ComparisonOp = GreaterThan | GreaterOrEqual | LessThan
   deriving (Eq, Ord, Show)
 
 data Exp :: T -> Type where
@@ -358,6 +359,17 @@ isGreaterOrEqualTo ::
   Located (Exp t) ->
   Located (Exp 'TBool)
 isGreaterOrEqualTo e1 e2 = ECompare GreaterOrEqual e1 e2 :@ captureSrcSpan
+
+-- | Check whether the first expression is strictly less than to the second.
+isLessThan ::
+  ( HasCallStack,
+    SingI t,
+    Proved Comparable t
+  ) =>
+  Located (Exp t) ->
+  Located (Exp t) ->
+  Located (Exp 'TBool)
+isLessThan e1 e2 = ECompare LessThan e1 e2 :@ captureSrcSpan
 
 --------------------------------------------------------------------------------
 

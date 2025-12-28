@@ -106,11 +106,17 @@ spec = do
     specify "sets state when time is greater than or equal" $
       timeComparisonProperty "after or at" isGreaterOrEqualTo (>=)
 
+    specify "sets state when time is less than" $
+      timeComparisonProperty "before" isLessThan (<)
+
     specify "greater than does not succeed on equal time" $
       timeEqualTest "after" isGreaterThan (const [])
 
     specify "greater or equal to succeeds on equal time" $
       timeEqualTest "after or at" isGreaterOrEqualTo (\entity -> [SetEntityState entity On])
+
+    specify "less than does not succeed on equal time" $
+      timeEqualTest "before" isLessThan (const [])
 
   describe "Reconciler warnings" $ do
     specify "are generated when referencing unknown entity" $

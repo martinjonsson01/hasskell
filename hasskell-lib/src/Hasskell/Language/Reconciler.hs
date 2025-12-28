@@ -251,6 +251,7 @@ toComparator :: (Ord a) => ComparisonOp -> (a -> a -> Bool)
 toComparator = \case
   GreaterThan -> (>)
   GreaterOrEqual -> (>=)
+  LessThan -> (<)
 
 data Value t where
   Value ::

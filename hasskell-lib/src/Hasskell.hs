@@ -22,6 +22,7 @@ module Hasskell
     is,
     isGreaterThan,
     isGreaterOrEqualTo,
+    isLessThan,
     -- Time
     currentTime,
     time,
