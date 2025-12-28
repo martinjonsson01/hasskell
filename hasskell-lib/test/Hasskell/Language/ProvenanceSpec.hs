@@ -9,7 +9,6 @@ import Hasskell.Language.Report
 import Hasskell.TestUtils.Gen
 import Hasskell.TestUtils.Specifications
 import Hasskell.TestUtils.Utils
-import Hedgehog
 import Test.Syd hiding (shouldBe)
 import Test.Syd.Hedgehog ()
 
@@ -57,6 +56,3 @@ spec = do
       renderedPlan <- renderPlanTrace Plain plan
 
       goldenStage $ pureGoldenTextFile "test_resources/ProvenanceSpec/trace_time.golden" renderedPlan
-
-sample :: Gen a -> IO a
-sample = sampleDeterministic (Seed 0 1)

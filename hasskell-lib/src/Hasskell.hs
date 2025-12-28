@@ -7,19 +7,24 @@ module Hasskell
     -- Language
     Specification,
     policy,
+    -- State
+    ToggleState (..),
     fromState,
     on,
     off,
     shouldBe,
     toggledStateOf,
-    is,
+    -- Logic
     if_,
     then_,
     else_,
+    -- Operators
+    is,
+    isGreaterThan,
+    -- Time
     currentTime,
     time,
     IntoEntity (..),
-    ToggleState (..),
   )
 where
 

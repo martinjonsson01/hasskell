@@ -228,24 +228,37 @@ evalBool ::
   Eff es (Detailed Bool)
 evalBool = \case
   EEqual e1 e2 :@ loc -> do
-    EqVal (s1 :@ s1Loc :£ s1Expl) <- evalEq e1
-    EqVal (s2 :@ s2Loc :£ s2Expl) <- evalEq e2
+    Value (s1 :@ s1Loc :£ s1Expl) <- evalEq e1
+    Value (s2 :@ s2Loc :£ s2Expl) <- evalEq e2
     let areEqual = s1 == s2
     pure $
       (areEqual :@ loc)
         `because` equality loc areEqual
         `becauseMore` (evaluated s1Loc s1 `explain` s1Expl)
         `becauseMore` (evaluated s2Loc s2 `explain` s2Expl)
+  ECompare op e1 e2 :@ loc -> do
+    Value (s1 :@ s1Loc :£ s1Expl) <- evalComp e1
+    Value (s2 :@ s2Loc :£ s2Expl) <- evalComp e2
+    let compareVals = toComparator op
+        result = compareVals s1 s2
+    pure $
+      (result :@ loc)
+        `because` comparison loc op result
+        `becauseMore` (evaluated s1Loc s1 `explain` s1Expl)
+        `becauseMore` (evaluated s2Loc s2 `explain` s2Expl)
 
-data EquatableVal t where
-  EqVal ::
+toComparator :: (Ord a) => ComparisonOp -> (a -> a -> Bool)
+toComparator GreaterThan = (>)
+
+data Value t where
+  Value ::
     ( Eq (Denote t),
       Pretty (Denote t),
       Show (Denote t),
       Ord (Denote t),
       Typeable (Denote t)
     ) =>
-    Detailed (Denote t) -> EquatableVal t
+    Detailed (Denote t) -> Value t
 
 evalEq ::
   ( Proved Equatable t,
@@ -253,11 +266,21 @@ evalEq ::
     Error ReconciliationError :> es
   ) =>
   Located (Exp t) ->
-  Eff es (EquatableVal t)
+  Eff es (Value t)
 evalEq @t expr =
   case (auto @Equatable @t) of
-    EqState -> EqVal <$> evalState expr
-    EqTime -> EqVal <$> evalTime expr
+    EqState -> Value <$> evalState expr
+    EqTime -> Value <$> evalTime expr
+
+evalComp ::
+  ( Proved Comparable t,
+    State ObservedWorld :> es
+  ) =>
+  Located (Exp t) ->
+  Eff es (Value t)
+evalComp @t expr =
+  case (auto @Comparable @t) of
+    CompTime -> Value <$> evalTime expr
 
 evalState ::
   ( State ObservedWorld :> es,

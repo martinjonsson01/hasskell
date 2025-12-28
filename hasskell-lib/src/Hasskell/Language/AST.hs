@@ -16,18 +16,25 @@ module Hasskell.Language.AST
     T (..),
     Exp (..),
     IntoEntity (..),
-    Equatable (..),
+    -- Properties
     Proved (..),
-    -- Syntax
+    Equatable (..),
+    ComparisonOp (..),
+    Comparable (..),
+    -- State
     fromState,
     on,
     off,
     shouldBe,
     toggledStateOf,
+    -- Logic
     if_,
     then_,
     else_,
+    -- Operators
     is,
+    isGreaterThan,
+    -- Time
     currentTime,
     time,
     -- Singleton types
@@ -123,6 +130,7 @@ instance HasReferencedEntities (Exp t) where
       referencedEntitiesIn eCond
         ++ referencedEntitiesIn eThen
         ++ referencedEntitiesIn eElse
+    ECompare _ e1 e2 -> referencedEntitiesIn e1 ++ referencedEntitiesIn e2
 
 instance HasLocations (Exp t) where
   extractLocations = \case
@@ -138,6 +146,7 @@ instance HasLocations (Exp t) where
       extractLocations eCond
         ++ extractLocations eThen
         ++ extractLocations eElse
+    ECompare _ e1 e2 -> extractLocations e1 ++ extractLocations e2
 
 data SomeExp :: Type where
   SomeExp :: (SingI (t :: T)) => Exp t -> SomeExp
@@ -156,6 +165,10 @@ instance Ord SomeExp where
     case (sing @t1) %~ (sing @t2) of
       Proved Refl -> compare e1 e2
       Disproved _ -> fromSing $ sCompare (sing @t1) (sing @t2)
+
+-- | Different ways of comparing totally ordered values.
+data ComparisonOp = GreaterThan
+  deriving (Eq, Ord, Show)
 
 data Exp :: T -> Type where
   -- Literals
@@ -180,6 +193,12 @@ data Exp :: T -> Type where
     Located (Located (Exp 'TAction)) ->
     Located (Located (Exp 'TAction)) ->
     Exp 'TAction
+  ECompare ::
+    (SingI t, Proved Comparable t) =>
+    ComparisonOp ->
+    Located (Exp t) ->
+    Located (Exp t) ->
+    Exp 'TBool
 
 deriving instance Show (Exp t)
 
@@ -232,24 +251,43 @@ instance Ord (Exp t) where
             compare
               (fromSing (sing @t1))
               (fromSing (sing @t2))
+      (EEqual _ _, _) -> LT
+      (_, EEqual _ _) -> GT
       (EIf eCond1 eThen1 eElse1, EIf eCond2 eThen2 eElse2) ->
         compare eCond1 eCond2
           <> compare eThen1 eThen2
           <> compare eElse1 eElse2
+      (ECompare @t1 c1 a1 b1, ECompare @t2 c2 a2 b2) ->
+        compare c1 c2
+          <> case (sing @t1) %~ (sing @t2) of
+            Proved Refl -> compare a1 a2 <> compare b1 b2
+            Disproved _ ->
+              compare
+                (fromSing (sing @t1))
+                (fromSing (sing @t2))
+
+--------------------------------------------------------------------------------
+
+class Proved p a where
+  auto :: p a
 
 -- | Whether values of a given type can be compared using equality checks.
 data Equatable :: T -> Type where
   EqState :: Equatable 'TState
   EqTime :: Equatable 'TTime
 
-class Proved p a where
-  auto :: p a
-
 instance Proved Equatable 'TState where
   auto = EqState
 
 instance Proved Equatable 'TTime where
   auto = EqTime
+
+-- | Whether values of a given type have a total order.
+data Comparable :: T -> Type where
+  CompTime :: Comparable 'TTime
+
+instance Proved Comparable 'TTime where
+  auto = CompTime
 
 --------------------------------------------------------------------------------
 -- Syntax
@@ -295,6 +333,19 @@ is ::
   Located (Exp t) ->
   Located (Exp 'TBool)
 is s1 s2 = EEqual s1 s2 :@ captureSrcSpan
+
+--------------------------------------------------------------------------------
+
+-- | Check whether the first expression is strictly greater than the second.
+isGreaterThan ::
+  ( HasCallStack,
+    SingI t,
+    Proved Comparable t
+  ) =>
+  Located (Exp t) ->
+  Located (Exp t) ->
+  Located (Exp 'TBool)
+isGreaterThan e1 e2 = ECompare GreaterThan e1 e2 :@ captureSrcSpan
 
 --------------------------------------------------------------------------------
 

@@ -1,18 +1,18 @@
 will turn entity `lightB` on
 reason:
     entity `lightB` should be on
-         ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@28:35-28:45
+         ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@27:35-27:45
          │
-      28 │                   `else_` (lightB `shouldBe` on)
+      27 │                   `else_` (lightB `shouldBe` on)
          •                                   ┬───────── 
          •                                   ╰╸ entity `lightB` should be on
     ─────╯
 
         │
         ├─▶ because literal
-             ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@28:46-28:48
+             ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@27:46-27:48
              │
-          28 │                   `else_` (lightB `shouldBe` on)
+          27 │                   `else_` (lightB `shouldBe` on)
              •                                              ┬─ 
              •                                              ╰╸ literal
         ─────╯
@@ -21,27 +21,27 @@ reason:
         ├─▶ because entity `lightB` is off
         │
         ├─▶ because branch was taken
-             ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@28:19-28:26
+             ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@27:19-27:26
              │
-          28 │                   `else_` (lightB `shouldBe` on)
+          27 │                   `else_` (lightB `shouldBe` on)
              •                   ┬────── 
              •                   ╰╸ branch was taken
         ─────╯
 
             │
             ├─▶ because False
-                 ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@26:44-26:48
+                 ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@25:44-25:48
                  │
-              26 │               ( if_ (toggledStateOf lightA `is` on)
+              25 │               ( if_ (toggledStateOf lightA `is` on)
                  •                                            ┬─── 
                  •                                            ╰╸ False
             ─────╯
 
                 │
                 ├─▶ because off
-                     ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@26:22-26:36
+                     ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@25:22-25:36
                      │
-                  26 │               ( if_ (toggledStateOf lightA `is` on)
+                  25 │               ( if_ (toggledStateOf lightA `is` on)
                      •                      ┬───────────── 
                      •                      ╰╸ off
                 ─────╯
@@ -50,18 +50,18 @@ reason:
                     ├─▶ because entity `lightA` is off
                 │
                 ├─▶ because on
-                     ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@26:49-26:51
+                     ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@25:49-25:51
                      │
-                  26 │               ( if_ (toggledStateOf lightA `is` on)
+                  25 │               ( if_ (toggledStateOf lightA `is` on)
                      •                                                 ┬─ 
                      •                                                 ╰╸ on
                 ─────╯
 
                     │
                     ├─▶ because literal
-                         ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@26:49-26:51
+                         ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@25:49-25:51
                          │
-                      26 │               ( if_ (toggledStateOf lightA `is` on)
+                      25 │               ( if_ (toggledStateOf lightA `is` on)
                          •                                                 ┬─ 
                          •                                                 ╰╸ literal
                     ─────╯

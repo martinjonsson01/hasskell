@@ -2,6 +2,7 @@ module Hasskell.TestUtils.Utils
   ( runWithClient,
     shouldBeSubsetOf,
     sampleDeterministic,
+    sample,
     reconcileAnnotated,
   )
 where
@@ -29,6 +30,9 @@ reconcileAnnotated observed spec = do
   withFrozenCallStack $ annotate (T.unpack renderedReport)
   withFrozenCallStack $ annotate (T.unpack renderedPlan)
   pure result
+
+sample :: Gen a -> IO a
+sample = sampleDeterministic (Seed 0 1)
 
 sampleDeterministic :: Seed -> Gen a -> IO a
 sampleDeterministic seed gen =

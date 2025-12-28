@@ -12,6 +12,7 @@ module Hasskell.Language.Provenance
     desired,
     branched,
     equality,
+    comparison,
     evaluated,
     literal,
     -- Pretty-printing
@@ -100,6 +101,7 @@ data DeclaredFact where
   DesiredState :: EntityId -> ToggleState -> DeclaredFact
   BranchTaken :: DeclaredFact
   Equality :: Bool -> DeclaredFact
+  Compared :: ComparisonOp -> Bool -> DeclaredFact
   Evaluated :: PrettyVal -> DeclaredFact
   Literal :: DeclaredFact
   deriving (Eq, Ord, Show)
@@ -127,9 +129,13 @@ desired loc eId = DeclaredFact . (:@ loc) . DesiredState eId
 branched :: Location -> Fact
 branched = DeclaredFact . (BranchTaken :@)
 
--- | Values are equal.
+-- | Values have been checked for equality.
 equality :: Location -> Bool -> Fact
 equality loc = DeclaredFact . (:@ loc) . Equality
+
+-- | Values have been compared.
+comparison :: Location -> ComparisonOp -> Bool -> Fact
+comparison loc op = DeclaredFact . (:@ loc) . Compared op
 
 -- | A given state was evaluated.
 evaluated ::
@@ -210,6 +216,7 @@ instance Pretty DeclaredFact where
       "entity" <+> pretty eId <+> "should be" <+> pretty state
     BranchTaken -> "branch was taken"
     Equality equal -> pretty equal
+    Compared op result -> pretty (show op) <+> pretty result
     Evaluated (PrettyVal val) -> pretty val
     Literal -> "literal"
 
