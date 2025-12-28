@@ -110,9 +110,27 @@ spec = do
             observedTime = observedTimeOfDay observed
             cutoffTime = TimeOfDay 13 42 0
         (MkReconciliationPlan steps, _) <- reconcileAnnotated observed timePolicy
-        (map stepAction steps) === if observedTime > cutoffTime then [SetEntityState entity On] else []
+        (map stepAction steps)
+          === if observedTime > cutoffTime
+            then
+              [SetEntityState entity On]
+            else []
 
-    specify "greater than does not succeed on equal value" $
+    specify "sets state when time is greater than or equal" $
+      property $ do
+        (entity, observed) <- forAll $ genWorldWithToggled Off
+        let timePolicy =
+              policy
+                "turn light on after 13:42"
+                ( if_ (currentTime `isGreaterOrEqualTo` time @13 @42)
+                    `then_` (entity `shouldBe` on)
+                )
+            observedTime = observedTimeOfDay observed
+            cutoffTime = TimeOfDay 13 42 0
+        (MkReconciliationPlan steps, _) <- reconcileAnnotated observed timePolicy
+        (map stepAction steps) === if observedTime >= cutoffTime then [SetEntityState entity On] else []
+
+    specify "greater than does not succeed on equal time" $
       do
         (entity, observed) <- sample $ genWorldWithToggledAndTime Off (13, 42)
         let timePolicy =
@@ -123,6 +141,18 @@ spec = do
                 )
             (MkReconciliationPlan steps, _) = reconcile observed timePolicy
         (map stepAction steps) `Syd.shouldBe` []
+
+    specify "greater or equal to succeeds on equal time" $
+      do
+        (entity, observed) <- sample $ genWorldWithToggledAndTime Off (13, 42)
+        let timePolicy =
+              policy
+                "turn light on after 13:42"
+                ( if_ (currentTime `isGreaterOrEqualTo` time @13 @42)
+                    `then_` (entity `shouldBe` on)
+                )
+            (MkReconciliationPlan steps, _) = reconcile observed timePolicy
+        (map stepAction steps) `Syd.shouldBe` [SetEntityState entity On]
 
   describe "Reconciler warnings" $ do
     specify "are generated when referencing unknown entity" $

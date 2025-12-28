@@ -248,7 +248,9 @@ evalBool = \case
         `becauseMore` (evaluated s2Loc s2 `explain` s2Expl)
 
 toComparator :: (Ord a) => ComparisonOp -> (a -> a -> Bool)
-toComparator GreaterThan = (>)
+toComparator = \case
+  GreaterThan -> (>)
+  GreaterOrEqual -> (>=)
 
 data Value t where
   Value ::
