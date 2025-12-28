@@ -26,6 +26,5 @@ STACK="stack --work-dir .watch-stack-work \
 
 ghcid \
   --command "${STACK}" \
-  --warnings \
   --test "${EXPR}" \
   --color=always
