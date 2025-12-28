@@ -1,6 +1,9 @@
 module Hasskell.HomeAssistant.ClientSpec (spec) where
 
+import Control.Concurrent.STM qualified as STM
+import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
+import Effectful.Concurrent.STM
 import Hasskell.Effects.HASS
 import Hasskell.HomeAssistant.API
 import Hasskell.TestUtils.Utils
@@ -29,5 +32,20 @@ spec = do
       services <- runWithClient getServices
       length (services) `shouldNotBe` 0
 
-    it "can subscribe to event updates" $ do
-      runWithClient (subscribeToStateOf (EntityId "light.bollampa"))
+    setTimeout 10 . it "can subscribe to event updates" $ do
+      eventsVar <- STM.atomically $ newTVar []
+      let retryUntilEvent = do
+            events <- readTVar eventsVar
+            case NE.nonEmpty events of
+              Just eventsNE -> pure eventsNE
+              Nothing -> retry
+          entity = EntityId "sensor.cloud_gateway_ultra_memory_utilization"
+
+      events <-
+        runWithClient $
+          subscribeToStateOf entity (modifyTVar eventsVar . (:))
+            >> atomically retryUntilEvent
+
+      let event = NE.head events
+          getEventEntityId = triggeredEntityId . variablesTrigger . eventVariables
+      (getEventEntityId event) `shouldBe` entity

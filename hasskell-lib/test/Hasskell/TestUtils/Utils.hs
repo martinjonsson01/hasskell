@@ -4,6 +4,7 @@ module Hasskell.TestUtils.Utils
     sampleDeterministic,
     sample,
     reconcileAnnotated,
+    setTimeout,
   )
 where
 
@@ -21,6 +22,7 @@ import Hedgehog.Internal.Gen qualified as InternalGen
 import Hedgehog.Internal.Tree qualified as InternalTree
 import System.Environment (lookupEnv)
 import Test.Syd
+import Test.Syd.OptParse
 
 reconcileAnnotated :: (HasCallStack, MonadIO m, MonadTest m) => ObservedWorld -> Specification -> m (ReconciliationPlan, ReconciliationReport)
 reconcileAnnotated observed spec = do
@@ -77,3 +79,6 @@ shouldBeSubsetOf :: (HasCallStack, Show a, Eq a) => [a] -> [a] -> Expectation
 as `shouldBeSubsetOf` bs = mapM_ (\a -> shouldSatisfyNamed bs ("should contain\n" <> ppShow a) (a `elem`)) as
 
 infix 1 `shouldBeSubsetOf`
+
+setTimeout :: Int -> TestDefM a b c -> TestDefM a b c
+setTimeout seconds = modifyTimeout (const (TimeoutAfterMicros $ seconds * 1_000_000))

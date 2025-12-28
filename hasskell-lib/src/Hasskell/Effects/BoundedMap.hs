@@ -8,6 +8,7 @@ where
 
 import Control.Monad
 import Data.Hashable
+import Data.Maybe
 import Effectful
 import Effectful.Concurrent.STM
 import StmContainers.Map qualified as SM
@@ -25,11 +26,13 @@ newBoundedMap capacity =
     BoundedMap <$> SM.new <*> pure capacity <*> newTVar 0
 
 -- | Inserts a value into the map.
--- NOTE: will retry if the map is at max capacity.
+-- NOTE: will retry if the map is at max capacity, or if the key already exists.
 insert :: (Hashable k, Concurrent :> es) => k -> v -> BoundedMap k v -> Eff es ()
 insert key value BoundedMap {innerMap, maxCapacity, currentCapacity} = atomically $ do
   capacity <- readTVar currentCapacity
   when (capacity >= maxCapacity) retry
+  keyAlreadyExists <- isJust <$> SM.lookup key innerMap
+  when keyAlreadyExists retry
   modifyTVar currentCapacity (+ 1)
   SM.insert value key innerMap
 

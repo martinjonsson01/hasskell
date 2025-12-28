@@ -9,6 +9,7 @@ module Hasskell.Effects.Counter
   )
 where
 
+import Data.Aeson
 import Data.Hashable
 import Effectful
 import Effectful.Concurrent
@@ -18,7 +19,7 @@ import Effectful.TH
 
 -- | Unique ID associated with a sent message.
 newtype CorrelationId = CorrelationId Int
-  deriving newtype (Hashable, Eq, Show, Num)
+  deriving newtype (Hashable, Eq, Show, Num, FromJSON, ToJSON)
 
 data Counter :: Effect where
   NewId :: Counter m CorrelationId

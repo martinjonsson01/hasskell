@@ -24,7 +24,8 @@ import Hasskell.HomeAssistant.API
 
 type ClientM =
   Eff
-    '[ Configured,
+    '[ Concurrent,
+       Configured,
        Counter,
        Logger,
        Error ClientError,

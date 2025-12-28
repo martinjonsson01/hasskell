@@ -39,7 +39,11 @@ spec = do
         let (_, executedCommands) = recordHASSCommands (executePlan plan)
         executedCommands === [TurnOffLight entityId]
 
-data HASSOp = Unknown | TurnOnLight EntityId | TurnOffLight EntityId
+data HASSOp
+  = Unknown
+  | TurnOnLight EntityId
+  | TurnOffLight EntityId
+  | EntitySubscribe EntityId
   deriving (Eq, Show)
 
 recordHASSCommands :: Eff '[HASS] a -> (a, [HASSOp])
@@ -67,4 +71,7 @@ runWithFakeHASS = reinterpret_ (runState []) $ \action -> case action of
     pure ()
   HASS.TurnOffLight entity -> do
     modify $ (TurnOffLight entity :)
+    pure ()
+  HASS.SubscribeToStateOf entity _ -> do
+    modify (EntitySubscribe entity :)
     pure ()

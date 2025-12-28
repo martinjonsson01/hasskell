@@ -8,6 +8,7 @@ module Hasskell.HomeAssistant.API
     HASSCommand (..),
     HASSCommandGetEntityRegistry (..),
     HASSCommandGetDeviceRegistry (..),
+    HASSResponse (..),
     HASSResult (..),
     HASSFailure (..),
     HASSConfig (..),
@@ -21,6 +22,9 @@ module Hasskell.HomeAssistant.API
     HASSTrigger (..),
     HASSPlatform,
     HASSStateValue,
+    HASSEvent (..),
+    HASSVariables (..),
+    HASSTriggered (..),
     -- Domains
     HASSDomain,
     domainLight,
@@ -80,7 +84,6 @@ type HASSMessageJSONOptions (prefix :: Symbol) =
 -- | Value data types are parsed differently than message data types, mainly due to them not being sum encoded.
 type HASSValueJSONOptions (prefix :: Symbol) =
   '[ OmitNothingFields,
-     UnwrapUnaryRecords,
      FieldLabelModifier '[StripPrefix prefix, CamelToSnake],
      ConstructorTagModifier '[Decapitalize, StripPrefix prefix, CamelToSnake]
    ]
@@ -183,8 +186,8 @@ type HASSStateValue = Text
 data HASSTrigger = Trigger
   { triggerPlatform :: HASSPlatform,
     triggerEntityId :: EntityId,
-    triggerFrom :: HASSStateValue,
-    triggerTo :: HASSStateValue
+    triggerFrom :: Maybe HASSStateValue,
+    triggerTo :: Maybe HASSStateValue
   }
   deriving (Generic, Eq, Show)
   deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "trigger") HASSTrigger
@@ -197,6 +200,17 @@ data HASSTarget = Target
   }
   deriving (Generic, Eq, Show)
   deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "target") HASSTarget
+
+data HASSResponse = ResponseResult (HASSResult Value) | ResponseEvent HASSEvent
+  deriving (Eq, Show)
+
+instance FromJSON HASSResponse where
+  parseJSON = withObject "HASSResponse" $ \o -> do
+    t :: String <- o .: "type"
+    case t of
+      "result" -> ResponseResult <$> parseJSON (Object o)
+      "event" -> o .: "event" >>= (ResponseEvent <$>) . parseJSON
+      other -> fail $ "Expected type=result|event, got: " ++ show other
 
 data HASSResult a = Result {value :: Either HASSFailure a}
   deriving (Eq, Show)
@@ -396,3 +410,33 @@ data HASSService = Service
   }
   deriving (Generic, Eq, Show)
   deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "service") HASSService
+
+-- | An event emitted by a subscription.
+data HASSEvent = Event
+  { eventVariables :: HASSVariables
+  }
+  deriving (Generic, Eq, Show)
+  deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "event") HASSEvent
+
+-- | Variables associated with an event.
+data HASSVariables = Variables
+  { variablesTrigger :: HASSTriggered
+  }
+  deriving (Generic, Eq, Show)
+  deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "variables") HASSVariables
+
+-- | The result of a Trigger firing.
+data HASSTriggered = Triggered
+  { triggeredId :: Text,
+    triggeredIdx :: Text,
+    triggeredAlias :: Maybe Text,
+    triggeredPlatform :: Text,
+    triggeredEntityId :: EntityId,
+    triggeredFor :: Maybe Text,
+    triggeredAttribute :: Maybe Text,
+    triggeredDescription :: Text,
+    triggeredFromState :: HASSState,
+    triggeredToState :: HASSState
+  }
+  deriving (Generic, Eq, Show)
+  deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "triggered") HASSTriggered

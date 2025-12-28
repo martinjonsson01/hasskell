@@ -44,6 +44,7 @@ dependencies:
   - prettyprinter-ansi-terminal >= 1.1 && < 2
 
 default-extensions:
+  - NumericUnderscores
   - StandaloneKindSignatures
   - TypeOperators
   - DerivingStrategies

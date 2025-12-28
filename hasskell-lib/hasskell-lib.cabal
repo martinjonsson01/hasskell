@@ -46,6 +46,7 @@ library
   hs-source-dirs:
       src
   default-extensions:
+      NumericUnderscores
       StandaloneKindSignatures
       TypeOperators
       DerivingStrategies
@@ -159,6 +160,7 @@ test-suite hasskell-lib-test
   hs-source-dirs:
       test
   default-extensions:
+      NumericUnderscores
       StandaloneKindSignatures
       TypeOperators
       DerivingStrategies
