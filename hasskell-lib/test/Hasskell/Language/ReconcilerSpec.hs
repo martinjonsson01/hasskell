@@ -100,6 +100,7 @@ spec = do
         (MkReconciliationPlan steps, _) <- reconcileAnnotated observed timePolicy
         (map stepAction steps) === [SetEntityState entity On]
 
+  describe "Reconciliation of comparisons" $ do
     specify "sets state when time is greater than" $
       timeComparisonProperty "after" isGreaterThan (>)
 
