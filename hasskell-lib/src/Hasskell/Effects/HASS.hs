@@ -16,11 +16,14 @@ module Hasskell.Effects.HASS
 where
 
 import Data.List qualified as L
+import Data.Text qualified as T
 import Effectful
 import Effectful.Dispatch.Dynamic
 import Effectful.TH
 import Hasskell.Effects.HASSConnection
+import Hasskell.Effects.Profiling
 import Hasskell.HomeAssistant.API
+import Prettyprinter
 
 data HASS :: Effect where
   GetConfig :: HASS m HASSConfig
@@ -33,11 +36,23 @@ data HASS :: Effect where
 
 makeEffect ''HASS
 
+instance Pretty (HASS a b) where
+  pretty = \case
+    GetConfig -> "get config"
+    GetStates -> "get states"
+    GetEntities -> "get entities"
+    GetDevices -> "get devices"
+    GetServices -> "get services"
+    TurnOnLight eId -> "turn on" <+> pretty eId
+    TurnOffLight eId -> "turn off" <+> pretty eId
+
 runHASS ::
-  (HASSConnection :> es) =>
+  ( HASSConnection :> es,
+    Profiling :> es
+  ) =>
   Eff (HASS : es) a ->
   Eff es a
-runHASS = interpret_ $ \case
+runHASS = interpret_ $ \command -> profile (T.show $ pretty command) $ case command of
   GetConfig -> sendMessage CommandGetConfig
   GetStates -> sendMessage CommandGetStates
   GetEntities -> sendMessage CommandGetEntityRegistry

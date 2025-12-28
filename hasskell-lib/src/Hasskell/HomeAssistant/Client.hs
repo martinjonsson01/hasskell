@@ -46,10 +46,10 @@ runClient config client =
   let logConfig = logging config
    in runEff
         . runConcurrent
-        . runProfiling
         . runErrorNoCallStack @ClientError
         . runMapError ClientLogError
         . runLogger logConfig
+        . runProfiling
         . runCounter
         . runConfigured config
         . runMapError ClientWebSocketError
