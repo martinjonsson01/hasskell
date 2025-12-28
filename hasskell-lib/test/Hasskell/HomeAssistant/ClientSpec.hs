@@ -28,3 +28,6 @@ spec = do
     it "can get services" $ do
       services <- runWithClient getServices
       length (services) `shouldNotBe` 0
+
+    it "can subscribe to event updates" $ do
+      runWithClient (subscribeToStateOf (EntityId "light.bollampa"))

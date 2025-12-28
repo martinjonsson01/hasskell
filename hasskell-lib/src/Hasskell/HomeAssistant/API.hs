@@ -18,6 +18,9 @@ module Hasskell.HomeAssistant.API
     HASSTarget (..),
     HASSActionResult (..),
     HASSUnitSystem (..),
+    HASSTrigger (..),
+    HASSPlatform,
+    HASSStateValue,
     -- Domains
     HASSDomain,
     domainLight,
@@ -160,6 +163,10 @@ data HASSCommand
         commandTarget :: Maybe HASSTarget,
         commandReturnResponse :: Bool
       }
+  | -- | Subscribes to state changes of the given entity.
+    CommandSubscribeTrigger
+      { commandTrigger :: HASSTrigger
+      }
   deriving (Generic, Eq, Show)
   deriving (FromJSON, ToJSON) via CustomJSON (HASSMessageJSONOptions "command") HASSCommand
 
@@ -167,6 +174,20 @@ instance WS.WebSocketsData HASSCommand where
   fromLazyByteString = unimplemented
   fromDataMessage = unimplemented
   toLazyByteString = encode
+
+type HASSPlatform = Text
+
+type HASSStateValue = Text
+
+-- | A condition for an automation to run.
+data HASSTrigger = Trigger
+  { triggerPlatform :: HASSPlatform,
+    triggerEntityId :: EntityId,
+    triggerFrom :: HASSStateValue,
+    triggerTo :: HASSStateValue
+  }
+  deriving (Generic, Eq, Show)
+  deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "trigger") HASSTrigger
 
 data HASSTarget = Target
   { targetEntityId :: [EntityId],
@@ -202,7 +223,7 @@ data HASSActionResult = ActionResult
 
 data HASSState = State
   { stateEntityId :: EntityId,
-    stateState :: Text,
+    stateState :: HASSStateValue,
     stateAttributes :: KeyMap Value,
     stateLastChanged :: UTCTime,
     stateLastReported :: UTCTime,

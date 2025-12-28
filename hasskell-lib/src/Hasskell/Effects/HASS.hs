@@ -12,6 +12,7 @@ module Hasskell.Effects.HASS
     getServices,
     turnOnLight,
     turnOffLight,
+    subscribeToStateOf,
   )
 where
 
@@ -33,6 +34,7 @@ data HASS :: Effect where
   GetServices :: HASS m HASSServiceActions
   TurnOnLight :: EntityId -> HASS m ()
   TurnOffLight :: EntityId -> HASS m ()
+  SubscribeToStateOf :: EntityId -> HASS m ()
 
 makeEffect ''HASS
 
@@ -45,6 +47,7 @@ instance Pretty (HASS a b) where
     GetServices -> "get services"
     TurnOnLight eId -> "turn on" <+> pretty eId
     TurnOffLight eId -> "turn off" <+> pretty eId
+    SubscribeToStateOf eId -> "subscribe to state of" <+> pretty eId
 
 runHASS ::
   ( HASSConnection :> es,
@@ -60,6 +63,21 @@ runHASS = interpret_ $ \command -> profile (T.show $ pretty command) $ case comm
   GetServices -> sendMessage CommandGetServices
   TurnOnLight entity -> callService domainLight serviceTurnOn entity
   TurnOffLight entity -> callService domainLight serviceTurnOff entity
+  SubscribeToStateOf entity -> createStateSubscription entity
+
+createStateSubscription :: (HASSConnection :> es) => EntityId -> Eff es ()
+createStateSubscription eId =
+  sendMessage
+    ( CommandSubscribeTrigger
+        { commandTrigger =
+            Trigger
+              { triggerPlatform = "state",
+                triggerEntityId = eId,
+                triggerFrom = "off",
+                triggerTo = "on"
+              }
+        }
+    )
 
 callService :: (HASSConnection :> es) => HASSDomain -> HASSServiceName -> EntityId -> Eff es ()
 callService domain service entityId =
