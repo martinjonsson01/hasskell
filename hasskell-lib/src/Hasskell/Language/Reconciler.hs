@@ -252,6 +252,7 @@ toComparator = \case
   GreaterThan -> (>)
   GreaterOrEqual -> (>=)
   LessThan -> (<)
+  LessThanOrEqual -> (<=)
 
 data Value t where
   Value ::
