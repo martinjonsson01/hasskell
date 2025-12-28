@@ -18,7 +18,7 @@ reason:
         ─────╯
 
         │
-        ├─▶ because entity `lightB` is off
+        ├─▶ because entity `lightB` is currently off
         │
         ├─▶ because branch was taken
              ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@27:19-27:26
@@ -47,7 +47,7 @@ reason:
                 ─────╯
 
                     │
-                    ├─▶ because entity `lightA` is off
+                    ├─▶ because entity `lightA` is currently off
                 │
                 ├─▶ because on
                      ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@25:49-25:51

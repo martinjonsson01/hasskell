@@ -222,5 +222,5 @@ instance Pretty DeclaredFact where
 
 instance Pretty SourcelessFact where
   pretty = \case
-    ObservedState eId current -> "entity" <+> pretty eId <+> "is" <+> pretty current
+    ObservedState eId current -> "entity" <+> pretty eId <+> "is currently" <+> pretty current
     ObservedTime timeOfDay -> "current time is" <+> pretty timeOfDay

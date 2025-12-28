@@ -18,7 +18,7 @@ reason:
         ─────╯
 
         │
-        ├─▶ because entity `l1QB` is off
+        ├─▶ because entity `l1QB` is currently off
         │
         ├─▶ because branch was taken
              ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@52:19-52:26
