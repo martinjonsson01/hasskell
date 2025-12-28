@@ -9,7 +9,7 @@ module Hasskell.Effects.HASSConnection
   )
 where
 
-import Control.Monad (forever, unless)
+import Control.Monad
 import Control.Placeholder
 import Data.Aeson
 import Data.Aeson.Encode.Pretty (encodePretty)
@@ -27,6 +27,8 @@ import Effectful.Dispatch.Dynamic (interpretWith_)
 import Effectful.Error.Static
 import Effectful.TH
 import Hasskell.Config
+import Hasskell.Effects.BoundedMap (BoundedMap)
+import Hasskell.Effects.BoundedMap qualified as BM
 import Hasskell.Effects.Counter
 import Hasskell.Effects.Logging
 import Hasskell.Effects.Utils
@@ -44,13 +46,8 @@ type SourceJSONText = Text
 
 type MessageText = Text
 
-type MismatchedRequestId = CorrelationId
-
-type MismatchedResponseId = CorrelationId
-
 data HASSWebSocketError
   = ParserError SourceJSONText MessageText
-  | EnvelopeMismatch MismatchedRequestId MismatchedResponseId
   | InvalidAuthentication Text
   | WebSocketLogError LogError
   | CommandFailure HASSFailure
@@ -68,13 +65,13 @@ runWithHASSWebSocket ::
   Eff (HASSConnection : es) a ->
   Eff es a
 runWithHASSWebSocket action = do
-  receiveQueue <- atomically $ newTBQueue 100
+  receiveMap <- BM.newBoundedMap 100
   sendQueue <- atomically $ newTBQueue 100
 
-  let websocket = runWebSocket receiveQueue sendQueue
+  let websocket = runWebSocket receiveMap sendQueue
       interpreter =
         interpretWith_ action $ \case
-          SendMessage message -> handleSendMessage sendQueue receiveQueue message
+          SendMessage message -> handleSendMessage sendQueue receiveMap message
 
   race websocket interpreter >>= \result -> do
     case result of
@@ -93,16 +90,14 @@ handleSendMessage ::
     FromJSON b
   ) =>
   TBQueue (Envelope SomeHASSMessage) ->
-  TBQueue (Envelope (HASSResult Value)) ->
+  BoundedMap CorrelationId (HASSResult Value) ->
   a ->
   Eff es b
-handleSendMessage sendQueue receiveQueue message = do
+handleSendMessage sendQueue receiveMap message = do
   requestId <- newId
 
   atomically $ writeTBQueue sendQueue (Envelope requestId (SomeMessage message))
-  Envelope responseId response <- atomically $ readTBQueue receiveQueue
-
-  unless (requestId == responseId) (throwError $ EnvelopeMismatch requestId responseId)
+  response <- BM.remove requestId receiveMap
 
   result <- liftEither $ leftMap CommandFailure $ value response
 
@@ -124,10 +119,10 @@ runWebSocket ::
     Logger :> es,
     IOE :> es
   ) =>
-  TBQueue (Envelope (HASSResult Value)) ->
+  BoundedMap CorrelationId (HASSResult Value) ->
   TBQueue (Envelope SomeHASSMessage) ->
   Eff es ()
-runWebSocket recieveQueue sendQueue = do
+runWebSocket receiveMap sendQueue = do
   config <- getConfig
   let logConfig = logging config
       socketUrl = T.unpack $ baseUrl config
@@ -138,7 +133,7 @@ runWebSocket recieveQueue sendQueue = do
           . runMapError WebSocketLogError
           . runLogger logConfig
           . runConcurrent
-          . handleWebsocket recieveQueue sendQueue
+          . handleWebsocket receiveMap sendQueue
   logDebug "starting websocket..."
   ( liftIO $
       WS.runClient
@@ -156,20 +151,20 @@ handleWebsocket ::
     Logger :> es,
     Error HASSWebSocketError :> es
   ) =>
-  TBQueue (Envelope (HASSResult Value)) ->
+  BoundedMap CorrelationId (HASSResult Value) ->
   TBQueue (Envelope SomeHASSMessage) ->
   WS.Connection ->
   Eff es ()
-handleWebsocket receiveQueue sendQueue connection = do
+handleWebsocket receiveMap sendQueue connection = do
   logDebug "authenticating..."
   authenticate connection
   logDebug "authenticated!"
 
   let receiver =
         forever $ do
-          response <- liftIO (WS.receiveData connection)
-          value <- liftEither response
-          atomically $ writeTBQueue receiveQueue value
+          responseData <- liftIO (WS.receiveData connection)
+          Envelope responseId response <- liftEither responseData
+          BM.insert responseId response receiveMap
 
       sender = forever $ do
         Envelope envelopeId (SomeMessage message) <- atomically $ readTBQueue sendQueue
