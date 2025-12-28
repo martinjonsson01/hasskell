@@ -101,7 +101,7 @@ data DeclaredFact where
   DesiredState :: EntityId -> ToggleState -> DeclaredFact
   BranchTaken :: DeclaredFact
   Equality :: Bool -> DeclaredFact
-  Compared :: ComparisonOp -> Bool -> DeclaredFact
+  Compared :: PrettyVal -> ComparisonOp -> PrettyVal -> Bool -> DeclaredFact
   Evaluated :: PrettyVal -> DeclaredFact
   Literal :: DeclaredFact
   deriving (Eq, Ord, Show)
@@ -110,6 +110,9 @@ data PrettyVal where
   PrettyVal :: (Typeable a, Pretty a, Show a, Eq a, Ord a) => a -> PrettyVal
 
 deriving instance Show PrettyVal
+
+instance Pretty PrettyVal where
+  pretty (PrettyVal val) = pretty val
 
 instance Eq PrettyVal where
   PrettyVal a == PrettyVal b = case eqTypeRep (typeOf a) (typeOf b) of
@@ -134,8 +137,16 @@ equality :: Location -> Bool -> Fact
 equality loc = DeclaredFact . (:@ loc) . Equality
 
 -- | Values have been compared.
-comparison :: Location -> ComparisonOp -> Bool -> Fact
-comparison loc op = DeclaredFact . (:@ loc) . Compared op
+comparison ::
+  ( Typeable val,
+    Show val,
+    Ord val,
+    Pretty val
+  ) =>
+  Location -> val -> ComparisonOp -> val -> Bool -> Fact
+comparison loc val1 op val2 result =
+  DeclaredFact
+    (Compared (PrettyVal val1) op (PrettyVal val2) result :@ loc)
 
 -- | A given state was evaluated.
 evaluated ::
@@ -216,8 +227,10 @@ instance Pretty DeclaredFact where
       "entity" <+> pretty eId <+> "should be" <+> pretty state
     BranchTaken -> "branch was taken"
     Equality equal -> pretty equal
-    Compared op result -> pretty (show op) <+> pretty result
-    Evaluated (PrettyVal val) -> pretty val
+    Compared val1 op val2 result ->
+      let opToShow = if result then op else negateComparison op
+       in pretty val1 <+> pretty opToShow <+> pretty val2
+    Evaluated val -> pretty val
     Literal -> "literal"
 
 instance Pretty SourcelessFact where

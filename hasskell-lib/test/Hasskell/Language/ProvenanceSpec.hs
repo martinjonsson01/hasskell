@@ -56,3 +56,32 @@ spec = do
       renderedPlan <- renderPlanTrace Plain plan
 
       goldenStage $ pureGoldenTextFile "test_resources/ProvenanceSpec/trace_time.golden" renderedPlan
+
+    it "renders successful time comparison correctly" $ stagedGolden $ \goldenStage -> do
+      (entity, observed) <- sample $ genWorldWithToggledAndTime Off (14, 40)
+      let timePolicy =
+            policy
+              "turn light on after 14:39"
+              ( if_ (currentTime `isGreaterThan` time @14 @39)
+                  `then_` (entity `shouldBe` on)
+              )
+      let (plan, _) = reconcile observed timePolicy
+
+      renderedPlan <- renderPlanTrace Plain plan
+
+      goldenStage $ pureGoldenTextFile "test_resources/ProvenanceSpec/trace_time_comparison_success.golden" renderedPlan
+
+    it "renders failed time comparison correctly" $ stagedGolden $ \goldenStage -> do
+      (entity, observed) <- sample $ genWorldWithToggledAndTime Off (14, 20)
+      let timePolicy =
+            policy
+              "turn light on after 14:39"
+              ( if_ (currentTime `isGreaterThan` time @14 @39)
+                  `then_` (entity `shouldBe` off)
+                  `else_` (entity `shouldBe` on)
+              )
+      let (plan, _) = reconcile observed timePolicy
+
+      renderedPlan <- renderPlanTrace Plain plan
+
+      goldenStage $ pureGoldenTextFile "test_resources/ProvenanceSpec/trace_time_comparison_failure.golden" renderedPlan

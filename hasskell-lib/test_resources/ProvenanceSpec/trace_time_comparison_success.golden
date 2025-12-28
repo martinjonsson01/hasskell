@@ -1,0 +1,67 @@
+will turn entity `l1QB` on
+reason:
+    entity `l1QB` should be on
+         ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@66:35-66:45
+         │
+      66 │                   `then_` (entity `shouldBe` on)
+         •                                   ┬───────── 
+         •                                   ╰╸ entity `l1QB` should be on
+    ─────╯
+
+        │
+        ├─▶ because literal
+             ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@66:46-66:48
+             │
+          66 │                   `then_` (entity `shouldBe` on)
+             •                                              ┬─ 
+             •                                              ╰╸ literal
+        ─────╯
+
+        │
+        ├─▶ because entity `l1QB` is currently off
+        │
+        ├─▶ because branch was taken
+             ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@66:19-66:26
+             │
+          66 │                   `then_` (entity `shouldBe` on)
+             •                   ┬────── 
+             •                   ╰╸ branch was taken
+        ─────╯
+
+            │
+            ├─▶ because 14:40:00 > 14:39:00
+                 ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@65:34-65:49
+                 │
+              65 │               ( if_ (currentTime `isGreaterThan` time @14 @39)
+                 •                                  ┬────────────── 
+                 •                                  ╰╸ 14:40:00 > 14:39:00
+            ─────╯
+
+                │
+                ├─▶ because 14:40:00
+                     ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@65:22-65:33
+                     │
+                  65 │               ( if_ (currentTime `isGreaterThan` time @14 @39)
+                     •                      ┬────────── 
+                     •                      ╰╸ 14:40:00
+                ─────╯
+
+                    │
+                    ├─▶ because current time is 14:40:00
+                │
+                ├─▶ because 14:39:00
+                     ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@65:50-65:54
+                     │
+                  65 │               ( if_ (currentTime `isGreaterThan` time @14 @39)
+                     •                                                  ┬─── 
+                     •                                                  ╰╸ 14:39:00
+                ─────╯
+
+                    │
+                    ├─▶ because literal
+                         ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@65:50-65:54
+                         │
+                      65 │               ( if_ (currentTime `isGreaterThan` time @14 @39)
+                         •                                                  ┬─── 
+                         •                                                  ╰╸ literal
+                    ─────╯

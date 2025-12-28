@@ -21,6 +21,7 @@ module Hasskell.Language.AST
     Equatable (..),
     ComparisonOp (..),
     Comparable (..),
+    negateComparison,
     -- State
     fromState,
     on,
@@ -172,6 +173,21 @@ instance Ord SomeExp where
 -- | Different ways of comparing totally ordered values.
 data ComparisonOp = GreaterThan | GreaterOrEqual | LessThan | LessThanOrEqual
   deriving (Eq, Ord, Show)
+
+instance Pretty ComparisonOp where
+  pretty = \case
+    GreaterThan -> pretty ">"
+    GreaterOrEqual -> pretty ">="
+    LessThan -> pretty "<"
+    LessThanOrEqual -> pretty "<="
+
+-- | The negated operator is the operator that is true when the original is false, and vice-versa.
+negateComparison :: ComparisonOp -> ComparisonOp
+negateComparison = \case
+  GreaterThan -> LessThanOrEqual
+  GreaterOrEqual -> LessThan
+  LessThan -> GreaterOrEqual
+  LessThanOrEqual -> GreaterThan
 
 data Exp :: T -> Type where
   -- Literals

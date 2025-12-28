@@ -243,7 +243,7 @@ evalBool = \case
         result = compareVals s1 s2
     pure $
       (result :@ loc)
-        `because` comparison loc op result
+        `because` comparison loc s1 op s2 result
         `becauseMore` (evaluated s1Loc s1 `explain` s1Expl)
         `becauseMore` (evaluated s2Loc s2 `explain` s2Expl)
 
