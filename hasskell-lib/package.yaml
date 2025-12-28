@@ -21,6 +21,7 @@ dependencies:
   - heap >= 1 && < 2
   - containers >= 0.6.8 && < 0.8
   - unordered-containers >= 0.2.21
+  - stm-containers >= 1.2 && < 2
   - hashable >= 1.5
   - websockets >= 0.13 && < 0.14
   - mtl >= 2.3.1 && < 3
