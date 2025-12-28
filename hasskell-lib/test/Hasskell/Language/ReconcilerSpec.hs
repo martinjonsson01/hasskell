@@ -1,8 +1,10 @@
 module Hasskell.Language.ReconcilerSpec (spec) where
 
+import Data.Text (Text)
 import Data.Time
 import Hasskell
 import Hasskell.HomeAssistant.API
+import Hasskell.Language.AST
 import Hasskell.Language.Reconciler
 import Hasskell.Language.World
 import Hasskell.TestUtils.Gen
@@ -99,60 +101,16 @@ spec = do
         (map stepAction steps) === [SetEntityState entity On]
 
     specify "sets state when time is greater than" $
-      property $ do
-        (entity, observed) <- forAll $ genWorldWithToggled Off
-        let timePolicy =
-              policy
-                "turn light on after 13:42"
-                ( if_ (currentTime `isGreaterThan` time @13 @42)
-                    `then_` (entity `shouldBe` on)
-                )
-            observedTime = observedTimeOfDay observed
-            cutoffTime = TimeOfDay 13 42 0
-        (MkReconciliationPlan steps, _) <- reconcileAnnotated observed timePolicy
-        (map stepAction steps)
-          === if observedTime > cutoffTime
-            then
-              [SetEntityState entity On]
-            else []
+      timeComparisonProperty "after" isGreaterThan (>)
 
     specify "sets state when time is greater than or equal" $
-      property $ do
-        (entity, observed) <- forAll $ genWorldWithToggled Off
-        let timePolicy =
-              policy
-                "turn light on after 13:42"
-                ( if_ (currentTime `isGreaterOrEqualTo` time @13 @42)
-                    `then_` (entity `shouldBe` on)
-                )
-            observedTime = observedTimeOfDay observed
-            cutoffTime = TimeOfDay 13 42 0
-        (MkReconciliationPlan steps, _) <- reconcileAnnotated observed timePolicy
-        (map stepAction steps) === if observedTime >= cutoffTime then [SetEntityState entity On] else []
+      timeComparisonProperty "after or at" isGreaterOrEqualTo (>=)
 
     specify "greater than does not succeed on equal time" $
-      do
-        (entity, observed) <- sample $ genWorldWithToggledAndTime Off (13, 42)
-        let timePolicy =
-              policy
-                "turn light on after 13:42"
-                ( if_ (currentTime `isGreaterThan` time @13 @42)
-                    `then_` (entity `shouldBe` on)
-                )
-            (MkReconciliationPlan steps, _) = reconcile observed timePolicy
-        (map stepAction steps) `Syd.shouldBe` []
+      timeEqualTest "after" isGreaterThan (const [])
 
     specify "greater or equal to succeeds on equal time" $
-      do
-        (entity, observed) <- sample $ genWorldWithToggledAndTime Off (13, 42)
-        let timePolicy =
-              policy
-                "turn light on after 13:42"
-                ( if_ (currentTime `isGreaterOrEqualTo` time @13 @42)
-                    `then_` (entity `shouldBe` on)
-                )
-            (MkReconciliationPlan steps, _) = reconcile observed timePolicy
-        (map stepAction steps) `Syd.shouldBe` [SetEntityState entity On]
+      timeEqualTest "after or at" isGreaterOrEqualTo (\entity -> [SetEntityState entity On])
 
   describe "Reconciler warnings" $ do
     specify "are generated when referencing unknown entity" $
@@ -166,3 +124,39 @@ spec = do
         (offEntity, observed) <- forAll $ genWorldWithToggled Off
         (_, report) <- reconcileAnnotated observed (lightAlwaysOn offEntity)
         assert (not . hasWarnings $ report)
+
+type ComparisonExp =
+  Located (Exp 'TTime) ->
+  Located (Exp 'TTime) ->
+  Located (Exp 'TBool)
+
+timeComparisonProperty ::
+  Text ->
+  ComparisonExp ->
+  (TimeOfDay -> TimeOfDay -> Bool) ->
+  Property
+timeComparisonProperty name comparer compareOp = property $ do
+  (entity, observed) <- forAll $ genWorldWithToggled Off
+  let timePolicy =
+        policy
+          ("turn light on " <> name <> " 13:42")
+          ( if_ (currentTime `comparer` time @13 @42)
+              `then_` (entity `shouldBe` on)
+          )
+      observedTime = observedTimeOfDay observed
+      cutoffTime = TimeOfDay 13 42 0
+  (MkReconciliationPlan steps, _) <- reconcileAnnotated observed timePolicy
+  (map stepAction steps)
+    === if observedTime `compareOp` cutoffTime then [SetEntityState entity On] else []
+
+timeEqualTest :: Text -> ComparisonExp -> (EntityId -> [ReconciliationAction]) -> IO ()
+timeEqualTest name comparer expectedActions = do
+  (entity, observed) <- sample $ genWorldWithToggledAndTime Off (13, 42)
+  let timePolicy =
+        policy
+          ("turn light on " <> name <> " 13:42")
+          ( if_ (currentTime `comparer` time @13 @42)
+              `then_` (entity `shouldBe` on)
+          )
+      (MkReconciliationPlan steps, _) = reconcile observed timePolicy
+  (map stepAction steps) `Syd.shouldBe` (expectedActions entity)
