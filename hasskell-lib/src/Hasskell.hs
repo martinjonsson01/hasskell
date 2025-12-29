@@ -7,6 +7,9 @@ module Hasskell
     -- Language
     Specification,
     policy,
+    -- Entities
+    HasEntityId (..),
+    light,
     -- State
     ToggleState (..),
     fromState,
@@ -27,7 +30,8 @@ module Hasskell
     -- Time
     currentTime,
     time,
-    IntoEntity (..),
+    -- Expression types
+    ExprLight,
   )
 where
 
@@ -44,6 +48,12 @@ import Hasskell.Language.Reconciler
 import Hasskell.Language.Report
 import Hasskell.Language.World
 import System.Directory qualified as Dir
+
+--------------------------------------------------------------------------------
+
+type ExprLight = Located (Exp 'TEntityLight)
+
+----------------------------------------------------------------------------------
 
 -- | Executes the given specification against the configured Home Assistant instance.
 runHasskell :: Config -> Specification -> IO ()

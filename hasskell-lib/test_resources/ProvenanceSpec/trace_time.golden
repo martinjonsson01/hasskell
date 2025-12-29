@@ -1,47 +1,47 @@
-will turn entity `l1QB` on
+will turn entity `KguJtIhd` on
 reason:
-    entity `l1QB` should be on
-         ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@52:35-52:45
+    entity `KguJtIhd` should be on
+         ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@51:35-51:45
          │
-      52 │                   `then_` (entity `shouldBe` on)
+      51 │                   `then_` (entity `shouldBe` on)
          •                                   ┬───────── 
-         •                                   ╰╸ entity `l1QB` should be on
+         •                                   ╰╸ entity `KguJtIhd` should be on
     ─────╯
 
         │
         ├─▶ because literal
-             ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@52:46-52:48
+             ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@51:46-51:48
              │
-          52 │                   `then_` (entity `shouldBe` on)
+          51 │                   `then_` (entity `shouldBe` on)
              •                                              ┬─ 
              •                                              ╰╸ literal
         ─────╯
 
         │
-        ├─▶ because entity `l1QB` is currently off
+        ├─▶ because entity `KguJtIhd` is currently off
         │
         ├─▶ because branch was taken
-             ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@52:19-52:26
+             ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@51:19-51:26
              │
-          52 │                   `then_` (entity `shouldBe` on)
+          51 │                   `then_` (entity `shouldBe` on)
              •                   ┬────── 
              •                   ╰╸ branch was taken
         ─────╯
 
             │
             ├─▶ because True
-                 ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@51:34-51:38
+                 ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@50:34-50:38
                  │
-              51 │               ( if_ (currentTime `is` time @14 @39)
+              50 │               ( if_ (currentTime `is` time @14 @39)
                  •                                  ┬─── 
                  •                                  ╰╸ True
             ─────╯
 
                 │
                 ├─▶ because 14:39:00
-                     ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@51:22-51:33
+                     ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@50:22-50:33
                      │
-                  51 │               ( if_ (currentTime `is` time @14 @39)
+                  50 │               ( if_ (currentTime `is` time @14 @39)
                      •                      ┬────────── 
                      •                      ╰╸ 14:39:00
                 ─────╯
@@ -50,18 +50,18 @@ reason:
                     ├─▶ because current time is 14:39:00
                 │
                 ├─▶ because 14:39:00
-                     ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@51:39-51:43
+                     ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@50:39-50:43
                      │
-                  51 │               ( if_ (currentTime `is` time @14 @39)
+                  50 │               ( if_ (currentTime `is` time @14 @39)
                      •                                       ┬─── 
                      •                                       ╰╸ 14:39:00
                 ─────╯
 
                     │
                     ├─▶ because literal
-                         ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@51:39-51:43
+                         ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@50:39-50:43
                          │
-                      51 │               ( if_ (currentTime `is` time @14 @39)
+                      50 │               ( if_ (currentTime `is` time @14 @39)
                          •                                       ┬─── 
                          •                                       ╰╸ literal
                     ─────╯

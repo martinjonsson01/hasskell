@@ -2,9 +2,8 @@
 
 module Hasskell.Language.DiagnosticSpec (spec) where
 
-import Data.Text (Text)
 import Data.Text qualified as T
-import Hasskell.HomeAssistant.API
+import Hasskell.Language.AST
 import Hasskell.Language.Reconciler
 import Hasskell.Language.Report
 import Hasskell.TestUtils.Gen
@@ -18,7 +17,7 @@ spec :: Spec
 spec = do
   describe "Reconciler diagnostic" $ do
     it "warns about unknown entity" $ stagedGolden $ \goldenStage -> do
-      (unknownEntity, observed) <- sampleDeterministic (Seed 0 1) genWorldWithoutEntity
+      (unknownEntity, observed) <- sample genWorldWithoutEntity
       let (_, report) = reconcile observed (lightAlwaysOn unknownEntity)
       renderedReport <- renderReport Plain report
       goldenStage $ pureGoldenTextFile "test_resources/DiagnosticSpec/warn_unknown_entity.golden" renderedReport
@@ -26,9 +25,9 @@ spec = do
     specify "suggests correct entity on typos" $
       property $ do
         let expectedMatch = "some_entity_name"
-            knownEntities = map EntityId $ expectedMatch : ["light.some_other"]
+            knownEntities = map light $ expectedMatch : ["light.some_other"]
         observed <- forAll (genWorldWithKnownEntities knownEntities)
-        (_, report) <- reconcileAnnotated observed (lightAlwaysOn ("some_titynamr" :: Text))
+        (_, report) <- reconcileAnnotated observed (lightAlwaysOn (light "some_titynamr"))
         renderedReport <- renderReport Plain report
         let expectedSuggestion = "did you mean `" <> expectedMatch <> "`?"
         annotate (T.unpack expectedSuggestion)
@@ -37,9 +36,9 @@ spec = do
     specify "suggests correct entity on forgotten prefix" $
       property $ do
         let expectedMatch = "light.some_entity_name"
-            knownEntities = map EntityId $ expectedMatch : ["light.some_other"]
+            knownEntities = map light $ expectedMatch : ["light.some_other"]
         observed <- forAll (genWorldWithKnownEntities knownEntities)
-        (_, report) <- reconcileAnnotated observed (lightAlwaysOn ("some_entity_name" :: Text))
+        (_, report) <- reconcileAnnotated observed (lightAlwaysOn (light "some_entity_name"))
         renderedReport <- renderReport Plain report
         let expectedSuggestion = "did you mean `" <> expectedMatch <> "`?"
         annotate (T.unpack expectedSuggestion)

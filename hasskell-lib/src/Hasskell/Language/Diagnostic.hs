@@ -31,6 +31,7 @@ import Hasskell.HomeAssistant.API
 import Hasskell.Language.AST
 import Hasskell.Language.CallStack
 import Hasskell.Language.Report
+import Prettyprinter
 
 -- | Non-fatal details about how the reconciliation went.
 newtype ReconciliationReport = MkReconciliationReport [ReconciliationDiagnostic] -- TODO: make into set
@@ -67,7 +68,7 @@ hasWarnings (MkReconciliationReport reports) = length (reports) > 0
 -- that we can create a real one later on (where we're free to rewrite
 -- the file paths as we like)
 warnUnknownEntity :: [EntityId] -> Located EntityId -> ReconciliationReport
-warnUnknownEntity knownEntities (EntityId entityId :@ positions) =
+warnUnknownEntity knownEntities (entityId :@ positions) =
   MkReconciliationReport $
     List.singleton $
       Diagnostic
@@ -79,18 +80,18 @@ warnUnknownEntity knownEntities (EntityId entityId :@ positions) =
             ["The entity ID may be misspelled."]
         )
   where
-    message = This $ mconcat ["Unknown entity ID `", entityId, "`"]
+    message = This $ T.show $ "Unknown entity ID" <+> pretty entityId
     mainMarker = (positionsPrimary positions, message)
     suggestionMarker =
       maybeToList $
         (positionsPrimary positions,)
           . Where
+          . T.show
           . ("did you mean `" <>)
           . (<> "`?")
           <$> closestMatch
       where
-        unwrapEntity (EntityId entityInner) = entityInner
-        closestMatch = findClosestMatch entityId (map unwrapEntity knownEntities)
+        closestMatch = findClosestMatch (unwrapEntityId entityId) (map unwrapEntityId knownEntities)
     contextMarkers = map (,Where "via") (positionsSecondary positions)
 
 errorTypeMismatch :: T -> Located T -> ReconciliationReport

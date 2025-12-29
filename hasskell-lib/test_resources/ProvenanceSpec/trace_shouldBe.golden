@@ -1,21 +1,84 @@
-will turn entity `lightB` on
+will turn entity `lightA` off
 reason:
-    entity `lightB` should be on
-         ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/TestUtils/Specifications.hs@17:12-17:22
+    entity `lightA` should be off
+         ╭──▶ Generated@-1:-1--1:-1
          │
-      17 │     (light `shouldBe` fromState state)
-         •            ┬───────── 
-         •            ╰╸ entity `lightB` should be on
+      -1 │ <no line>
+         • 
+         • ╰╸ entity `lightA` should be off
     ─────╯
 
         │
         ├─▶ because literal
-             ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/TestUtils/Specifications.hs@17:23-17:32
+             ╭──▶ Generated@-1:-1--1:-1
              │
-          17 │     (light `shouldBe` fromState state)
-             •                       ┬──────── 
-             •                       ╰╸ literal
+          -1 │ <no line>
+             • 
+             • ╰╸ literal
+        ─────╯
+
+        │
+        ├─▶ because entity `lightA` is currently on
+will turn entity `lightB` on
+reason:
+    entity `lightB` should be on
+         ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/TestUtils/Specifications.hs@18:13-18:23
+         │
+      18 │     (entity `shouldBe` fromState state)
+         •             ┬───────── 
+         •             ╰╸ entity `lightB` should be on
+    ─────╯
+
+        │
+        ├─▶ because literal
+             ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/TestUtils/Specifications.hs@18:24-18:33
+             │
+          18 │     (entity `shouldBe` fromState state)
+             •                        ┬──────── 
+             •                        ╰╸ literal
         ─────╯
 
         │
         ├─▶ because entity `lightB` is currently off
+will turn entity `5I7qqCg` off
+reason:
+    entity `5I7qqCg` should be off
+         ╭──▶ Generated@-1:-1--1:-1
+         │
+      -1 │ <no line>
+         • 
+         • ╰╸ entity `5I7qqCg` should be off
+    ─────╯
+
+        │
+        ├─▶ because literal
+             ╭──▶ Generated@-1:-1--1:-1
+             │
+          -1 │ <no line>
+             • 
+             • ╰╸ literal
+        ─────╯
+
+        │
+        ├─▶ because entity `5I7qqCg` is currently on
+will turn entity `Rc` on
+reason:
+    entity `Rc` should be on
+         ╭──▶ Generated@-1:-1--1:-1
+         │
+      -1 │ <no line>
+         • 
+         • ╰╸ entity `Rc` should be on
+    ─────╯
+
+        │
+        ├─▶ because literal
+             ╭──▶ Generated@-1:-1--1:-1
+             │
+          -1 │ <no line>
+             • 
+             • ╰╸ literal
+        ─────╯
+
+        │
+        ├─▶ because entity `Rc` is currently off

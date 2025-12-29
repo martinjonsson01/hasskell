@@ -9,8 +9,8 @@ import RIO.FilePath
 import System.Directory qualified as Dir
 import System.IO.Error (userError)
 
-flaktlampa :: Text
-flaktlampa = "light.flaktlampa"
+flaktlampa :: ExprLight
+flaktlampa = light "light.flaktlampa"
 
 run :: RIO App ()
 run = do

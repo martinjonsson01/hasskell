@@ -29,14 +29,15 @@ spec = do
       property $ do
         state <- forAll $ genToggleState
         (entity, observed) <- forAll $ genWorldWithToggled state
-        let opposite = if state == On then Off else On
+        let entityId = idOf entity
+            opposite = if state == On then Off else On
         (MkReconciliationPlan steps, _) <- reconcileAnnotated observed (lightAlways opposite entity)
-        (map stepAction steps) === [SetEntityState entity opposite]
+        (map stepAction steps) === [SetEntityState entityId opposite]
 
     specify "conditionally turns off one light when another light is on" $
       property $ do
-        let lightA = EntityId "lightA"
-            lightB = EntityId "lightB"
+        let lightA = light "lightA"
+            lightB = light "lightB"
         observedOn <- forAll $ genWorldWithToggleds [(lightA, On), (lightB, On)]
         let boolPolicy =
               policy
@@ -45,12 +46,12 @@ spec = do
                     `then_` (lightB `shouldBe` off)
                 )
         (MkReconciliationPlan steps, _) <- reconcileAnnotated observedOn boolPolicy
-        (map stepAction steps) === [SetEntityState lightB Off]
+        (map stepAction steps) === [SetEntityState (idOf lightB) Off]
 
     specify "conditionally inverts light based on another" $
       property $ do
-        let lightA = EntityId "lightA"
-            lightB = EntityId "lightB"
+        let lightA = light "lightA"
+            lightB = light "lightB"
         observedOn <- forAll $ genWorldWithToggleds [(lightA, Off), (lightB, Off)]
         let boolPolicy =
               policy
@@ -60,12 +61,12 @@ spec = do
                     `else_` (lightB `shouldBe` on)
                 )
         (MkReconciliationPlan steps, _) <- reconcileAnnotated observedOn boolPolicy
-        (map stepAction steps) === [SetEntityState lightB On]
+        (map stepAction steps) === [SetEntityState (idOf lightB) On]
 
     specify "does nothing when condition evaluates to false" $
       property $ do
-        let lightA = EntityId "lightA"
-            lightB = EntityId "lightB"
+        let lightA = light "lightA"
+            lightB = light "lightB"
         observedOn <- forAll $ genWorldWithToggleds [(lightA, Off), (lightB, On)]
         let boolPolicy =
               policy
@@ -78,15 +79,15 @@ spec = do
 
     specify "mirrors state of two lights" $
       property $ do
-        let lightA = EntityId "lightA"
-            lightB = EntityId "lightB"
+        let lightA = light "lightA"
+            lightB = light "lightB"
         observedOn <- forAll $ genWorldWithToggleds [(lightA, Off), (lightB, On)]
         let boolPolicy =
               policy
                 "mirror lightA state to lightB"
                 (lightB `shouldBe` toggledStateOf lightA)
         (MkReconciliationPlan steps, _) <- reconcileAnnotated observedOn boolPolicy
-        (map stepAction steps) === [SetEntityState lightB Off]
+        (map stepAction steps) === [SetEntityState (idOf lightB) Off]
 
     specify "sets state depending on current time" $
       property $ do
@@ -98,7 +99,7 @@ spec = do
                     `then_` (entity `shouldBe` on)
                 )
         (MkReconciliationPlan steps, _) <- reconcileAnnotated observed timePolicy
-        (map stepAction steps) === [SetEntityState entity On]
+        (map stepAction steps) === [SetEntityState (idOf entity) On]
 
   describe "Reconciliation of comparisons" $ do
     specify "sets state when time is greater than" $
@@ -160,7 +161,7 @@ timeComparisonProperty name comparer compareOp = property $ do
       cutoffTime = TimeOfDay 13 42 0
   (MkReconciliationPlan steps, _) <- reconcileAnnotated observed timePolicy
   (map stepAction steps)
-    === if observedTime `compareOp` cutoffTime then [SetEntityState entity On] else []
+    === if observedTime `compareOp` cutoffTime then [SetEntityState (idOf entity) On] else []
 
 timeEqualTest :: Text -> ComparisonExp -> (EntityId -> [ReconciliationAction]) -> IO ()
 timeEqualTest name comparer expectedActions = do
@@ -172,4 +173,4 @@ timeEqualTest name comparer expectedActions = do
               `then_` (entity `shouldBe` on)
           )
       (MkReconciliationPlan steps, _) = reconcile observed timePolicy
-  (map stepAction steps) `Syd.shouldBe` (expectedActions entity)
+  (map stepAction steps) `Syd.shouldBe` (expectedActions (idOf entity))

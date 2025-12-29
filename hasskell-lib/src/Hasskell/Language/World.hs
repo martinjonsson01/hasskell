@@ -9,7 +9,6 @@ module Hasskell.Language.World
   )
 where
 
-import Control.Placeholder
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HM
 import Data.HashMap.Strict qualified as HMap

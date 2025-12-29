@@ -151,8 +151,27 @@ unknownEntity = Error.throwError . UnknownEntity
 type family Denote (t :: T) :: Type where
   Denote 'TBool = Bool
   Denote 'TState = ToggleState
-  Denote 'TEntity = EntityId
+  Denote 'TEntityLight = EntityId
   Denote 'TTime = TimeOfDay
+
+getToggleStateOf ::
+  ( State ObservedWorld :> es,
+    Error ReconciliationError :> es
+  ) =>
+  Located EntityId ->
+  Eff es ToggleState
+getToggleStateOf entity@(eId :@ _) = do
+  worldToggleables <- State.gets (worldToggleables . observedWorld)
+  case HMap.lookup eId worldToggleables of
+    Just state -> pure state
+    Nothing -> unknownEntity entity
+
+ensureEntityExists ::
+  ( State ObservedWorld :> es,
+    Error ReconciliationError :> es
+  ) =>
+  Located EntityId -> Eff es ()
+ensureEntityExists entity = getToggleStateOf entity >> pure () -- getToggleStateOf can throw
 
 computeDesiredState ::
   ( State ObservedWorld :> es,
@@ -164,9 +183,9 @@ computeDesiredState action =
   Error.runErrorNoCallStack
     ( case action of
         ESetState eEntity eDesiredState :@ loc -> do
-          eId :@ eLoc :£ _ <- evalEntity eEntity
+          entity@(eId :@ eLoc) :£ _ <- evalEntity eEntity
           desiredState :@ desiredStateLoc :£ desiredStateExpl <- evalState eDesiredState
-          currentState :@ _ :£ _ <- evalState (toggledStateOf eId)
+          currentState <- getToggleStateOf entity
           pure $
             if desiredState == currentState
               then empty
@@ -208,17 +227,6 @@ evalBranch conditionExplanation ifLoc expr = do
       >>= pure
         . mapSnd
           (`becauseMore` (branched ifLoc `explain` conditionExplanation))
-
-ensureEntityExists ::
-  ( State ObservedWorld :> es,
-    Error ReconciliationError :> es
-  ) =>
-  Located EntityId -> Eff es ()
-ensureEntityExists entity@(eId :@ _) = do
-  worldToggleables <- State.gets (worldToggleables . observedWorld)
-  case HMap.lookup eId worldToggleables of
-    Just _ -> pure ()
-    Nothing -> unknownEntity entity
 
 evalBool ::
   ( State ObservedWorld :> es,
@@ -294,8 +302,8 @@ evalState ::
   Eff es (Detailed ToggleState)
 evalState = \case
   ELitState s :@ loc -> pure (s :@ loc `because` literal loc)
-  EGetState entity :@ _ -> do
-    eId :@ eloc :£ _ <- evalEntity entity
+  EGetState entity :@ eloc -> do
+    eId :@ _ :£ _ <- evalEntity entity
     worldToggleables <- State.gets (worldToggleables . observedWorld)
     case HMap.lookup eId worldToggleables of
       Just state -> pure (state :@ eloc `because` observed eId state)
@@ -315,8 +323,8 @@ evalEntity ::
   ( State ObservedWorld :> es,
     Error ReconciliationError :> es
   ) =>
-  Located (Exp 'TEntity) -> Eff es (Detailed EntityId)
+  Located (Exp 'TEntityLight) -> Eff es (Detailed EntityId)
 evalEntity = \case
-  ELitEntity eId :@ loc -> do
+  ELitEntityLight eId :@ loc -> do
     ensureEntityExists (eId :@ loc)
     pure (eId :@ loc `because` literal loc)

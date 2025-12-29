@@ -3,7 +3,6 @@
 module Hasskell.Language.ProvenanceSpec (spec) where
 
 import Hasskell
-import Hasskell.HomeAssistant.API
 import Hasskell.Language.Reconciler
 import Hasskell.Language.Report
 import Hasskell.TestUtils.Gen
@@ -16,8 +15,8 @@ spec :: Spec
 spec = do
   describe "Reason trace" $ do
     it "includes if expression and boolean derivation" $ stagedGolden $ \goldenStage -> do
-      let lightA = EntityId "lightA"
-          lightB = EntityId "lightB"
+      let lightA = light "lightA"
+          lightB = light "lightB"
       observedOn <- sample $ genWorldWithToggleds [(lightA, Off), (lightB, Off)]
       let boolPolicy =
             policy
@@ -32,8 +31,8 @@ spec = do
       goldenStage $ pureGoldenTextFile "test_resources/ProvenanceSpec/trace_if_and_boolean_derivation.golden" renderedPlan
 
     it "includes shouldBe" $ stagedGolden $ \goldenStage -> do
-      let onEntity = EntityId "lightA"
-          offEntity = EntityId "lightB"
+      let onEntity = light "lightA"
+          offEntity = light "lightB"
       observedWorld <- sample $ genWorldWithToggleds [(onEntity, On), (offEntity, Off)]
       let lightOnSpec = lightAlwaysOn offEntity
       lightsSpec <- sample $ genSpecWithPolicy observedWorld lightOnSpec

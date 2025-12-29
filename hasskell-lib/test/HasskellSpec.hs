@@ -1,6 +1,5 @@
 module HasskellSpec (spec) where
 
-import Data.Text (Text)
 import Data.Text qualified as T
 import Hasskell
 import Hasskell.TestUtils.Specifications
@@ -14,8 +13,8 @@ spec = do
 
   describe "Hasskell" $ do
     it "runs specification without error" $ do
-      let light = "light.flaktlampa" :: Text
-      runHasskell config (lightAlwaysOn light)
+      let entity = light "light.flaktlampa"
+      runHasskell config (lightAlwaysOn entity)
 
 getConfig :: IO Config
 getConfig = do

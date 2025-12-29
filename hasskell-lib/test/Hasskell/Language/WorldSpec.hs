@@ -3,6 +3,7 @@ module Hasskell.Language.WorldSpec (spec) where
 import Data.HashMap.Strict qualified as HMap
 import Hasskell.Effects.HASS
 import Hasskell.HomeAssistant.API
+import Hasskell.Language.AST
 import Hasskell.Language.World
 import Hasskell.TestUtils.Gen
 import Hasskell.TestUtils.Utils
@@ -29,7 +30,8 @@ spec = do
         state <- forAll $ genToggleState
         (entity, observed) <- forAll $ genWorldWithToggled state
         let toggledState = toggle state
-            event = StateChanged entity toggledState
+            entityId = idOf entity
+            event = StateChanged entityId toggledState
             updatedObserved = updateWorld observed event
             updatedToggleables = worldToggleables . observedWorld $ updatedObserved
-        updatedToggleables HMap.!? entity === Just toggledState
+        updatedToggleables HMap.!? entityId === Just toggledState

@@ -1,19 +1,9 @@
 [warning]: Unknown entity referenced
-     ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/TestUtils/Specifications.hs@17:12-17:22
+     ╭──▶ Generated@-1:-1--1:-1
      │
-  11 │ lightAlwaysOn = lightAlways On
-     •                 ┬────────── 
-     •                 ╰╸ via
-     •
-  17 │     (light `shouldBe` fromState state)
-     •            ┬───────── 
-     •            ╰╸ Unknown entity ID `X`
-     •
-─────┼──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/DiagnosticSpec.hs@22:45-22:58
-     │
-  22 │       let (_, report) = reconcile observed (lightAlwaysOn unknownEntity)
-     •                                             ┬──────────── 
-     •                                             ╰╸ via
+  -1 │ <no line>
+     • 
+     • ╰╸ Unknown entity ID `05tzlT`
      •
      │ Note: The entity ID may be misspelled.
 ─────╯

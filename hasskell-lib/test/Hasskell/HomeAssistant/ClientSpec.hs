@@ -6,8 +6,10 @@ import Data.Text qualified as T
 import Effectful.Concurrent.STM
 import Hasskell.Effects.HASS
 import Hasskell.HomeAssistant.API
+import Hasskell.Language.AST
 import Hasskell.TestUtils.Utils
-import Test.Syd
+import Test.Syd hiding (shouldBe)
+import Test.Syd qualified as Syd
 
 spec :: Spec
 spec = do
@@ -39,13 +41,14 @@ spec = do
             case NE.nonEmpty events of
               Just eventsNE -> pure eventsNE
               Nothing -> retry
-          entity = EntityId "sensor.cloud_gateway_ultra_memory_utilization"
+          entity = light "sensor.cloud_gateway_ultra_memory_utilization"
+          entityId = idOf entity
 
       events <-
         runWithClient $
-          subscribeToStateOf entity (modifyTVar eventsVar . (:))
+          subscribeToStateOf entityId (modifyTVar eventsVar . (:))
             >> atomically retryUntilEvent
 
       let event = NE.head events
           getEventEntityId = triggeredEntityId . variablesTrigger . eventVariables
-      (getEventEntityId event) `shouldBe` entity
+      (getEventEntityId event) `Syd.shouldBe` entityId

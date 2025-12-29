@@ -6,12 +6,13 @@ where
 
 import GHC.Stack
 import Hasskell
+import Hasskell.Language.AST
 
-lightAlwaysOn :: (HasCallStack, IntoEntity a) => a -> Specification
+lightAlwaysOn :: (HasCallStack) => Located (Exp 'TEntityLight) -> Specification
 lightAlwaysOn = lightAlways On
 
-lightAlways :: (HasCallStack, IntoEntity a) => ToggleState -> a -> Specification
-lightAlways state light =
+lightAlways :: (HasCallStack) => ToggleState -> Located (Exp 'TEntityLight) -> Specification
+lightAlways state entity =
   policy
     ("light is always " <> if state == On then "on" else "off")
-    (light `shouldBe` fromState state)
+    (entity `shouldBe` fromState state)

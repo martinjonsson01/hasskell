@@ -12,7 +12,9 @@ module Hasskell.HomeAssistant.API
     HASSResult (..),
     HASSFailure (..),
     HASSConfig (..),
-    EntityId (..),
+    EntityId,
+    makeEntityIdUnsafe,
+    unwrapEntityId,
     HASSEntity (..),
     HASSDevice (..),
     HASSState (..),
@@ -290,6 +292,13 @@ instance ToJSON UnixUTC where
 newtype EntityId = EntityId Text
   deriving (Show, Eq, Ord)
   deriving (FromJSON, ToJSON, Hashable) via Text
+
+-- | Creates an entity ID without any verification that it is valid.
+makeEntityIdUnsafe :: Text -> EntityId
+makeEntityIdUnsafe = EntityId
+
+unwrapEntityId :: EntityId -> Text
+unwrapEntityId (EntityId text) = text
 
 instance Pretty EntityId where
   pretty (EntityId eId) = enclose backtick backtick (pretty eId)

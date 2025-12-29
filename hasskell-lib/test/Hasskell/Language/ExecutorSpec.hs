@@ -9,6 +9,7 @@ import Effectful.State.Static.Local
 import Hasskell.Effects.HASS (HASS)
 import Hasskell.Effects.HASS qualified as HASS
 import Hasskell.HomeAssistant.API
+import Hasskell.Language.AST
 import Hasskell.Language.Executor
 import Hasskell.Language.Reconciler
 import Hasskell.Language.World
@@ -27,14 +28,16 @@ spec = do
 
     specify "turns on light" $
       property $ do
-        let entityId = EntityId "entity"
+        let entity = light "entity"
+        let entityId = idOf entity
         let plan = MkReconciliationPlan [JustifyAction (SetEntityState entityId On) undefined]
         let (_, executedCommands) = recordHASSCommands (executePlan plan)
         executedCommands === [TurnOn entityId]
 
     specify "turns off light" $
       property $ do
-        let entityId = EntityId "entity"
+        let entity = light "entity"
+        let entityId = idOf entity
         let plan = MkReconciliationPlan [JustifyAction (SetEntityState entityId Off) undefined]
         let (_, executedCommands) = recordHASSCommands (executePlan plan)
         executedCommands === [TurnOff entityId]

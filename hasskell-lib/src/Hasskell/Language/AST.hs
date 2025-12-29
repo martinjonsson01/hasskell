@@ -15,13 +15,15 @@ module Hasskell.Language.AST
     SomeExp (..),
     T (..),
     Exp (..),
-    IntoEntity (..),
     -- Properties
     Proved (..),
     Equatable (..),
     ComparisonOp (..),
     Comparable (..),
     negateComparison,
+    -- Entities
+    HasEntityId (..),
+    light,
     -- State
     fromState,
     on,
@@ -69,7 +71,7 @@ import Prettyprinter
 
 $( singletons
      [d|
-       data T = TEntity | TAction | TBool | TState | TTime
+       data T = TEntityLight | TAction | TBool | TState | TTime
 
        deriving instance (Eq T)
 
@@ -122,7 +124,7 @@ instance HasReferencedEntities Policy where
 
 instance HasReferencedEntities (Exp t) where
   referencedEntitiesIn = \case
-    ELitEntity eId -> [eId]
+    ELitEntityLight eId -> [eId]
     ELitState _ -> []
     ELitTime _ -> []
     EGetState e -> referencedEntitiesIn e
@@ -138,7 +140,7 @@ instance HasReferencedEntities (Exp t) where
 
 instance HasLocations (Exp t) where
   extractLocations = \case
-    ELitEntity _ -> []
+    ELitEntityLight _ -> []
     ELitState _ -> []
     ELitTime _ -> []
     EGetState (_ :@ loc) -> [loc]
@@ -191,15 +193,15 @@ negateComparison = \case
 
 data Exp :: T -> Type where
   -- Literals
-  ELitEntity :: EntityId -> Exp 'TEntity
+  ELitEntityLight :: EntityId -> Exp 'TEntityLight
   ELitState :: ToggleState -> Exp 'TState
   ELitTime :: TimeOfDay -> Exp 'TTime
   -- Entity properties
-  EGetState :: Located (Exp 'TEntity) -> Exp 'TState
+  EGetState :: Located (Exp 'TEntityLight) -> Exp 'TState
   -- Time
   EGetTime :: Exp 'TTime
   -- Actions
-  ESetState :: Located (Exp 'TEntity) -> Located (Exp 'TState) -> Exp 'TAction
+  ESetState :: Located (Exp 'TEntityLight) -> Located (Exp 'TState) -> Exp 'TAction
   EDoNothing :: Exp 'TAction
   -- Boolean logic
   EEqual ::
@@ -222,7 +224,7 @@ data Exp :: T -> Type where
 deriving instance Show (Exp t)
 
 instance Eq (Exp t) where
-  ELitEntity x == ELitEntity y = x == y
+  ELitEntityLight x == ELitEntityLight y = x == y
   ELitState x == ELitState y = x == y
   ELitTime x == ELitTime y = x == y
   EGetState x == EGetState y = x == y
@@ -243,7 +245,7 @@ instance Ord (Exp t) where
   compare x y =
     case (x, y) of
       -- Literals
-      (ELitEntity x1, ELitEntity x2) -> compare x1 x2
+      (ELitEntityLight x1, ELitEntityLight x2) -> compare x1 x2
       (ELitState x1, ELitState x2) -> compare x1 x2
       (ELitState _, _) -> LT
       (_, ELitState _) -> GT
@@ -309,19 +311,22 @@ instance Proved Comparable 'TTime where
   auto = CompTime
 
 --------------------------------------------------------------------------------
--- Syntax
 
--- | Things that uniquely reference an entity.
-class IntoEntity a where
-  toEntity :: (HasCallStack) => a -> Located (Exp 'TEntity)
+-- | Things that have an entity ID.
+class HasEntityId a where
+  idOf :: a -> EntityId
 
--- | A named entity.
-instance IntoEntity Text where
-  toEntity = (:@ captureSrcSpan) . ELitEntity . EntityId
+instance (HasEntityId a) => HasEntityId (Located a) where
+  idOf (a :@ _) = idOf a
 
--- | An identified entity.
-instance IntoEntity EntityId where
-  toEntity = (:@ captureSrcSpan) . ELitEntity
+instance HasEntityId (Exp 'TEntityLight) where
+  idOf (ELitEntityLight eId) = eId
+
+-- | An entity that can be toggled.
+light :: (HasCallStack) => Text -> Located (Exp 'TEntityLight)
+light = (:@ captureSrcSpan) . ELitEntityLight . makeEntityIdUnsafe
+
+--------------------------------------------------------------------------------
 
 -- | A specific state.
 fromState :: (HasCallStack) => ToggleState -> Located (Exp 'TState)
@@ -336,12 +341,12 @@ off :: (HasCallStack) => Located (Exp TState)
 off = fromState Off
 
 -- | Declare that a given entity should be in a given state.
-shouldBe :: (HasCallStack, IntoEntity e) => e -> Located (Exp 'TState) -> Located (Exp 'TAction)
-shouldBe entity state = ESetState (toEntity entity) state :@ captureSrcSpan
+shouldBe :: (HasCallStack) => Located (Exp 'TEntityLight) -> Located (Exp 'TState) -> Located (Exp 'TAction)
+shouldBe entity state = ESetState entity state :@ captureSrcSpan
 
 -- | Gets the current toggle state of the given entity.
-toggledStateOf :: (HasCallStack, IntoEntity e) => e -> Located (Exp 'TState)
-toggledStateOf entity = EGetState (toEntity entity) :@ captureSrcSpan
+toggledStateOf :: (HasCallStack) => Located (Exp 'TEntityLight) -> Located (Exp 'TState)
+toggledStateOf entity = EGetState entity :@ captureSrcSpan
 
 --------------------------------------------------------------------------------
 
