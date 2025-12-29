@@ -30,19 +30,19 @@ spec = do
         let entityId = EntityId "entity"
         let plan = MkReconciliationPlan [JustifyAction (SetEntityState entityId On) undefined]
         let (_, executedCommands) = recordHASSCommands (executePlan plan)
-        executedCommands === [TurnOnLight entityId]
+        executedCommands === [TurnOn entityId]
 
     specify "turns off light" $
       property $ do
         let entityId = EntityId "entity"
         let plan = MkReconciliationPlan [JustifyAction (SetEntityState entityId Off) undefined]
         let (_, executedCommands) = recordHASSCommands (executePlan plan)
-        executedCommands === [TurnOffLight entityId]
+        executedCommands === [TurnOff entityId]
 
 data HASSOp
   = Unknown
-  | TurnOnLight EntityId
-  | TurnOffLight EntityId
+  | TurnOn EntityId
+  | TurnOff EntityId
   | EntitySubscribe EntityId
   deriving (Eq, Show)
 
@@ -66,11 +66,11 @@ runWithFakeHASS = reinterpret_ (runState []) $ \action -> case action of
   HASS.GetServices -> do
     modify $ (Unknown :)
     pure M.empty
-  HASS.TurnOnLight entity -> do
-    modify $ (TurnOnLight entity :)
+  HASS.TurnOn _ entity -> do
+    modify $ (TurnOn entity :)
     pure ()
-  HASS.TurnOffLight entity -> do
-    modify $ (TurnOffLight entity :)
+  HASS.TurnOff _ entity -> do
+    modify $ (TurnOff entity :)
     pure ()
   HASS.SubscribeToStateOf entity _ -> do
     modify (EntitySubscribe entity :)

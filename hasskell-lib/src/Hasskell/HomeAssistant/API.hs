@@ -395,7 +395,7 @@ serviceTurnOff = ServiceName "turn_off"
 
 newtype HASSDomain = Domain Text
   deriving (Eq, Show, Ord)
-  deriving (FromJSON, ToJSON, FromJSONKey, ToJSONKey) via Text
+  deriving (Pretty, FromJSON, ToJSON, FromJSONKey, ToJSONKey) via Text
 
 domainLight :: HASSDomain
 domainLight = Domain "light"

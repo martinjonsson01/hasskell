@@ -6,6 +6,7 @@ where
 
 import Effectful
 import Hasskell.Effects.HASS
+import Hasskell.HomeAssistant.API
 import Hasskell.Language.Reconciler
 import Hasskell.Language.World
 
@@ -22,5 +23,5 @@ executePlan (MkReconciliationPlan steps) = do
 
 executeAction :: (HASS :> es) => ReconciliationAction -> Eff es ()
 executeAction = \case
-  SetEntityState entity On -> turnOnLight entity
-  SetEntityState entity Off -> turnOffLight entity
+  SetEntityState entity On -> turnOn domainLight entity
+  SetEntityState entity Off -> turnOff domainLight entity

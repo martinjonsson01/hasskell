@@ -10,8 +10,8 @@ module Hasskell.Effects.HASS
     getEntities,
     getDevices,
     getServices,
-    turnOnLight,
-    turnOffLight,
+    turnOn,
+    turnOff,
     subscribeToStateOf,
   )
 where
@@ -41,8 +41,8 @@ data HASS :: Effect where
   GetEntities :: HASS m [HASSEntity]
   GetDevices :: HASS m [HASSDevice]
   GetServices :: HASS m HASSServiceActions
-  TurnOnLight :: EntityId -> HASS m ()
-  TurnOffLight :: EntityId -> HASS m ()
+  TurnOn :: HASSDomain -> EntityId -> HASS m ()
+  TurnOff :: HASSDomain -> EntityId -> HASS m ()
   SubscribeToStateOf :: EntityId -> StateChangeEventHandler -> HASS m ()
 
 makeEffect ''HASS
@@ -54,8 +54,8 @@ instance Pretty (HASS a b) where
     GetEntities -> "get entities"
     GetDevices -> "get devices"
     GetServices -> "get services"
-    TurnOnLight eId -> "turn on" <+> pretty eId
-    TurnOffLight eId -> "turn off" <+> pretty eId
+    TurnOn domain eId -> "turn on" <+> pretty domain <+> pretty eId
+    TurnOff domain eId -> "turn off" <+> pretty domain <+> pretty eId
     SubscribeToStateOf eId _ -> "subscribe to state of" <+> pretty eId
 
 runHASS ::
@@ -75,8 +75,8 @@ runHASS action = do
     GetEntities -> sendMessage CommandGetEntityRegistry
     GetDevices -> sendMessage CommandGetDeviceRegistry
     GetServices -> sendMessage CommandGetServices
-    TurnOnLight entity -> callService domainLight serviceTurnOn entity
-    TurnOffLight entity -> callService domainLight serviceTurnOff entity
+    TurnOn domain entity -> callService domain serviceTurnOn entity
+    TurnOff domain entity -> callService domain serviceTurnOff entity
     SubscribeToStateOf entity handler -> createStateSubscription subscriptionsVar entity handler
 
   subscriptions <- atomically $ readTVar subscriptionsVar
