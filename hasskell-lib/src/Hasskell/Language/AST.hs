@@ -239,6 +239,11 @@ instance Eq (Exp t) where
     eCond1 == eCond2
       && eThen1 == eThen2
       && eElse1 == eElse2
+  ECompare @t1 op1 a1 b1 == ECompare @t2 op2 a2 b2 =
+    op1 == op2
+      && case (sing @t1) %~ (sing @t2) of
+        Proved Refl -> a1 == a2 && b1 == b2
+        Disproved _ -> False
   _ == _ = False
 
 instance Ord (Exp t) where
