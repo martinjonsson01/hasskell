@@ -1,66 +1,3 @@
-will turn light `lightA` off
-reason:
-    entity `lightA` should be off
-         ╭──▶ Generated@-1:-1--1:-1
-         │
-      -1 │ <no line>
-         • 
-         • ╰╸ entity `lightA` should be off
-    ─────╯
-
-        │
-        ├─▶ because literal
-             ╭──▶ Generated@-1:-1--1:-1
-             │
-          -1 │ <no line>
-             • 
-             • ╰╸ literal
-        ─────╯
-
-        │
-        ├─▶ because entity `lightA` is currently on
-will turn light `lightB` on
-reason:
-    entity `lightB` should be on
-         ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/TestUtils/Specifications.hs@18:13-18:23
-         │
-      18 │     (entity `shouldBe` fromState state)
-         •             ┬───────── 
-         •             ╰╸ entity `lightB` should be on
-    ─────╯
-
-        │
-        ├─▶ because literal
-             ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/TestUtils/Specifications.hs@18:24-18:33
-             │
-          18 │     (entity `shouldBe` fromState state)
-             •                        ┬──────── 
-             •                        ╰╸ literal
-        ─────╯
-
-        │
-        ├─▶ because entity `lightB` is currently off
-will turn light `5I7qqCg` off
-reason:
-    entity `5I7qqCg` should be off
-         ╭──▶ Generated@-1:-1--1:-1
-         │
-      -1 │ <no line>
-         • 
-         • ╰╸ entity `5I7qqCg` should be off
-    ─────╯
-
-        │
-        ├─▶ because literal
-             ╭──▶ Generated@-1:-1--1:-1
-             │
-          -1 │ <no line>
-             • 
-             • ╰╸ literal
-        ─────╯
-
-        │
-        ├─▶ because entity `5I7qqCg` is currently on
 will turn light `Rc` on
 reason:
     entity `Rc` should be on
@@ -82,3 +19,66 @@ reason:
 
         │
         ├─▶ because entity `Rc` is currently off
+will turn light `lightB` on
+reason:
+    entity `lightB` should be on
+         ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/TestUtils/Specifications.hs@18:13-18:23
+         │
+      18 │     (entity `shouldBe` fromState state)
+         •             ┬───────── 
+         •             ╰╸ entity `lightB` should be on
+    ─────╯
+
+        │
+        ├─▶ because literal
+             ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/TestUtils/Specifications.hs@18:24-18:33
+             │
+          18 │     (entity `shouldBe` fromState state)
+             •                        ┬──────── 
+             •                        ╰╸ literal
+        ─────╯
+
+        │
+        ├─▶ because entity `lightB` is currently off
+will turn light `lightA` off
+reason:
+    entity `lightA` should be off
+         ╭──▶ Generated@-1:-1--1:-1
+         │
+      -1 │ <no line>
+         • 
+         • ╰╸ entity `lightA` should be off
+    ─────╯
+
+        │
+        ├─▶ because literal
+             ╭──▶ Generated@-1:-1--1:-1
+             │
+          -1 │ <no line>
+             • 
+             • ╰╸ literal
+        ─────╯
+
+        │
+        ├─▶ because entity `lightA` is currently on
+will turn light `5I7qqCg` off
+reason:
+    entity `5I7qqCg` should be off
+         ╭──▶ Generated@-1:-1--1:-1
+         │
+      -1 │ <no line>
+         • 
+         • ╰╸ entity `5I7qqCg` should be off
+    ─────╯
+
+        │
+        ├─▶ because literal
+             ╭──▶ Generated@-1:-1--1:-1
+             │
+          -1 │ <no line>
+             • 
+             • ╰╸ literal
+        ─────╯
+
+        │
+        ├─▶ because entity `5I7qqCg` is currently on

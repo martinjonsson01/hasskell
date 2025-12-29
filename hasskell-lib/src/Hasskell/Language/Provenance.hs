@@ -1,5 +1,6 @@
 module Hasskell.Language.Provenance
   ( Explanation (..),
+    IntoExplanation (..),
     Explained (..),
     explain,
     because,
@@ -49,7 +50,10 @@ data Explanation = Explain
 
 -- | Something that has been given an explanation.
 data Explained a = a :£ Explanation
-  deriving (Show, Functor, Foldable, Traversable)
+  deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
+
+instance HasLocations (Explained a) where
+  extractLocations (_ :£ explanation) = extractLocations explanation
 
 -- | Things that are explanations.
 class IntoExplanation a where

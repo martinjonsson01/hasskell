@@ -1,5 +1,6 @@
 module Hasskell.Language.ExecutorSpec (spec) where
 
+import Control.Placeholder
 import Data.Aeson
 import Data.Map.Lazy qualified as M
 import Data.Maybe
@@ -11,6 +12,7 @@ import Hasskell.Effects.HASS qualified as HASS
 import Hasskell.HomeAssistant.API
 import Hasskell.Language.AST
 import Hasskell.Language.Executor
+import Hasskell.Language.Provenance
 import Hasskell.Language.Reconciler
 import Hasskell.Language.World
 import Hedgehog
@@ -30,7 +32,7 @@ spec = do
       property $ do
         let entity = light "entity"
         let entityId = idOf entity
-        let plan = MkReconciliationPlan [JustifyAction (SetEntityState entityId domainLight On) undefined]
+        let plan = MkReconciliationPlan [SetEntityState entityId domainLight On `because` NoExplanation]
         let (_, executedCommands) = recordHASSCommands (executePlan plan)
         executedCommands === [TurnOn entityId]
 
@@ -38,7 +40,7 @@ spec = do
       property $ do
         let entity = light "entity"
         let entityId = idOf entity
-        let plan = MkReconciliationPlan [JustifyAction (SetEntityState entityId domainLight Off) undefined]
+        let plan = MkReconciliationPlan [SetEntityState entityId domainLight Off `because` NoExplanation]
         let (_, executedCommands) = recordHASSCommands (executePlan plan)
         executedCommands === [TurnOff entityId]
 
@@ -78,3 +80,8 @@ runWithFakeHASS = reinterpret_ (runState []) $ \action -> case action of
   HASS.SubscribeToStateOf entity _ -> do
     modify (EntitySubscribe entity :)
     pure ()
+
+data NoExplanation = NoExplanation
+
+instance IntoExplanation NoExplanation where
+  toExplanation NoExplanation = unimplemented

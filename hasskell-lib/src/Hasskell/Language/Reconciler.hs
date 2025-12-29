@@ -1,7 +1,8 @@
 module Hasskell.Language.Reconciler
   ( -- Plans
     ReconciliationPlan (..),
-    ReconciliationStep (..),
+    ReconciliationStep,
+    stepAction,
     ReconciliationAction (..),
     isPlanEmpty,
     reconcile,
@@ -15,13 +16,11 @@ module Hasskell.Language.Reconciler
 where
 
 import Control.Applicative
-import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HMap
 import Data.Kind
 import Data.Maybe (catMaybes)
 import Data.Text (Text)
 import Data.Time
-import Data.Tuple.HT (mapSnd)
 import Data.Typeable
 import Effectful
 import Effectful.Error.Static (Error)
@@ -51,14 +50,10 @@ isPlanEmpty :: ReconciliationPlan -> Bool
 isPlanEmpty (MkReconciliationPlan steps) = null steps
 
 -- | A step that can be taken to change the world, along with a motivation as to why.
-data ReconciliationStep = JustifyAction
-  { stepAction :: ReconciliationAction,
-    stepReason :: Explanation
-  }
-  deriving (Eq, Ord, Show)
+type ReconciliationStep = Explained ReconciliationAction
 
-instance HasLocations ReconciliationStep where
-  extractLocations JustifyAction {stepReason} = extractLocations stepReason
+stepAction :: ReconciliationStep -> ReconciliationAction
+stepAction (action :£ _) = action
 
 -- | An action that can be taken to alter the world.
 data ReconciliationAction = SetEntityState EntityId HASSDomain ToggleState
@@ -77,10 +72,10 @@ innerRenderPlanTrace style (MkReconciliationPlan steps) = do
   pure cleaned
 
 prettifyStep :: (File.FileSystem :> es) => ReportStyle -> ReconciliationStep -> Eff es (Doc AnsiStyle)
-prettifyStep style JustifyAction {stepAction, stepReason} = do
-  prettyReason <- prettifyExplanation style stepReason
+prettifyStep style (action :£ reason) = do
+  prettyReason <- prettifyExplanation style reason
   pure
-    (vsep ["will" <+> pretty stepAction, "reason:", indent 4 prettyReason])
+    (vsep ["will" <+> pretty action, "reason:", indent 4 prettyReason])
 
 instance Pretty ReconciliationAction where
   pretty = \case
@@ -106,34 +101,11 @@ reconcileInner ::
   Eff es ReconciliationPlan
 reconcileInner = do
   spec <- State.get
-  desiredToggleables <- HMap.unions <$> mapM computeDesiredStates (specPolicies spec)
-
-  let needsToggling = HMap.mapKeys stripLocation desiredToggleables
-      steps = generateToggleSteps needsToggling
+  steps <- catMaybes <$> mapM (computeDesiredState . expression) (specPolicies spec)
 
   pure (MkReconciliationPlan steps)
 
 type Detailed a = Explained (Located a)
-
-generateToggleSteps :: HashMap EntityId (Detailed ToggleState) -> [ReconciliationStep]
-generateToggleSteps = map toReconciliationStep . HMap.toList
-  where
-    toReconciliationStep :: (EntityId, Detailed ToggleState) -> ReconciliationStep
-    toReconciliationStep (eId, (state :@ _) :£ explanation) =
-      JustifyAction
-        { stepAction = SetEntityState eId domainLight state,
-          stepReason = explanation
-        }
-
-computeDesiredStates ::
-  ( State ObservedWorld :> es,
-    Writer ReconciliationReport :> es
-  ) =>
-  Policy ->
-  Eff es (HashMap (Located EntityId) (Detailed ToggleState))
-computeDesiredStates Policy {expression} = do
-  desiredState <- computeDesiredState expression
-  pure $ HMap.fromList (catMaybes [desiredState])
 
 data ReconciliationError where
   UnknownEntity :: Located EntityId -> ReconciliationError
@@ -178,21 +150,20 @@ computeDesiredState ::
     Writer ReconciliationReport :> es
   ) =>
   Located (Exp 'TAction) ->
-  Eff es (Maybe (Located EntityId, Detailed ToggleState))
+  Eff es (Maybe ReconciliationStep)
 computeDesiredState action =
   Error.runErrorNoCallStack
     ( case action of
         ESetState eEntity eDesiredState :@ loc -> do
-          entity@(eId :@ eLoc) :£ _ <- evalEntity eEntity
-          desiredState :@ desiredStateLoc :£ desiredStateExpl <- evalState eDesiredState
+          (entity@(eId :@ _) :£ _, domain) <- evalToggleable eEntity
+          desiredState :@ _ :£ desiredStateExpl <- evalState eDesiredState
           currentState <- getToggleStateOf entity
           pure $
             if desiredState == currentState
               then empty
               else
                 Just
-                  ( eId :@ eLoc,
-                    (desiredState :@ desiredStateLoc)
+                  ( SetEntityState eId domain desiredState
                       `because` (desired loc eId desiredState `explain` desiredStateExpl)
                       `becauseMore` (observed eId currentState)
                   )
@@ -212,6 +183,17 @@ computeDesiredState action =
         pure Nothing
       Right result -> pure result
 
+evalToggleable ::
+  ( Proved Toggleable t,
+    State ObservedWorld :> es,
+    Error ReconciliationError :> es
+  ) =>
+  Located (Exp t) ->
+  Eff es (Detailed EntityId, HASSDomain)
+evalToggleable @t expr =
+  case (auto @Toggleable @t) of
+    ToggleLight -> (,domainLight) <$> evalEntity expr
+
 evalBranch ::
   ( State ObservedWorld :> es,
     Writer ReconciliationReport :> es
@@ -219,14 +201,13 @@ evalBranch ::
   Explanation ->
   Location ->
   Located (Exp TAction) ->
-  Eff es (Maybe (Located EntityId, Explained (Located ToggleState)))
+  Eff es (Maybe ReconciliationStep)
 evalBranch conditionExplanation ifLoc expr = do
   maybeDesiredState <- computeDesiredState expr
   pure $
     maybeDesiredState
       >>= pure
-        . mapSnd
-          (`becauseMore` (branched ifLoc `explain` conditionExplanation))
+        . (`becauseMore` (branched ifLoc `explain` conditionExplanation))
 
 evalBool ::
   ( State ObservedWorld :> es,

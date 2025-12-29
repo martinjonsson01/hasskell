@@ -20,6 +20,7 @@ module Hasskell.Language.AST
     Equatable (..),
     ComparisonOp (..),
     Comparable (..),
+    Toggleable (..),
     negateComparison,
     -- Entities
     HasEntityId (..),
@@ -201,7 +202,11 @@ data Exp :: T -> Type where
   -- Time
   EGetTime :: Exp 'TTime
   -- Actions
-  ESetState :: Located (Exp 'TEntityLight) -> Located (Exp 'TState) -> Exp 'TAction
+  ESetState ::
+    (SingI t, Proved Toggleable t) =>
+    Located (Exp t) ->
+    Located (Exp 'TState) ->
+    Exp 'TAction
   EDoNothing :: Exp 'TAction
   -- Boolean logic
   EEqual ::
@@ -229,7 +234,10 @@ instance Eq (Exp t) where
   ELitTime x == ELitTime y = x == y
   EGetState x == EGetState y = x == y
   EGetTime == EGetTime = True
-  ESetState e s == ESetState e' s' = e == e' && s == s'
+  ESetState @t1 e1 s1 == ESetState @t2 e2 s2 =
+    case (sing @t1) %~ (sing @t2) of
+      Proved Refl -> e1 == e2 && s1 == s2
+      Disproved _ -> False
   EDoNothing == EDoNothing = True
   EEqual @t1 a1 b1 == EEqual @t2 a2 b2 =
     case (sing @t1) %~ (sing @t2) of
@@ -262,8 +270,13 @@ instance Ord (Exp t) where
       -- Time
       (EGetTime, EGetTime) -> EQ
       -- Actions
-      (ESetState e1 s1, ESetState e2 s2) ->
-        compare e1 e2 <> compare s1 s2
+      (ESetState @t1 e1 s1, ESetState @t2 e2 s2) ->
+        case (sing @t1) %~ (sing @t2) of
+          Proved Refl -> compare e1 e2 <> compare s1 s2
+          Disproved _ ->
+            compare
+              (fromSing (sing @t1))
+              (fromSing (sing @t2))
       (ESetState _ _, _) -> LT
       (_, ESetState _ _) -> GT
       (EDoNothing, EDoNothing) -> EQ
@@ -314,6 +327,13 @@ data Comparable :: T -> Type where
 
 instance Proved Comparable 'TTime where
   auto = CompTime
+
+-- | Whether values of a given type can be toggled on/off.
+data Toggleable :: T -> Type where
+  ToggleLight :: Toggleable 'TEntityLight
+
+instance Proved Toggleable 'TEntityLight where
+  auto = ToggleLight
 
 --------------------------------------------------------------------------------
 
