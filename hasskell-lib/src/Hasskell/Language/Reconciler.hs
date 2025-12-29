@@ -193,6 +193,7 @@ evalToggleable ::
 evalToggleable @t expr =
   case (auto @Toggleable @t) of
     ToggleLight -> (,domainLight) <$> evalEntity expr
+    ToggleInputBoolean -> (,domainInputBoolean) <$> evalEntity expr
 
 evalBranch ::
   ( State ObservedWorld :> es,
@@ -301,11 +302,12 @@ evalTime = \case
     pure (timeOfDay :@ loc `because` observedTime timeOfDay)
 
 evalEntity ::
-  ( State ObservedWorld :> es,
+  ( Proved IsEntity t,
+    State ObservedWorld :> es,
     Error ReconciliationError :> es
   ) =>
-  Located (Exp 'TEntityLight) -> Eff es (Detailed EntityId)
-evalEntity = \case
-  ELitEntityLight eId :@ loc -> do
-    ensureEntityExists (eId :@ loc)
-    pure (eId :@ loc `because` literal loc)
+  Located (Exp t) -> Eff es (Detailed EntityId)
+evalEntity (entity :@ loc) = do
+  let eId = idOf entity
+  ensureEntityExists (eId :@ loc)
+  pure (eId :@ loc `because` literal loc)

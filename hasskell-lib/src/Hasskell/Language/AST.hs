@@ -21,10 +21,12 @@ module Hasskell.Language.AST
     ComparisonOp (..),
     Comparable (..),
     Toggleable (..),
+    IsEntity (..),
     negateComparison,
     -- Entities
     HasEntityId (..),
     light,
+    inputBoolean,
     -- State
     fromState,
     on,
@@ -72,7 +74,13 @@ import Prettyprinter
 
 $( singletons
      [d|
-       data T = TEntityLight | TAction | TBool | TState | TTime
+       data T
+         = TEntityInputBoolean
+         | TEntityLight
+         | TAction
+         | TBool
+         | TState
+         | TTime
 
        deriving instance (Eq T)
 
@@ -126,6 +134,7 @@ instance HasReferencedEntities Policy where
 instance HasReferencedEntities (Exp t) where
   referencedEntitiesIn = \case
     ELitEntityLight eId -> [eId]
+    ELitEntityInputBoolean eId -> [eId]
     ELitState _ -> []
     ELitTime _ -> []
     EGetState e -> referencedEntitiesIn e
@@ -142,6 +151,7 @@ instance HasReferencedEntities (Exp t) where
 instance HasLocations (Exp t) where
   extractLocations = \case
     ELitEntityLight _ -> []
+    ELitEntityInputBoolean _ -> []
     ELitState _ -> []
     ELitTime _ -> []
     EGetState (_ :@ loc) -> [loc]
@@ -195,10 +205,13 @@ negateComparison = \case
 data Exp :: T -> Type where
   -- Literals
   ELitEntityLight :: EntityId -> Exp 'TEntityLight
+  ELitEntityInputBoolean :: EntityId -> Exp 'TEntityInputBoolean
   ELitState :: ToggleState -> Exp 'TState
   ELitTime :: TimeOfDay -> Exp 'TTime
   -- Entity properties
-  EGetState :: Located (Exp 'TEntityLight) -> Exp 'TState
+  EGetState ::
+    (SingI t, Proved IsEntity t, Proved Toggleable t) =>
+    Located (Exp t) -> Exp 'TState
   -- Time
   EGetTime :: Exp 'TTime
   -- Actions
@@ -232,7 +245,10 @@ instance Eq (Exp t) where
   ELitEntityLight x == ELitEntityLight y = x == y
   ELitState x == ELitState y = x == y
   ELitTime x == ELitTime y = x == y
-  EGetState x == EGetState y = x == y
+  EGetState @t1 x == EGetState @t2 y =
+    case (sing @t1) %~ (sing @t2) of
+      Proved Refl -> x == y
+      Disproved _ -> False
   EGetTime == EGetTime = True
   ESetState @t1 e1 s1 == ESetState @t2 e2 s2 =
     case (sing @t1) %~ (sing @t2) of
@@ -259,6 +275,7 @@ instance Ord (Exp t) where
     case (x, y) of
       -- Literals
       (ELitEntityLight x1, ELitEntityLight x2) -> compare x1 x2
+      (ELitEntityInputBoolean x1, ELitEntityInputBoolean x2) -> compare x1 x2
       (ELitState x1, ELitState x2) -> compare x1 x2
       (ELitState _, _) -> LT
       (_, ELitState _) -> GT
@@ -266,7 +283,13 @@ instance Ord (Exp t) where
       (ELitTime _, _) -> LT
       (_, ELitTime _) -> GT
       -- Entity properties
-      (EGetState e1, EGetState e2) -> compare e1 e2
+      (EGetState @t1 e1, EGetState @t2 e2) ->
+        case (sing @t1) %~ (sing @t2) of
+          Proved Refl -> compare e1 e2
+          Disproved _ ->
+            compare
+              (fromSing (sing @t1))
+              (fromSing (sing @t2))
       -- Time
       (EGetTime, EGetTime) -> EQ
       -- Actions
@@ -331,9 +354,28 @@ instance Proved Comparable 'TTime where
 -- | Whether values of a given type can be toggled on/off.
 data Toggleable :: T -> Type where
   ToggleLight :: Toggleable 'TEntityLight
+  ToggleInputBoolean :: Toggleable 'TEntityInputBoolean
 
 instance Proved Toggleable 'TEntityLight where
   auto = ToggleLight
+
+instance Proved Toggleable 'TEntityInputBoolean where
+  auto = ToggleInputBoolean
+
+data IsEntity :: T -> Type where
+  LightIsEntity :: IsEntity 'TEntityLight
+  InputBooleanIsEntity :: IsEntity 'TEntityInputBoolean
+
+instance (Proved IsEntity t) => HasEntityId (Exp t) where
+  idOf = case (auto @IsEntity @t) of
+    LightIsEntity -> \(ELitEntityLight eId) -> eId
+    InputBooleanIsEntity -> \(ELitEntityInputBoolean eId) -> eId
+
+instance Proved IsEntity 'TEntityLight where
+  auto = LightIsEntity
+
+instance Proved IsEntity 'TEntityInputBoolean where
+  auto = InputBooleanIsEntity
 
 --------------------------------------------------------------------------------
 
@@ -344,12 +386,13 @@ class HasEntityId a where
 instance (HasEntityId a) => HasEntityId (Located a) where
   idOf (a :@ _) = idOf a
 
-instance HasEntityId (Exp 'TEntityLight) where
-  idOf (ELitEntityLight eId) = eId
-
--- | An entity that can be toggled.
+-- | An entity representing a light.
 light :: (HasCallStack) => Text -> Located (Exp 'TEntityLight)
 light = (:@ captureSrcSpan) . ELitEntityLight . makeEntityIdUnsafe
+
+-- | An entity representing an input boolean helper.
+inputBoolean :: (HasCallStack) => Text -> Located (Exp 'TEntityInputBoolean)
+inputBoolean = (:@ captureSrcSpan) . ELitEntityInputBoolean . makeEntityIdUnsafe
 
 --------------------------------------------------------------------------------
 
@@ -377,7 +420,14 @@ shouldBe ::
 shouldBe entity state = ESetState entity state :@ captureSrcSpan
 
 -- | Gets the current toggle state of the given entity.
-toggledStateOf :: (HasCallStack) => Located (Exp 'TEntityLight) -> Located (Exp 'TState)
+toggledStateOf ::
+  ( HasCallStack,
+    SingI t,
+    Proved IsEntity t,
+    Proved Toggleable t
+  ) =>
+  Located (Exp t) ->
+  Located (Exp 'TState)
 toggledStateOf entity = EGetState entity :@ captureSrcSpan
 
 --------------------------------------------------------------------------------

@@ -28,7 +28,7 @@ spec = do
     specify "correctly updates toggle state on state changed event" $ do
       property $ do
         state <- forAll $ genToggleState
-        (entity, observed) <- forAll $ genWorldWithToggled state
+        (entity, _, observed) <- forAll $ genWorldWithToggled state
         let toggledState = toggle state
             entityId = idOf entity
             event = StateChanged entityId toggledState

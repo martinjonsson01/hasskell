@@ -43,7 +43,7 @@ spec = do
       goldenStage $ pureGoldenTextFile "test_resources/ProvenanceSpec/trace_shouldBe.golden" renderedPlan
 
     it "renders time references correctly" $ stagedGolden $ \goldenStage -> do
-      (SomeToggleable entity, observed) <- sample $ genWorldWithToggledAndTime Off (14, 39)
+      (SomeToggleable entity, _, observed) <- sample $ genWorldWithToggledAndTime Off (14, 39)
       let timePolicy =
             policy
               "turn light on at 14:39"
@@ -57,7 +57,7 @@ spec = do
       goldenStage $ pureGoldenTextFile "test_resources/ProvenanceSpec/trace_time.golden" renderedPlan
 
     it "renders successful time comparison correctly" $ stagedGolden $ \goldenStage -> do
-      (SomeToggleable entity, observed) <- sample $ genWorldWithToggledAndTime Off (14, 40)
+      (SomeToggleable entity, _, observed) <- sample $ genWorldWithToggledAndTime Off (14, 40)
       let timePolicy =
             policy
               "turn light on after 14:39"
@@ -71,7 +71,7 @@ spec = do
       goldenStage $ pureGoldenTextFile "test_resources/ProvenanceSpec/trace_time_comparison_success.golden" renderedPlan
 
     it "renders failed time comparison correctly" $ stagedGolden $ \goldenStage -> do
-      (SomeToggleable entity, observed) <- sample $ genWorldWithToggledAndTime Off (14, 20)
+      (SomeToggleable entity, _, observed) <- sample $ genWorldWithToggledAndTime Off (14, 20)
       let timePolicy =
             policy
               "turn light on after 14:39"

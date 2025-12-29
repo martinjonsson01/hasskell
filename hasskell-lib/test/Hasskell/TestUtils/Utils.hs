@@ -5,6 +5,7 @@ module Hasskell.TestUtils.Utils
     sample,
     reconcileAnnotated,
     setTimeout,
+    const2,
   )
 where
 
@@ -23,6 +24,9 @@ import Hedgehog.Internal.Tree qualified as InternalTree
 import System.Environment (lookupEnv)
 import Test.Syd
 import Test.Syd.OptParse
+
+const2 :: a -> b -> c -> a
+const2 = const . const
 
 reconcileAnnotated :: (HasCallStack, MonadIO m, MonadTest m) => ObservedWorld -> Specification -> m (ReconciliationPlan, ReconciliationReport)
 reconcileAnnotated observed spec = do

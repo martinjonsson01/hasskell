@@ -30,6 +30,7 @@ module Hasskell.HomeAssistant.API
     -- Domains
     HASSDomain,
     domainLight,
+    domainInputBoolean,
     -- Services
     HASSService (..),
     HASSServiceActions,
@@ -408,6 +409,9 @@ newtype HASSDomain = Domain Text
 
 domainLight :: HASSDomain
 domainLight = Domain "light"
+
+domainInputBoolean :: HASSDomain
+domainInputBoolean = Domain "input_boolean"
 
 type HASSServiceActions = M.Map HASSDomain (M.Map HASSServiceName HASSService)
 

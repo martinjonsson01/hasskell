@@ -10,6 +10,7 @@ module Hasskell
     -- Entities
     HasEntityId (..),
     light,
+    inputBoolean,
     -- State
     ToggleState (..),
     fromState,

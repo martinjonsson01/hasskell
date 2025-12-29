@@ -1,4 +1,4 @@
-will turn light `Rc` on
+will turn input_boolean `Rc` on
 reason:
     entity `Rc` should be on
          ╭──▶ Generated@-1:-1--1:-1
@@ -40,7 +40,7 @@ reason:
 
         │
         ├─▶ because entity `lightB` is currently off
-will turn light `lightA` off
+will turn input_boolean `lightA` off
 reason:
     entity `lightA` should be off
          ╭──▶ Generated@-1:-1--1:-1

@@ -1,4 +1,4 @@
-will turn light `KguJtIhd` on
+will turn input_boolean `KguJtIhd` on
 reason:
     entity `KguJtIhd` should be on
          ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@65:35-65:45
