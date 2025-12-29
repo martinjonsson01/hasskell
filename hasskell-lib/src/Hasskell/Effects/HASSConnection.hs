@@ -86,7 +86,7 @@ runWithHASSWebSocket action = do
         logError "Web socket finished before the action"
         throwError WebSocketDied
       Right b -> do
-        logDebug "interpreter finished, killing web socket..."
+        logDebug "HASSConnection interpreter finished, killing web socket..."
         pure b
 
 handleSendMessage ::

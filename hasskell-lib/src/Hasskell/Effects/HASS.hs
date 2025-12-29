@@ -16,6 +16,8 @@ module Hasskell.Effects.HASS
   )
 where
 
+import Data.HashMap.Strict (HashMap)
+import Data.HashMap.Strict qualified as HM
 import Data.List qualified as L
 import Data.Text qualified as T
 import Effectful
@@ -26,10 +28,10 @@ import Effectful.Dispatch.Dynamic
 import Effectful.TH
 import Hasskell.Effects.Counter (CorrelationId)
 import Hasskell.Effects.HASSConnection
+import Hasskell.Effects.Logging
 import Hasskell.Effects.Profiling
 import Hasskell.HomeAssistant.API
 import Prettyprinter
-import StmContainers.Map qualified as SM
 
 type StateChangeEventHandler = HASSEvent -> STM ()
 
@@ -59,13 +61,15 @@ instance Pretty (HASS a b) where
 runHASS ::
   ( HASSConnection :> es,
     Profiling :> es,
+    Logger :> es,
     Concurrent :> es
   ) =>
   Eff (HASS : es) a ->
   Eff es a
 runHASS action = do
-  subscriptions :: SM.Map CorrelationId (Async ()) <- atomically SM.new
-  interpretWith_ action $ \command -> profile (T.show $ pretty command) $ case command of
+  subscriptionsVar <- atomically $ newTVar (mempty :: HashMap CorrelationId (Async ()))
+
+  result <- interpretWith_ action $ \command -> profile (T.show $ pretty command) $ case command of
     GetConfig -> sendMessage CommandGetConfig
     GetStates -> sendMessage CommandGetStates
     GetEntities -> sendMessage CommandGetEntityRegistry
@@ -73,17 +77,26 @@ runHASS action = do
     GetServices -> sendMessage CommandGetServices
     TurnOnLight entity -> callService domainLight serviceTurnOn entity
     TurnOffLight entity -> callService domainLight serviceTurnOff entity
-    SubscribeToStateOf entity handler -> createStateSubscription subscriptions entity handler
+    SubscribeToStateOf entity handler -> createStateSubscription subscriptionsVar entity handler
+
+  subscriptions <- atomically $ readTVar subscriptionsVar
+  logDebug $
+    "HASS interpreter finished, cancelling "
+      <> T.show (HM.size subscriptions)
+      <> " subscription event handlers..."
+  cancelMany (HM.elems subscriptions)
+
+  pure result
 
 createStateSubscription ::
   ( HASSConnection :> es,
     Concurrent :> es
   ) =>
-  (SM.Map CorrelationId (Async ())) ->
+  TVar (HashMap CorrelationId (Async ())) ->
   EntityId ->
   StateChangeEventHandler ->
   Eff es ()
-createStateSubscription subscriptions eId handler = do
+createStateSubscription subscriptionsVar eId handler = do
   (subscriptionId, ()) <-
     sendMessageGetId
       ( CommandSubscribeTrigger
@@ -102,8 +115,7 @@ createStateSubscription subscriptions eId handler = do
     atomically $ handler event
   link eventListener
 
-  atomically $
-    SM.insert eventListener subscriptionId subscriptions
+  atomically $ modifyTVar subscriptionsVar (HM.insert subscriptionId eventListener)
 
 callService :: (HASSConnection :> es) => HASSDomain -> HASSServiceName -> EntityId -> Eff es ()
 callService domain service entityId =
