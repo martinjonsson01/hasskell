@@ -1,4 +1,4 @@
-will turn entity `lightB` on
+will turn light `lightB` on
 reason:
     entity `lightB` should be on
          ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@26:35-26:45

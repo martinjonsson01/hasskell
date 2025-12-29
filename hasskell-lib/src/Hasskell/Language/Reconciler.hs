@@ -61,7 +61,7 @@ instance HasLocations ReconciliationStep where
   extractLocations JustifyAction {stepReason} = extractLocations stepReason
 
 -- | An action that can be taken to alter the world.
-data ReconciliationAction = SetEntityState EntityId ToggleState
+data ReconciliationAction = SetEntityState EntityId HASSDomain ToggleState
   deriving (Eq, Ord, Show)
 
 -- | Pretty-prints the plan, displaying justification for each step.
@@ -84,7 +84,7 @@ prettifyStep style JustifyAction {stepAction, stepReason} = do
 
 instance Pretty ReconciliationAction where
   pretty = \case
-    SetEntityState eId state -> "turn entity" <+> pretty eId <+> pretty state
+    SetEntityState eId domain state -> "turn" <+> pretty domain <+> pretty eId <+> pretty state
 
 --------------------------------------------------------------------------------
 
@@ -121,7 +121,7 @@ generateToggleSteps = map toReconciliationStep . HMap.toList
     toReconciliationStep :: (EntityId, Detailed ToggleState) -> ReconciliationStep
     toReconciliationStep (eId, (state :@ _) :£ explanation) =
       JustifyAction
-        { stepAction = SetEntityState eId state,
+        { stepAction = SetEntityState eId domainLight state,
           stepReason = explanation
         }
 

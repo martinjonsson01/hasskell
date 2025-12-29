@@ -30,7 +30,7 @@ spec = do
       property $ do
         let entity = light "entity"
         let entityId = idOf entity
-        let plan = MkReconciliationPlan [JustifyAction (SetEntityState entityId On) undefined]
+        let plan = MkReconciliationPlan [JustifyAction (SetEntityState entityId domainLight On) undefined]
         let (_, executedCommands) = recordHASSCommands (executePlan plan)
         executedCommands === [TurnOn entityId]
 
@@ -38,7 +38,7 @@ spec = do
       property $ do
         let entity = light "entity"
         let entityId = idOf entity
-        let plan = MkReconciliationPlan [JustifyAction (SetEntityState entityId Off) undefined]
+        let plan = MkReconciliationPlan [JustifyAction (SetEntityState entityId domainLight Off) undefined]
         let (_, executedCommands) = recordHASSCommands (executePlan plan)
         executedCommands === [TurnOff entityId]
 

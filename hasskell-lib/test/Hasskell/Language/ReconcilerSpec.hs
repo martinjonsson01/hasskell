@@ -32,7 +32,7 @@ spec = do
         let entityId = idOf entity
             opposite = if state == On then Off else On
         (MkReconciliationPlan steps, _) <- reconcileAnnotated observed (lightAlways opposite entity)
-        (map stepAction steps) === [SetEntityState entityId opposite]
+        (map stepAction steps) === [SetEntityState entityId domainLight opposite]
 
     specify "conditionally turns off one light when another light is on" $
       property $ do
@@ -46,7 +46,7 @@ spec = do
                     `then_` (lightB `shouldBe` off)
                 )
         (MkReconciliationPlan steps, _) <- reconcileAnnotated observedOn boolPolicy
-        (map stepAction steps) === [SetEntityState (idOf lightB) Off]
+        (map stepAction steps) === [SetEntityState (idOf lightB) domainLight Off]
 
     specify "conditionally inverts light based on another" $
       property $ do
@@ -61,7 +61,7 @@ spec = do
                     `else_` (lightB `shouldBe` on)
                 )
         (MkReconciliationPlan steps, _) <- reconcileAnnotated observedOn boolPolicy
-        (map stepAction steps) === [SetEntityState (idOf lightB) On]
+        (map stepAction steps) === [SetEntityState (idOf lightB) domainLight On]
 
     specify "does nothing when condition evaluates to false" $
       property $ do
@@ -87,7 +87,7 @@ spec = do
                 "mirror lightA state to lightB"
                 (lightB `shouldBe` toggledStateOf lightA)
         (MkReconciliationPlan steps, _) <- reconcileAnnotated observedOn boolPolicy
-        (map stepAction steps) === [SetEntityState (idOf lightB) Off]
+        (map stepAction steps) === [SetEntityState (idOf lightB) domainLight Off]
 
     specify "sets state depending on current time" $
       property $ do
@@ -99,7 +99,7 @@ spec = do
                     `then_` (entity `shouldBe` on)
                 )
         (MkReconciliationPlan steps, _) <- reconcileAnnotated observed timePolicy
-        (map stepAction steps) === [SetEntityState (idOf entity) On]
+        (map stepAction steps) === [SetEntityState (idOf entity) domainLight On]
 
   describe "Reconciliation of comparisons" $ do
     specify "sets state when time is greater than" $
@@ -118,13 +118,13 @@ spec = do
       timeEqualTest "after" isGreaterThan (const [])
 
     specify "greater or equal to succeeds on equal time" $
-      timeEqualTest "after or at" isGreaterOrEqualTo (\entity -> [SetEntityState entity On])
+      timeEqualTest "after or at" isGreaterOrEqualTo (\entity -> [SetEntityState entity domainLight On])
 
     specify "less than does not succeed on equal time" $
       timeEqualTest "before" isLessThan (const [])
 
     specify "less or equal to succeeds on equal time" $
-      timeEqualTest "before or at" isLessOrEqualTo (\entity -> [SetEntityState entity On])
+      timeEqualTest "before or at" isLessOrEqualTo (\entity -> [SetEntityState entity domainLight On])
 
   describe "Reconciler warnings" $ do
     specify "are generated when referencing unknown entity" $
@@ -161,7 +161,7 @@ timeComparisonProperty name comparer compareOp = property $ do
       cutoffTime = TimeOfDay 13 42 0
   (MkReconciliationPlan steps, _) <- reconcileAnnotated observed timePolicy
   (map stepAction steps)
-    === if observedTime `compareOp` cutoffTime then [SetEntityState (idOf entity) On] else []
+    === if observedTime `compareOp` cutoffTime then [SetEntityState (idOf entity) domainLight On] else []
 
 timeEqualTest :: Text -> ComparisonExp -> (EntityId -> [ReconciliationAction]) -> IO ()
 timeEqualTest name comparer expectedActions = do

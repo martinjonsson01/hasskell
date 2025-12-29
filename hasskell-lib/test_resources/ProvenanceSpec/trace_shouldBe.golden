@@ -1,4 +1,4 @@
-will turn entity `lightA` off
+will turn light `lightA` off
 reason:
     entity `lightA` should be off
          ╭──▶ Generated@-1:-1--1:-1
@@ -19,7 +19,7 @@ reason:
 
         │
         ├─▶ because entity `lightA` is currently on
-will turn entity `lightB` on
+will turn light `lightB` on
 reason:
     entity `lightB` should be on
          ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/TestUtils/Specifications.hs@18:13-18:23
@@ -40,7 +40,7 @@ reason:
 
         │
         ├─▶ because entity `lightB` is currently off
-will turn entity `5I7qqCg` off
+will turn light `5I7qqCg` off
 reason:
     entity `5I7qqCg` should be off
          ╭──▶ Generated@-1:-1--1:-1
@@ -61,7 +61,7 @@ reason:
 
         │
         ├─▶ because entity `5I7qqCg` is currently on
-will turn entity `Rc` on
+will turn light `Rc` on
 reason:
     entity `Rc` should be on
          ╭──▶ Generated@-1:-1--1:-1
