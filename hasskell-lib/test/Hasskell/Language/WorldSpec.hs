@@ -4,8 +4,11 @@ import Data.HashMap.Strict qualified as HMap
 import Hasskell.Effects.HASS
 import Hasskell.HomeAssistant.API
 import Hasskell.Language.World
+import Hasskell.TestUtils.Gen
 import Hasskell.TestUtils.Utils
-import Test.Syd
+import Hedgehog
+import Test.Syd hiding (shouldBe)
+import Test.Syd.Hedgehog ()
 
 spec :: Spec
 spec = do
@@ -20,3 +23,13 @@ spec = do
       MkObserved _ world <- runWithClient collectCurrentState
       let toggleableEntityIds = HMap.keys . worldToggleables $ world
       length (toggleableEntityIds) `shouldNotBe` 0
+
+    specify "correctly updates toggle state on state changed event" $ do
+      property $ do
+        state <- forAll $ genToggleState
+        (entity, observed) <- forAll $ genWorldWithToggled state
+        let toggledState = toggle state
+            event = StateChanged entity toggledState
+            updatedObserved = updateWorld observed event
+            updatedToggleables = worldToggleables . observedWorld $ updatedObserved
+        updatedToggleables HMap.!? entity === Just toggledState

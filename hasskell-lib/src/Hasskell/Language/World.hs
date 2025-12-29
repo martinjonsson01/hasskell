@@ -1,12 +1,17 @@
 module Hasskell.Language.World
   ( World (..),
     ToggleState (..),
+    toggle,
+    ObservedEvent (..),
     ObservedWorld (..),
     collectCurrentState,
+    updateWorld,
   )
 where
 
+import Control.Placeholder
 import Data.HashMap.Strict (HashMap)
+import Data.HashMap.Strict qualified as HM
 import Data.HashMap.Strict qualified as HMap
 import Data.Maybe (mapMaybe)
 import Data.Time
@@ -26,9 +31,17 @@ data World = MkWorld
 data ToggleState = On | Off
   deriving (Eq, Ord, Show)
 
+toggle :: ToggleState -> ToggleState
+toggle On = Off
+toggle Off = On
+
 instance Pretty ToggleState where
   pretty On = "on"
   pretty Off = "off"
+
+-- | Something that has happened that may affect the world state.
+data ObservedEvent = StateChanged EntityId ToggleState
+  deriving (Eq, Ord, Show)
 
 --------------------------------------------------------------------------------
 
@@ -69,3 +82,14 @@ filterToggleables = mapMaybe $ \state -> do
     ( stateEntityId state,
       toggleState
     )
+
+-- | Updates the state of the world with a new observation.
+updateWorld :: ObservedWorld -> ObservedEvent -> ObservedWorld
+updateWorld world@MkObserved {observedWorld = observedWorld@MkWorld {worldToggleables}} (StateChanged entity newState) =
+  world
+    { observedWorld =
+        observedWorld
+          { worldToggleables =
+              HM.insert entity newState worldToggleables
+          }
+    }
