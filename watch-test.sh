@@ -78,10 +78,11 @@ echo "${SPEC_EXPR}"
 
 EXPR="Test.Syd.sydTestWith \
   (Test.Syd.OptParse.defaultSettings \
-    { Test.Syd.OptParse.settingGoldenStart = Prelude.True \
-    , Test.Syd.OptParse.settingSeed        = ${SEED_EXPR} \
-    , Test.Syd.OptParse.settingSkipPassed  = Prelude.True \
-    , Test.Syd.OptParse.settingRetries     = 0 \
+    { Test.Syd.OptParse.settingGoldenStart    = Prelude.True \
+    , Test.Syd.OptParse.settingSeed           = ${SEED_EXPR} \
+    , Test.Syd.OptParse.settingSkipPassed     = Prelude.True \
+    , Test.Syd.OptParse.settingRetries        = 0 \
+    , Test.Syd.OptParse.settingReportProgress = Test.Syd.OptParse.ReportProgress \
     }) \
   (${SPEC_EXPR})"
 
