@@ -34,20 +34,26 @@ spec = do
       services <- runWithClient getServices
       length (services) `shouldNotBe` 0
 
-    it "can subscribe to event updates" $ do
+    setTimeout 1 . it "can subscribe to event updates" $ do
       eventsVar <- STM.atomically $ newTVar []
       let retryUntilEvent = do
             events <- readTVar eventsVar
             case NE.nonEmpty events of
               Just eventsNE -> pure eventsNE
               Nothing -> retry
-          entity = light "sensor.cloud_gateway_ultra_memory_utilization"
+          entity = inputBoolean "input_boolean.test"
           entityId = idOf entity
 
       events <-
-        runWithClient $
+        runWithClient $ do
+          -- Start with the boolean off.
+          turnOff domainInputBoolean entityId
+          -- Set up the subscriber.
           subscribeToStateOf entityId (modifyTVar eventsVar . (:))
-            >> atomically retryUntilEvent
+          -- Trigger a change in the entity, so an event is generated.
+          turnOn domainInputBoolean entityId
+          -- Wait until the event is received.
+          atomically retryUntilEvent
 
       let event = NE.head events
           getEventEntityId = triggeredEntityId . variablesTrigger . eventVariables
