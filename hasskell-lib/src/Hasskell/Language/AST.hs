@@ -366,7 +366,14 @@ off :: (HasCallStack) => Located (Exp TState)
 off = fromState Off
 
 -- | Declare that a given entity should be in a given state.
-shouldBe :: (HasCallStack) => Located (Exp 'TEntityLight) -> Located (Exp 'TState) -> Located (Exp 'TAction)
+shouldBe ::
+  ( HasCallStack,
+    SingI t,
+    Proved Toggleable t
+  ) =>
+  Located (Exp t) ->
+  Located (Exp 'TState) ->
+  Located (Exp 'TAction)
 shouldBe entity state = ESetState entity state :@ captureSrcSpan
 
 -- | Gets the current toggle state of the given entity.

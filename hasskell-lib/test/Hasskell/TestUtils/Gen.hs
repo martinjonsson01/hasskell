@@ -1,10 +1,12 @@
 module Hasskell.TestUtils.Gen
-  ( -- | World generators
+  ( SomeToggleable (..),
+    -- | World generators
     genWorldWithToggled,
     genWorldWithToggledAndTime,
     genWorldWithoutEntity,
     genWorldWithKnownEntities,
     genWorldWithToggleds,
+    genWorldWithToggleds',
     genObservedWorld,
     genWorld,
     genTime,
@@ -22,6 +24,7 @@ import Data.HashMap.Strict qualified as HMap
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe
+import Data.Singletons
 import Data.Text (Text)
 import Data.Time
 import Data.Time.Clock.POSIX
@@ -45,32 +48,54 @@ genWithInserted toInsert items = do
 
 ----------------------------------------------------------------------
 
-genWorldWithToggled :: ToggleState -> Gen (Located (Exp 'TEntityLight), ObservedWorld)
+-- | An arbitrary entity that can be toggled.
+data SomeToggleable where
+  SomeToggleable ::
+    (SingI t, HasEntityId (Exp t), Proved Toggleable t) =>
+    Located (Exp t) ->
+    SomeToggleable
+
+deriving instance (Show SomeToggleable)
+
+instance HasEntityId SomeToggleable where
+  idOf (SomeToggleable e) = idOf e
+
+genWorldWithToggled :: ToggleState -> Gen (SomeToggleable, ObservedWorld)
 genWorldWithToggled state = do
   entityId <- genEntity
-  world <- genWorldWithToggleds [(entityId, state)]
+  world <- genWorldWithToggleds' [(entityId, state)]
   pure (entityId, world)
 
-genWorldWithToggledAndTime :: ToggleState -> (Int, Int) -> Gen (Located (Exp 'TEntityLight), ObservedWorld)
+genWorldWithToggledAndTime :: ToggleState -> (Int, Int) -> Gen (SomeToggleable, ObservedWorld)
 genWorldWithToggledAndTime state (hours, mins) = do
   entity <- genEntity
   let timeOfDay = TimeOfDay hours mins 0
   world <- genTimedWorldWithToggleds timeOfDay [(entity, state)]
   pure (entity, world)
 
-genWorldWithToggleds :: [(Located (Exp 'TEntityLight), ToggleState)] -> Gen ObservedWorld
-genWorldWithToggleds entitiesAndStates = do
+genWorldWithToggleds ::
+  ( SingI t,
+    HasEntityId (Exp t),
+    Proved Toggleable t
+  ) =>
+  [(Located (Exp t), ToggleState)] ->
+  Gen ObservedWorld
+genWorldWithToggleds = genWorldWithToggleds' . map (mapFst SomeToggleable)
+
+genWorldWithToggleds' :: [(SomeToggleable, ToggleState)] -> Gen ObservedWorld
+genWorldWithToggleds' entitiesAndStates = do
   timeOfDay <- genTimeOfDay
   genTimedWorldWithToggleds timeOfDay entitiesAndStates
 
-genTimedWorldWithToggleds :: TimeOfDay -> [(Located (Exp 'TEntityLight), ToggleState)] -> Gen ObservedWorld
+genTimedWorldWithToggleds :: TimeOfDay -> [(SomeToggleable, ToggleState)] -> Gen ObservedWorld
 genTimedWorldWithToggleds timeOfDay entitiesAndStates = do
   world <- genWorld
-  let toggleables = HMap.fromList (map (mapFst idOf) $ map (uncurry (,)) entitiesAndStates)
+  let extractId = mapFst idOf
+      toggleables = HMap.fromList (map extractId $ map (uncurry (,)) entitiesAndStates)
       newToggleables = toggleables `HMap.union` (worldToggleables world)
   pure $ MkObserved timeOfDay world {worldToggleables = newToggleables}
 
-genWorldWithKnownEntities :: [Located (Exp 'TEntityLight)] -> Gen ObservedWorld
+genWorldWithKnownEntities :: (HasEntityId (Exp t)) => [Located (Exp t)] -> Gen ObservedWorld
 genWorldWithKnownEntities known = do
   MkObserved timeOfDay world <- genObservedWorld
   let pairGen eId = (eId,) <$> genToggleState
@@ -80,7 +105,7 @@ genWorldWithKnownEntities known = do
 genObservedWorld :: Gen ObservedWorld
 genObservedWorld = MkObserved <$> genTimeOfDay <*> genWorld
 
-genWorldWithoutEntity :: Gen (Located (Exp 'TEntityLight), ObservedWorld)
+genWorldWithoutEntity :: Gen (SomeToggleable, ObservedWorld)
 genWorldWithoutEntity = do
   world <- genObservedWorld
   entity <- genUniqueEntity world
@@ -97,7 +122,7 @@ genTime =
   posixSecondsToUTCTime . fromInteger
     <$> Gen.integral (Range.constant 0 (60 * 60 * 24 * 365 * 200)) -- up to year 2169
 
-genUniqueEntity :: ObservedWorld -> Gen (Located (Exp 'TEntityLight))
+genUniqueEntity :: ObservedWorld -> Gen SomeToggleable
 genUniqueEntity (MkObserved _ MkWorld {worldToggleables}) =
   let idExists eId = isJust $ HMap.lookup eId worldToggleables
    in Gen.filter (not . idExists . idOf) genEntity
@@ -138,19 +163,19 @@ genStateExp = do
 genVoidExp :: NonEmpty EntityId -> Gen (Located (Exp 'TAction))
 genVoidExp knownEntities = do
   loc <- genLocation
-  expr <- genKnownEntity knownEntities
+  SomeToggleable expr <- genKnownEntity knownEntities
   state <- genStateExp
   pure (ESetState expr state :@ loc)
 
-genKnownEntity :: NonEmpty EntityId -> Gen (Located (Exp 'TEntityLight))
+genKnownEntity :: NonEmpty EntityId -> Gen SomeToggleable
 genKnownEntity knownEntities = do
   eId <- genKnownEntityId knownEntities
   genEntityWithId eId
 
-genEntityWithId :: EntityId -> Gen (Located (Exp 'TEntityLight))
-genEntityWithId eId = (ELitEntityLight eId :@) <$> genLocation
+genEntityWithId :: EntityId -> Gen SomeToggleable
+genEntityWithId eId = SomeToggleable . (ELitEntityLight eId :@) <$> genLocation
 
-genEntity :: Gen (Located (Exp 'TEntityLight))
+genEntity :: Gen SomeToggleable
 genEntity = genEntityId >>= genEntityWithId
 
 genKnownEntityId :: NonEmpty EntityId -> Gen EntityId

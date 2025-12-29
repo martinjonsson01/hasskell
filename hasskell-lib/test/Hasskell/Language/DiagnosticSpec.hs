@@ -17,7 +17,7 @@ spec :: Spec
 spec = do
   describe "Reconciler diagnostic" $ do
     it "warns about unknown entity" $ stagedGolden $ \goldenStage -> do
-      (unknownEntity, observed) <- sample genWorldWithoutEntity
+      (SomeToggleable unknownEntity, observed) <- sample genWorldWithoutEntity
       let (_, report) = reconcile observed (lightAlwaysOn unknownEntity)
       renderedReport <- renderReport Plain report
       goldenStage $ pureGoldenTextFile "test_resources/DiagnosticSpec/warn_unknown_entity.golden" renderedReport

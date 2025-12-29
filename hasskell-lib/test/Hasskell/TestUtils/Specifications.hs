@@ -4,14 +4,28 @@ module Hasskell.TestUtils.Specifications
   )
 where
 
+import Data.Singletons
 import GHC.Stack
 import Hasskell
 import Hasskell.Language.AST
 
-lightAlwaysOn :: (HasCallStack) => Located (Exp 'TEntityLight) -> Specification
+lightAlwaysOn ::
+  ( HasCallStack,
+    SingI t,
+    Proved Toggleable t
+  ) =>
+  Located (Exp t) ->
+  Specification
 lightAlwaysOn = lightAlways On
 
-lightAlways :: (HasCallStack) => ToggleState -> Located (Exp 'TEntityLight) -> Specification
+lightAlways ::
+  ( HasCallStack,
+    SingI t,
+    Proved Toggleable t
+  ) =>
+  ToggleState ->
+  Located (Exp t) ->
+  Specification
 lightAlways state entity =
   policy
     ("light is always " <> if state == On then "on" else "off")
