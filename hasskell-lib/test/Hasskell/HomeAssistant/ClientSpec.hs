@@ -34,7 +34,7 @@ spec = do
       services <- runWithClient getServices
       length (services) `shouldNotBe` 0
 
-    setTimeout 10 . it "can subscribe to event updates" $ do
+    it "can subscribe to event updates" $ do
       eventsVar <- STM.atomically $ newTVar []
       let retryUntilEvent = do
             events <- readTVar eventsVar
