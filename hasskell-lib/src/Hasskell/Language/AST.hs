@@ -245,30 +245,32 @@ instance Eq (Exp t) where
   ELitEntityLight x == ELitEntityLight y = x == y
   ELitState x == ELitState y = x == y
   ELitTime x == ELitTime y = x == y
-  EGetState @t1 x == EGetState @t2 y =
-    case (sing @t1) %~ (sing @t2) of
-      Proved Refl -> x == y
-      Disproved _ -> False
+  EGetState x == EGetState y = eqExistentials x y
   EGetTime == EGetTime = True
-  ESetState @t1 e1 s1 == ESetState @t2 e2 s2 =
-    case (sing @t1) %~ (sing @t2) of
-      Proved Refl -> e1 == e2 && s1 == s2
-      Disproved _ -> False
+  ESetState e1 s1 == ESetState e2 s2 =
+    eqExistentials e1 e2 && eqExistentials s1 s2
   EDoNothing == EDoNothing = True
-  EEqual @t1 a1 b1 == EEqual @t2 a2 b2 =
-    case (sing @t1) %~ (sing @t2) of
-      Proved Refl -> a1 == a2 && b1 == b2
-      Disproved _ -> False
+  EEqual a1 b1 == EEqual a2 b2 =
+    eqExistentials a1 a2 && eqExistentials b1 b2
   EIf eCond1 eThen1 eElse1 == EIf eCond2 eThen2 eElse2 =
     eCond1 == eCond2
       && eThen1 == eThen2
       && eElse1 == eElse2
-  ECompare @t1 op1 a1 b1 == ECompare @t2 op2 a2 b2 =
+  ECompare op1 a1 b1 == ECompare op2 a2 b2 =
     op1 == op2
-      && case (sing @t1) %~ (sing @t2) of
-        Proved Refl -> a1 == a2 && b1 == b2
-        Disproved _ -> False
+      && eqExistentials a1 a2
+      && eqExistentials b1 b2
   _ == _ = False
+
+eqExistentials ::
+  (SingI t1, SingI t2) =>
+  Located (Exp t1) ->
+  Located (Exp t2) ->
+  Bool
+eqExistentials @t1 @t2 e1 e2 =
+  case (sing @t1) %~ (sing @t2) of
+    Proved Refl -> e1 == e2
+    Disproved _ -> False
 
 instance Ord (Exp t) where
   compare x y =
@@ -283,50 +285,43 @@ instance Ord (Exp t) where
       (ELitTime _, _) -> LT
       (_, ELitTime _) -> GT
       -- Entity properties
-      (EGetState @t1 e1, EGetState @t2 e2) ->
-        case (sing @t1) %~ (sing @t2) of
-          Proved Refl -> compare e1 e2
-          Disproved _ ->
-            compare
-              (fromSing (sing @t1))
-              (fromSing (sing @t2))
+      (EGetState e1, EGetState e2) -> compareExistentials e1 e2
       -- Time
       (EGetTime, EGetTime) -> EQ
       -- Actions
-      (ESetState @t1 e1 s1, ESetState @t2 e2 s2) ->
-        case (sing @t1) %~ (sing @t2) of
-          Proved Refl -> compare e1 e2 <> compare s1 s2
-          Disproved _ ->
-            compare
-              (fromSing (sing @t1))
-              (fromSing (sing @t2))
+      (ESetState e1 s1, ESetState e2 s2) ->
+        compareExistentials e1 e2 <> compareExistentials s1 s2
       (ESetState _ _, _) -> LT
       (_, ESetState _ _) -> GT
       (EDoNothing, EDoNothing) -> EQ
       (EDoNothing, _) -> LT
       (_, EDoNothing) -> GT
       -- Boolean logic
-      (EEqual @t1 a1 b1, EEqual @t2 a2 b2) ->
-        case (sing @t1) %~ (sing @t2) of
-          Proved Refl -> compare a1 a2 <> compare b1 b2
-          Disproved _ ->
-            compare
-              (fromSing (sing @t1))
-              (fromSing (sing @t2))
+      (EEqual a1 b1, EEqual a2 b2) ->
+        compareExistentials a1 a2 <> compareExistentials b1 b2
       (EEqual _ _, _) -> LT
       (_, EEqual _ _) -> GT
       (EIf eCond1 eThen1 eElse1, EIf eCond2 eThen2 eElse2) ->
         compare eCond1 eCond2
           <> compare eThen1 eThen2
           <> compare eElse1 eElse2
-      (ECompare @t1 c1 a1 b1, ECompare @t2 c2 a2 b2) ->
+      (ECompare c1 a1 b1, ECompare c2 a2 b2) ->
         compare c1 c2
-          <> case (sing @t1) %~ (sing @t2) of
-            Proved Refl -> compare a1 a2 <> compare b1 b2
-            Disproved _ ->
-              compare
-                (fromSing (sing @t1))
-                (fromSing (sing @t2))
+          <> compareExistentials a1 a2
+          <> compareExistentials b1 b2
+    where
+      compareExistentials ::
+        (SingI t1, SingI t2) =>
+        Located (Exp t1) ->
+        Located (Exp t2) ->
+        Ordering
+      compareExistentials @t1 @t2 e1 e2 =
+        case (sing @t1) %~ (sing @t2) of
+          Proved Refl -> compare e1 e2
+          Disproved _ ->
+            compare
+              (fromSing (sing @t1))
+              (fromSing (sing @t2))
 
 --------------------------------------------------------------------------------
 
