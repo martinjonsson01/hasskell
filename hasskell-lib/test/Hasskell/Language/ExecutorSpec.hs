@@ -2,6 +2,7 @@ module Hasskell.Language.ExecutorSpec (spec) where
 
 import Control.Placeholder
 import Data.Aeson
+import Data.HashMap.Strict qualified as HM
 import Data.Map.Lazy qualified as M
 import Data.Maybe
 import Effectful
@@ -71,6 +72,9 @@ runWithFakeHASS = reinterpret_ (runState []) $ \action -> case action of
   HASS.GetServices -> do
     modify $ (Unknown :)
     pure M.empty
+  HASS.GetSupportedServicesOf _ -> do
+    modify $ (Unknown :)
+    pure HM.empty
   HASS.TurnOn _ entity -> do
     modify $ (TurnOn entity :)
     pure ()

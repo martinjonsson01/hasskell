@@ -10,6 +10,7 @@ module Hasskell.Effects.HASS
     getEntities,
     getDevices,
     getServices,
+    getSupportedServicesOf,
     turnOn,
     turnOff,
     subscribeToStateOf,
@@ -18,8 +19,12 @@ where
 
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HM
-import Data.List qualified as L
+import Data.HashSet (HashSet)
+import Data.HashSet qualified as HS
+import Data.List.Extra
+import Data.Maybe
 import Data.Text qualified as T
+import Data.Tuple.HT
 import Effectful
 import Effectful.Concurrent
 import Effectful.Concurrent.Async
@@ -41,6 +46,7 @@ data HASS :: Effect where
   GetEntities :: HASS m [HASSEntity]
   GetDevices :: HASS m [HASSDevice]
   GetServices :: HASS m HASSServiceActions
+  GetSupportedServicesOf :: EntityId -> HASS m (HashMap HASSDomain (HashSet HASSServiceName))
   TurnOn :: HASSDomain -> EntityId -> HASS m ()
   TurnOff :: HASSDomain -> EntityId -> HASS m ()
   SubscribeToStateOf :: EntityId -> StateChangeEventHandler -> HASS m ()
@@ -54,6 +60,7 @@ instance Pretty (HASS a b) where
     GetEntities -> "get entities"
     GetDevices -> "get devices"
     GetServices -> "get services"
+    GetSupportedServicesOf eId -> "get supported services of" <+> pretty eId
     TurnOn domain eId -> "turn on" <+> pretty domain <+> pretty eId
     TurnOff domain eId -> "turn off" <+> pretty domain <+> pretty eId
     SubscribeToStateOf eId _ -> "subscribe to state of" <+> pretty eId
@@ -75,6 +82,7 @@ runHASS action = do
     GetEntities -> sendMessage CommandGetEntityRegistry
     GetDevices -> sendMessage CommandGetDeviceRegistry
     GetServices -> sendMessage CommandGetServices
+    GetSupportedServicesOf entity -> sendGetSupportedServicesOf entity
     TurnOn domain entity -> callService domain serviceTurnOn entity
     TurnOff domain entity -> callService domain serviceTurnOff entity
     SubscribeToStateOf entity handler -> createStateSubscription subscriptionsVar entity handler
@@ -87,6 +95,16 @@ runHASS action = do
   cancelMany (HM.elems subscriptions)
 
   pure result
+
+sendGetSupportedServicesOf ::
+  (HASSConnection :> es) =>
+  EntityId ->
+  Eff es (HashMap HASSDomain (HashSet HASSServiceName))
+sendGetSupportedServicesOf =
+  (HM.fromList . map (mapSnd HS.fromList) . groupSort . mapMaybe splitQualifiedServiceName <$>)
+    . sendMessage
+    . CommandGetServicesForTarget
+    . targetEntity
 
 createStateSubscription ::
   ( HASSConnection :> es,
@@ -122,15 +140,7 @@ callService domain service entityId =
   sendMessage
     ( CommandCallService
         { commandReturnResponse = False,
-          commandTarget =
-            Just
-              ( Target
-                  { targetEntityId = L.singleton entityId,
-                    targetDeviceId = mempty,
-                    targetLabelId = mempty,
-                    targetAreaId = mempty
-                  }
-              ),
+          commandTarget = targetEntity entityId,
           commandServiceData = Nothing,
           commandService = service,
           commandDomain = domain

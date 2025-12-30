@@ -1,6 +1,8 @@
 module Hasskell.HomeAssistant.ClientSpec (spec) where
 
 import Control.Concurrent.STM qualified as STM
+import Data.HashMap.Strict qualified as HM
+import Data.HashSet qualified as HS
 import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
 import Effectful.Concurrent.STM
@@ -33,6 +35,22 @@ spec = do
     it "can get services" $ do
       services <- runWithClient getServices
       length (services) `shouldNotBe` 0
+
+    it "can get an entity's domains" $ do
+      let entity = inputBoolean "input_boolean.test"
+          eId = idOf entity
+      supportedServices <- runWithClient (getSupportedServicesOf eId)
+      let domains = HM.keys supportedServices
+      domains `shouldContain` [domainInputBoolean]
+
+    it "can get an entity's supported services" $ do
+      let entity = inputBoolean "input_boolean.test"
+          eId = idOf entity
+      supportedServices <- runWithClient (getSupportedServicesOf eId)
+      let services = mconcat (HM.elems supportedServices)
+          expectedServices = HS.fromList [serviceTurnOff, serviceTurnOff, serviceToggle]
+      context ("expected: " <> ppShow expectedServices) $
+        services `shouldSatisfy` HS.isSubsetOf expectedServices
 
     setTimeout 1 . it "can subscribe to event updates" $ do
       eventsVar <- STM.atomically $ newTVar []

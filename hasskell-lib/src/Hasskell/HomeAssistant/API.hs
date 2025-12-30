@@ -18,7 +18,6 @@ module Hasskell.HomeAssistant.API
     HASSEntity (..),
     HASSDevice (..),
     HASSState (..),
-    HASSTarget (..),
     HASSActionResult (..),
     HASSUnitSystem (..),
     HASSTrigger (..),
@@ -27,6 +26,9 @@ module Hasskell.HomeAssistant.API
     HASSEvent (..),
     HASSVariables (..),
     HASSTriggered (..),
+    -- Targeting
+    HASSTarget (..),
+    targetEntity,
     -- Domains
     HASSDomain,
     domainLight,
@@ -38,6 +40,8 @@ module Hasskell.HomeAssistant.API
     serviceToggle,
     serviceTurnOn,
     serviceTurnOff,
+    HASSQualifiedServiceName,
+    splitQualifiedServiceName,
   )
 where
 
@@ -51,8 +55,10 @@ import Data.Aeson.Types (typeMismatch)
 import Data.Char (toLower)
 import Data.Foldable (toList)
 import Data.Hashable
+import Data.List qualified as L
 import Data.Map.Lazy qualified as M
 import Data.Text (Text)
+import Data.Text qualified as T
 import Data.Time (UTCTime)
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime, utcTimeToPOSIXSeconds)
 import Deriving.Aeson
@@ -167,13 +173,15 @@ data HASSCommand
       { commandDomain :: HASSDomain,
         commandService :: HASSServiceName,
         commandServiceData :: Maybe (M.Map Text Text),
-        commandTarget :: Maybe HASSTarget,
+        commandTarget :: HASSTarget,
         commandReturnResponse :: Bool
       }
   | -- | Subscribes to state changes of the given entity.
     CommandSubscribeTrigger
       { commandTrigger :: HASSTrigger
       }
+  | -- | Gets the supported services of a target.
+    CommandGetServicesForTarget {commandTarget :: HASSTarget}
   deriving (Generic, Eq, Show)
   deriving (FromJSON, ToJSON) via CustomJSON (HASSMessageJSONOptions "command") HASSCommand
 
@@ -204,6 +212,16 @@ data HASSTarget = Target
   }
   deriving (Generic, Eq, Show)
   deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "target") HASSTarget
+
+-- | Target a single entity.
+targetEntity :: EntityId -> HASSTarget
+targetEntity eId =
+  Target
+    { targetEntityId = L.singleton eId,
+      targetDeviceId = mempty,
+      targetLabelId = mempty,
+      targetAreaId = mempty
+    }
 
 data HASSResponse = ResponseResult (HASSResult Value) | ResponseEvent HASSEvent
   deriving (Eq, Show)
@@ -393,7 +411,7 @@ data HASSUnitSystem = MkUnitSystem
 
 newtype HASSServiceName = ServiceName Text
   deriving (Eq, Show, Ord)
-  deriving (FromJSON, ToJSON, FromJSONKey, ToJSONKey) via Text
+  deriving (Hashable, FromJSON, ToJSON, FromJSONKey, ToJSONKey) via Text
 
 serviceToggle :: HASSServiceName
 serviceToggle = ServiceName "toggle"
@@ -404,9 +422,20 @@ serviceTurnOn = ServiceName "turn_on"
 serviceTurnOff :: HASSServiceName
 serviceTurnOff = ServiceName "turn_off"
 
+-- | A service name with a domain prefix: `domain.service_name`
+newtype HASSQualifiedServiceName = QualifiedServiceName Text
+  deriving (Eq, Show, Ord)
+  deriving (FromJSON, ToJSON, FromJSONKey, ToJSONKey) via Text
+
+splitQualifiedServiceName :: HASSQualifiedServiceName -> Maybe (HASSDomain, HASSServiceName)
+splitQualifiedServiceName (QualifiedServiceName text) = do
+  let (domain, rest) = T.break (== '.') text
+  (_, service) <- T.uncons rest
+  pure (Domain domain, ServiceName service)
+
 newtype HASSDomain = Domain Text
   deriving (Eq, Show, Ord)
-  deriving (Pretty, FromJSON, ToJSON, FromJSONKey, ToJSONKey) via Text
+  deriving (Hashable, Pretty, FromJSON, ToJSON, FromJSONKey, ToJSONKey) via Text
 
 domainLight :: HASSDomain
 domainLight = Domain "light"
