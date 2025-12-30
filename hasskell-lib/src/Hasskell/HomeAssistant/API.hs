@@ -417,8 +417,8 @@ type HASSServiceActions = M.Map HASSDomain (M.Map HASSServiceName HASSService)
 
 -- | Represents Home Assistant services.
 data HASSService = Service
-  { serviceName :: Text,
-    serviceDescription :: Text,
+  { serviceName :: Maybe Text,
+    serviceDescription :: Maybe Text,
     serviceFields :: M.Map Text Value
   }
   deriving (Generic, Eq, Show)
