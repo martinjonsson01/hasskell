@@ -8,6 +8,7 @@ IGNORE_SPECS=(
 
 SEED_ARG=""
 SPEC_NAMES=()
+ALLOW_WARNINGS=false
 
 # parse args
 for arg in "$@"; do
@@ -17,6 +18,9 @@ for arg in "$@"; do
     ;;
   --spec=*)
     SPEC_NAMES+=("${arg#--spec=}")
+    ;;
+  --warnings)
+    ALLOW_WARNINGS=true
     ;;
   *)
     echo "unknown arg: $arg" >&2
@@ -89,8 +93,13 @@ EXPR="Test.Syd.sydTestWith \
 STACK="stack --work-dir .watch-stack-work \
   ghci hasskell-lib:lib hasskell-lib:test:hasskell-lib-test"
 
+WARNINGS=""
+if [ "${ALLOW_WARNINGS}" = true ]; then
+  WARNINGS="--warnings"
+fi
+
 ghcid \
   --command "${STACK}" \
   --test "${EXPR}" \
-  --warnings \
+  ${WARNINGS} \
   --color=always
