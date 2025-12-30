@@ -31,6 +31,7 @@ library
       Hasskell.Effects.Utils
       Hasskell.HomeAssistant.API
       Hasskell.HomeAssistant.Client
+      Hasskell.HomeAssistant.Version
       Hasskell.Language.AST
       Hasskell.Language.CallStack
       Hasskell.Language.Diagnostic

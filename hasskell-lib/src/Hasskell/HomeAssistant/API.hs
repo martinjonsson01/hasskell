@@ -58,6 +58,7 @@ import Data.Time.Clock.POSIX (posixSecondsToUTCTime, utcTimeToPOSIXSeconds)
 import Deriving.Aeson
 import GHC.TypeLits
 import Hasskell.Effects.Counter (CorrelationId (..))
+import Hasskell.HomeAssistant.Version
 import Network.WebSockets qualified as WS
 import Prettyprinter
 
@@ -95,9 +96,9 @@ type HASSValueJSONOptions (prefix :: Symbol) =
 
 -- | Responses sent from Home Assistant in the authentication phase.
 data HASSAuthResponse
-  = ResponseAuthRequired {responseHaVersion :: Text}
+  = ResponseAuthRequired {responseHaVersion :: HASSVersion}
   | ResponseAuthInvalid {responseMessage :: Text}
-  | ResponseAuthOk {responseHaVersion :: Text}
+  | ResponseAuthOk {responseHaVersion :: HASSVersion}
   deriving (Generic, Eq, Show)
   deriving (FromJSON, ToJSON) via CustomJSON (HASSMessageJSONOptions "response") HASSAuthResponse
 

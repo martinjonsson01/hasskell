@@ -35,6 +35,7 @@ import Hasskell.Effects.Counter
 import Hasskell.Effects.Logging
 import Hasskell.Effects.Utils
 import Hasskell.HomeAssistant.API
+import Hasskell.HomeAssistant.Version
 import Network.WebSockets qualified as WS
 
 data SomeHASSMessage = forall a. (ToJSON a) => SomeMessage a
@@ -55,6 +56,7 @@ data HASSWebSocketError
   | InvalidAuthentication Text
   | WebSocketLogError LogError
   | CommandFailure HASSFailure
+  | IncompatibleVersion HASSVersion
   | WebSocketDied
   deriving (Eq, Show)
 
@@ -199,16 +201,24 @@ authenticate connection = do
         logDebug $ T.concat ["got auth response ", T.show message]
         response <- liftEither message
         case response of
-          ResponseAuthRequired _ -> do
+          ResponseAuthRequired version -> do
+            ensureCompatibleVersion version
             hassToken <- token <$> getConfig
             send connection $ MessageAuth hassToken
             authMessage <- receive connection
             handleAuthResponse authMessage
           ResponseAuthInvalid errorMessage -> throwError $ InvalidAuthentication errorMessage
-          ResponseAuthOk _ -> pure ()
+          ResponseAuthOk version -> ensureCompatibleVersion version
 
   initialMessage <- receive connection
   handleAuthResponse initialMessage
+
+ensureCompatibleVersion ::
+  (Error HASSWebSocketError :> es) =>
+  HASSVersion -> Eff es ()
+ensureCompatibleVersion version
+  | version >= minimumSupportedVersion = pure ()
+  | otherwise = throwError (IncompatibleVersion version)
 
 -- | Sends data to Home Assistant.
 send :: (IOE :> es, Logger :> es, WS.WebSocketsData a, ToJSON a) => WS.Connection -> a -> Eff es ()
