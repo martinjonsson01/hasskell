@@ -12,9 +12,10 @@ module Hasskell.HomeAssistant.API
     HASSResult (..),
     HASSFailure (..),
     HASSConfig (..),
-    EntityId,
-    makeEntityIdUnsafe,
-    unwrapEntityId,
+    EntityId (..),
+    KnownEntityId,
+    makeKnownEntityIdUnsafe,
+    unwrapKnownEntityId,
     HASSEntity (..),
     HASSDevice (..),
     HASSState (..),
@@ -53,6 +54,7 @@ import Data.Aeson.KeyMap (KeyMap)
 import Data.Aeson.KeyMap qualified as KeyMap
 import Data.Aeson.Types (typeMismatch)
 import Data.Char (toLower)
+import Data.Coerce
 import Data.Foldable (toList)
 import Data.Hashable
 import Data.List qualified as L
@@ -197,7 +199,7 @@ type HASSStateValue = Text
 -- | A condition for an automation to run.
 data HASSTrigger = Trigger
   { triggerPlatform :: HASSPlatform,
-    triggerEntityId :: EntityId,
+    triggerEntityId :: KnownEntityId,
     triggerFrom :: Maybe HASSStateValue,
     triggerTo :: Maybe HASSStateValue
   }
@@ -205,7 +207,7 @@ data HASSTrigger = Trigger
   deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "trigger") HASSTrigger
 
 data HASSTarget = Target
-  { targetEntityId :: [EntityId],
+  { targetEntityId :: [KnownEntityId],
     targetDeviceId :: [Text],
     targetAreaId :: [Text],
     targetLabelId :: [Text]
@@ -214,7 +216,7 @@ data HASSTarget = Target
   deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "target") HASSTarget
 
 -- | Target a single entity.
-targetEntity :: EntityId -> HASSTarget
+targetEntity :: KnownEntityId -> HASSTarget
 targetEntity eId =
   Target
     { targetEntityId = L.singleton eId,
@@ -258,7 +260,7 @@ data HASSActionResult = ActionResult
   deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "actionResult") HASSActionResult
 
 data HASSState = State
-  { stateEntityId :: EntityId,
+  { stateEntityId :: KnownEntityId,
     stateState :: HASSStateValue,
     stateAttributes :: KeyMap Value,
     stateLastChanged :: UTCTime,
@@ -309,16 +311,19 @@ instance FromJSON UnixUTC where
 instance ToJSON UnixUTC where
   toJSON (UnixUTC t) = toJSON (utcTimeToPOSIXSeconds t)
 
-newtype EntityId = EntityId Text
+-- | An entity ID that may or may not refer to a real entity.
+newtype EntityId = EntityId {unwrapEntityId :: Text}
   deriving (Show, Eq, Ord)
   deriving (FromJSON, ToJSON, Hashable) via Text
 
--- | Creates an entity ID without any verification that it is valid.
-makeEntityIdUnsafe :: Text -> EntityId
-makeEntityIdUnsafe = EntityId
+-- | An entity ID that has been confirmed to refer to an existing entity.
+newtype KnownEntityId = Known {unwrapKnownEntityId :: EntityId}
+  deriving (Eq, Ord, Show, Pretty) via EntityId
+  deriving (FromJSON, ToJSON, Hashable) via Text
 
-unwrapEntityId :: EntityId -> Text
-unwrapEntityId (EntityId text) = text
+-- | Creates an entity ID without any verification that it is valid.
+makeKnownEntityIdUnsafe :: EntityId -> KnownEntityId
+makeKnownEntityIdUnsafe = coerce
 
 instance Pretty EntityId where
   pretty (EntityId eId) = enclose backtick backtick (pretty eId)
@@ -327,7 +332,7 @@ instance Pretty EntityId where
 
 -- | Represents a Home Assistant entity.
 data HASSEntity = MkEntity
-  { entityEntityId :: EntityId,
+  { entityEntityId :: KnownEntityId,
     entityPlatform :: Text,
     entityUniqueId :: Text,
     entityCategories :: KeyMap Value,
@@ -474,7 +479,7 @@ data HASSTriggered = Triggered
     triggeredIdx :: Text,
     triggeredAlias :: Maybe Text,
     triggeredPlatform :: Text,
-    triggeredEntityId :: EntityId,
+    triggeredEntityId :: KnownEntityId,
     triggeredFor :: Maybe Text,
     triggeredAttribute :: Maybe Text,
     triggeredDescription :: Text,

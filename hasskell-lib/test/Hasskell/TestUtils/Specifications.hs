@@ -14,8 +14,8 @@ lightAlwaysOn ::
     SingI t,
     Proved Toggleable t
   ) =>
-  Located (Exp t) ->
-  Specification
+  Located (Exp Raw t) ->
+  RawSpecification
 lightAlwaysOn = lightAlways On
 
 lightAlways ::
@@ -24,8 +24,8 @@ lightAlways ::
     Proved Toggleable t
   ) =>
   ToggleState ->
-  Located (Exp t) ->
-  Specification
+  Located (Exp Raw t) ->
+  RawSpecification
 lightAlways state entity =
   policy
     ("light is always " <> if state == On then "on" else "off")

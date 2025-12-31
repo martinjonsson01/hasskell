@@ -9,6 +9,7 @@
 
 module Hasskell.Language.AST
   ( Specification (..),
+    RawSpecification,
     Policy (..),
     policy,
     HasReferencedEntities (..),
@@ -16,6 +17,11 @@ module Hasskell.Language.AST
     SomeExp (..),
     T (..),
     Exp (..),
+    Params,
+    Phase (..),
+    -- Folding
+    foldExpM,
+    foldExp,
     -- Properties
     Proved (..),
     Equatable (..),
@@ -92,36 +98,47 @@ $( singletons
        deriving instance (Ord T)
 
        deriving instance (Show T)
+
+       -- \| A stage of the AST processing.
+       data Phase = Raw | Verified
+
+       deriving instance (Eq Phase)
+
+       deriving instance (Ord Phase)
+
+       deriving instance (Show Phase)
        |]
  )
 
 -- | A specification defining rules for desired world states.
-data Specification = Specification
-  { specPolicies :: [Policy]
-  }
+data Specification (p :: Phase) where
+  Specification :: {specPolicies :: [Policy p]} -> Specification p
   deriving (Show)
 
-instance Semigroup Specification where
+instance Semigroup (Specification p) where
   (Specification policiesA) <> (Specification policiesB) = Specification $ policiesA <> policiesB
 
-instance Monoid Specification where
+instance Monoid (Specification p) where
   mempty = Specification mempty
 
-data Policy = Policy {name :: Text, expression :: Located (Exp 'TAction)}
+type RawSpecification = Specification Raw
+
+data Policy (p :: Phase) where
+  Policy :: {name :: Text, expression :: Located (Exp p 'TAction)} -> Policy p
   deriving (Eq, Ord, Show)
 
 -- | Something that can be turned into an action.
 class IntoAction a where
-  toAction :: a -> Located (Exp 'TAction)
+  toAction :: a -> Located (Exp Raw 'TAction)
 
 instance (BuildableIf state) => IntoAction (IfBuilder state) where
   toAction = buildIf
 
-instance IntoAction (Located (Exp 'TAction)) where
+instance IntoAction (Located (Exp Raw 'TAction)) where
   toAction = id
 
 -- | Declare a desired state.
-policy :: (IntoAction a) => Text -> a -> Specification
+policy :: (IntoAction a) => Text -> a -> Specification Raw
 policy name expr = Specification . List.singleton $ Policy name (toAction expr)
 
 class HasReferencedEntities a where
@@ -130,13 +147,13 @@ class HasReferencedEntities a where
 instance (HasReferencedEntities a) => HasReferencedEntities (Located a) where
   referencedEntitiesIn (a :@ _) = referencedEntitiesIn a
 
-instance HasReferencedEntities Specification where
+instance HasReferencedEntities (Specification Raw) where
   referencedEntitiesIn Specification {specPolicies} = foldMap referencedEntitiesIn specPolicies
 
-instance HasReferencedEntities Policy where
+instance HasReferencedEntities (Policy Raw) where
   referencedEntitiesIn Policy {expression} = referencedEntitiesIn expression
 
-instance HasReferencedEntities (Exp t) where
+instance HasReferencedEntities (Exp Raw t) where
   referencedEntitiesIn = foldExp $ \expr referenced ->
     case expr of
       ELitEntityLight eId -> S.singleton eId
@@ -144,22 +161,28 @@ instance HasReferencedEntities (Exp t) where
       _ -> referenced
 
 data SomeExp :: Type where
-  SomeExp :: (SingI (t :: T)) => Exp t -> SomeExp
+  SomeExp :: (SingI (t :: T), SingI (p :: Phase)) => Exp p t -> SomeExp
 
 instance Show (SomeExp) where
   show (SomeExp e) = show e
 
 instance Eq SomeExp where
-  SomeExp (e1 :: Exp t1) == SomeExp (e2 :: Exp t2) =
-    case (sing @t1) %~ (sing @t2) of
-      Proved Refl -> e1 == e2
+  SomeExp (e1 :: Exp p1 t1) == SomeExp (e2 :: Exp p2 t2) =
+    case (sing @p1) %~ (sing @p2) of
+      Proved Refl ->
+        case (sing @t1) %~ (sing @t2) of
+          Proved Refl -> e1 == e2
+          Disproved _ -> False
       Disproved _ -> False
 
 instance Ord SomeExp where
-  compare (SomeExp (e1 :: Exp t1)) (SomeExp (e2 :: Exp t2)) =
-    case (sing @t1) %~ (sing @t2) of
-      Proved Refl -> compare e1 e2
-      Disproved _ -> fromSing $ sCompare (sing @t1) (sing @t2)
+  compare (SomeExp (e1 :: Exp p1 t1)) (SomeExp (e2 :: Exp p2 t2)) =
+    case (sing @p1) %~ (sing @p2) of
+      Proved Refl ->
+        case (sing @t1) %~ (sing @t2) of
+          Proved Refl -> compare e1 e2
+          Disproved _ -> fromSing $ sCompare (sing @t1) (sing @t2)
+      Disproved _ -> fromSing $ sCompare (sing @p1) (sing @p2)
 
 -- | Different ways of comparing totally ordered values.
 data ComparisonOp = GreaterThan | GreaterOrEqual | LessThan | LessThanOrEqual
@@ -180,46 +203,63 @@ negateComparison = \case
   LessThan -> GreaterOrEqual
   LessThanOrEqual -> GreaterThan
 
-data Exp :: T -> Type where
+-- | The parameters each AST node has depending on the current phase.
+type family Params (c :: Symbol) (p :: Phase) :: Type
+
+type instance Params "ELitEntityLight" Raw = EntityId
+
+type instance Params "ELitEntityInputBoolean" Raw = EntityId
+
+data Exp (p :: Phase) (t :: T) :: Type where
   -- Literals
-  ELitEntityLight :: EntityId -> Exp 'TEntityLight
-  ELitEntityInputBoolean :: EntityId -> Exp 'TEntityInputBoolean
-  ELitState :: ToggleState -> Exp 'TState
-  ELitTime :: TimeOfDay -> Exp 'TTime
+  ELitEntityLight ::
+    ( Show (Params "ELitEntityLight" p),
+      Eq (Params "ELitEntityLight" p),
+      Ord (Params "ELitEntityLight" p)
+    ) =>
+    Params "ELitEntityLight" p -> Exp p 'TEntityLight
+  ELitEntityInputBoolean ::
+    ( Show (Params "ELitEntityInputBoolean" p),
+      Eq (Params "ELitEntityInputBoolean" p),
+      Ord (Params "ELitEntityInputBoolean" p)
+    ) =>
+    Params "ELitEntityInputBoolean" p -> Exp p 'TEntityInputBoolean
+  ELitState :: ToggleState -> Exp p 'TState
+  ELitTime :: TimeOfDay -> Exp p 'TTime
   -- Entity properties
   EGetState ::
-    (SingI t, Proved IsEntity t, Proved Toggleable t) =>
-    Located (Exp t) -> Exp 'TState
+    (SingI t, SingI p, Proved IsEntity t, Proved Toggleable t) =>
+    Located (Exp p t) -> Exp p 'TState
   -- Time
-  EGetTime :: Exp 'TTime
+  EGetTime :: Exp p 'TTime
   -- Actions
   ESetState ::
-    (SingI t, Proved Toggleable t) =>
-    Located (Exp t) ->
-    Located (Exp 'TState) ->
-    Exp 'TAction
-  EDoNothing :: Exp 'TAction
+    (SingI t, SingI p, Proved Toggleable t) =>
+    Located (Exp p t) ->
+    Located (Exp p 'TState) ->
+    Exp p 'TAction
+  EDoNothing :: Exp p 'TAction
   -- Boolean logic
   EEqual ::
-    (SingI t, Proved Equatable t) =>
-    Located (Exp t) ->
-    Located (Exp t) ->
-    Exp 'TBool
+    (SingI t, SingI p, Proved Equatable t) =>
+    Located (Exp p t) ->
+    Located (Exp p t) ->
+    Exp p 'TBool
   EIf :: -- Nested locs to record both the if-then-else syntax and its operands.
-    Located (Located (Exp 'TBool)) ->
-    Located (Located (Exp 'TAction)) ->
-    Located (Located (Exp 'TAction)) ->
-    Exp 'TAction
+    Located (Located (Exp p 'TBool)) ->
+    Located (Located (Exp p 'TAction)) ->
+    Located (Located (Exp p 'TAction)) ->
+    Exp p 'TAction
   ECompare ::
-    (SingI t, Proved Comparable t) =>
+    (SingI t, SingI p, Proved Comparable t) =>
     ComparisonOp ->
-    Located (Exp t) ->
-    Located (Exp t) ->
-    Exp 'TBool
+    Located (Exp p t) ->
+    Located (Exp p t) ->
+    Exp p 'TBool
 
-deriving instance Show (Exp t)
+deriving instance Show (Exp p t)
 
-instance Eq (Exp t) where
+instance Eq (Exp p t) where
   ELitEntityLight x == ELitEntityLight y = x == y
   ELitState x == ELitState y = x == y
   ELitTime x == ELitTime y = x == y
@@ -242,15 +282,15 @@ instance Eq (Exp t) where
 
 eqExistentials ::
   (SingI t1, SingI t2) =>
-  Located (Exp t1) ->
-  Located (Exp t2) ->
+  Located (Exp p t1) ->
+  Located (Exp p t2) ->
   Bool
 eqExistentials @t1 @t2 e1 e2 =
   case (sing @t1) %~ (sing @t2) of
     Proved Refl -> e1 == e2
     Disproved _ -> False
 
-instance Ord (Exp t) where
+instance Ord (Exp p t) where
   compare x y =
     case (x, y) of
       -- Literals
@@ -289,28 +329,34 @@ instance Ord (Exp t) where
           <> compareExistentials b1 b2
     where
       compareExistentials ::
-        (SingI t1, SingI t2) =>
-        Located (Exp t1) ->
-        Located (Exp t2) ->
+        (SingI t1, SingI t2, SingI p1, SingI p2) =>
+        Located (Exp p1 t1) ->
+        Located (Exp p2 t2) ->
         Ordering
-      compareExistentials @t1 @t2 e1 e2 =
-        case (sing @t1) %~ (sing @t2) of
-          Proved Refl -> compare e1 e2
+      compareExistentials @t1 @t2 @p1 @p2 e1 e2 =
+        case (sing @p1) %~ (sing @p2) of
+          Proved Refl ->
+            case (sing @t1) %~ (sing @t2) of
+              Proved Refl -> compare e1 e2
+              Disproved _ ->
+                compare
+                  (fromSing (sing @t1))
+                  (fromSing (sing @t2))
           Disproved _ ->
             compare
-              (fromSing (sing @t1))
-              (fromSing (sing @t2))
+              (fromSing (sing @p1))
+              (fromSing (sing @p2))
 
 -- | A general fold over expressions.
 foldExpM ::
-  forall m result t.
+  forall m result t p.
   (Monad m, Monoid result) =>
-  (forall t'. Exp t' -> result -> m result) ->
-  Exp t ->
+  (forall t'. Exp p t' -> result -> m result) ->
+  Exp p t ->
   m result
 foldExpM step = go
   where
-    go :: forall t'. Exp t' -> m result
+    go :: forall t'. Exp p t' -> m result
     go expr = case expr of
       ELitEntityLight {} -> step expr mempty
       ELitEntityInputBoolean {} -> step expr mempty
@@ -354,10 +400,10 @@ foldExpM step = go
 
 -- | A general fold over an expression.
 foldExp ::
-  forall result t.
+  forall result t p.
   (Monoid result) =>
-  (forall t'. Exp t' -> result -> result) ->
-  Exp t ->
+  (forall t'. Exp p t' -> result -> result) ->
+  Exp p t ->
   result
 foldExp step = runIdentity . foldExpM (\expr -> pure . step expr)
 
@@ -399,16 +445,15 @@ data IsEntity :: T -> Type where
   LightIsEntity :: IsEntity 'TEntityLight
   InputBooleanIsEntity :: IsEntity 'TEntityInputBoolean
 
-instance (Proved IsEntity t) => HasEntityId (Exp t) where
+instance (Proved IsEntity t) => HasEntityId (Exp Raw t) where
   idOf = case (auto @IsEntity @t) of
     LightIsEntity -> \(ELitEntityLight eId) -> eId
     InputBooleanIsEntity -> \(ELitEntityInputBoolean eId) -> eId
 
-instance Proved IsEntity 'TEntityLight where
-  auto = LightIsEntity
-
-instance Proved IsEntity 'TEntityInputBoolean where
-  auto = InputBooleanIsEntity
+instance (Proved Toggleable t) => Proved IsEntity t where
+  auto = case (auto @Toggleable @t) of
+    ToggleLight -> LightIsEntity
+    ToggleInputBoolean -> InputBooleanIsEntity
 
 --------------------------------------------------------------------------------
 
@@ -419,26 +464,29 @@ class HasEntityId a where
 instance (HasEntityId a) => HasEntityId (Located a) where
   idOf (a :@ _) = idOf a
 
+instance HasEntityId KnownEntityId where
+  idOf = unwrapKnownEntityId
+
 -- | An entity representing a light.
-light :: (HasCallStack) => Text -> Located (Exp 'TEntityLight)
-light = (:@ captureSrcSpan) . ELitEntityLight . makeEntityIdUnsafe
+light :: (HasCallStack) => Text -> Located (Exp Raw 'TEntityLight)
+light = (:@ captureSrcSpan) . ELitEntityLight . EntityId
 
 -- | An entity representing an input boolean helper.
-inputBoolean :: (HasCallStack) => Text -> Located (Exp 'TEntityInputBoolean)
-inputBoolean = (:@ captureSrcSpan) . ELitEntityInputBoolean . makeEntityIdUnsafe
+inputBoolean :: (HasCallStack) => Text -> Located (Exp Raw 'TEntityInputBoolean)
+inputBoolean = (:@ captureSrcSpan) . ELitEntityInputBoolean . EntityId
 
 --------------------------------------------------------------------------------
 
 -- | A specific state.
-fromState :: (HasCallStack) => ToggleState -> Located (Exp 'TState)
+fromState :: (HasCallStack) => ToggleState -> Located (Exp Raw 'TState)
 fromState = (:@ captureSrcSpan) . ELitState
 
 -- | The 'on' state.
-on :: (HasCallStack) => Located (Exp 'TState)
+on :: (HasCallStack) => Located (Exp Raw 'TState)
 on = fromState On
 
 -- | The 'off' state.
-off :: (HasCallStack) => Located (Exp TState)
+off :: (HasCallStack) => Located (Exp Raw TState)
 off = fromState Off
 
 -- | Declare that a given entity should be in a given state.
@@ -447,9 +495,9 @@ shouldBe ::
     SingI t,
     Proved Toggleable t
   ) =>
-  Located (Exp t) ->
-  Located (Exp 'TState) ->
-  Located (Exp 'TAction)
+  Located (Exp Raw t) ->
+  Located (Exp Raw 'TState) ->
+  Located (Exp Raw 'TAction)
 shouldBe entity state = ESetState entity state :@ captureSrcSpan
 
 -- | Gets the current toggle state of the given entity.
@@ -459,8 +507,8 @@ toggledStateOf ::
     Proved IsEntity t,
     Proved Toggleable t
   ) =>
-  Located (Exp t) ->
-  Located (Exp 'TState)
+  Located (Exp Raw t) ->
+  Located (Exp Raw 'TState)
 toggledStateOf entity = EGetState entity :@ captureSrcSpan
 
 --------------------------------------------------------------------------------
@@ -468,9 +516,9 @@ toggledStateOf entity = EGetState entity :@ captureSrcSpan
 -- | Check for equality.
 is ::
   (HasCallStack, SingI t, Proved Equatable t) =>
-  Located (Exp t) ->
-  Located (Exp t) ->
-  Located (Exp 'TBool)
+  Located (Exp Raw t) ->
+  Located (Exp Raw t) ->
+  Located (Exp Raw 'TBool)
 is s1 s2 = EEqual s1 s2 :@ captureSrcSpan
 
 --------------------------------------------------------------------------------
@@ -481,9 +529,9 @@ isGreaterThan ::
     SingI t,
     Proved Comparable t
   ) =>
-  Located (Exp t) ->
-  Located (Exp t) ->
-  Located (Exp 'TBool)
+  Located (Exp Raw t) ->
+  Located (Exp Raw t) ->
+  Located (Exp Raw 'TBool)
 isGreaterThan e1 e2 = ECompare GreaterThan e1 e2 :@ captureSrcSpan
 
 -- | Check whether the first expression is greater than or equal to the second.
@@ -492,9 +540,9 @@ isGreaterOrEqualTo ::
     SingI t,
     Proved Comparable t
   ) =>
-  Located (Exp t) ->
-  Located (Exp t) ->
-  Located (Exp 'TBool)
+  Located (Exp Raw t) ->
+  Located (Exp Raw t) ->
+  Located (Exp Raw 'TBool)
 isGreaterOrEqualTo e1 e2 = ECompare GreaterOrEqual e1 e2 :@ captureSrcSpan
 
 -- | Check whether the first expression is strictly less than to the second.
@@ -503,9 +551,9 @@ isLessThan ::
     SingI t,
     Proved Comparable t
   ) =>
-  Located (Exp t) ->
-  Located (Exp t) ->
-  Located (Exp 'TBool)
+  Located (Exp Raw t) ->
+  Located (Exp Raw t) ->
+  Located (Exp Raw 'TBool)
 isLessThan e1 e2 = ECompare LessThan e1 e2 :@ captureSrcSpan
 
 -- | Check whether the first expression is less than or equal to the second.
@@ -514,15 +562,15 @@ isLessOrEqualTo ::
     SingI t,
     Proved Comparable t
   ) =>
-  Located (Exp t) ->
-  Located (Exp t) ->
-  Located (Exp 'TBool)
+  Located (Exp Raw t) ->
+  Located (Exp Raw t) ->
+  Located (Exp Raw 'TBool)
 isLessOrEqualTo e1 e2 = ECompare LessThanOrEqual e1 e2 :@ captureSrcSpan
 
 --------------------------------------------------------------------------------
 
 -- | Gets the current world time.
-currentTime :: (HasCallStack) => Located (Exp 'TTime)
+currentTime :: (HasCallStack) => Located (Exp Raw 'TTime)
 currentTime = EGetTime :@ captureSrcSpan
 
 -- | An hour in the 0-23 (inclusive) range.
@@ -554,7 +602,7 @@ time ::
     KnownNat m,
     ValidMinute m
   ) =>
-  Located (Exp 'TTime)
+  Located (Exp Raw 'TTime)
 time @h @m =
   ( ELitTime $
       TimeOfDay
@@ -577,33 +625,33 @@ data IfThenElse
 
 data IfBuilder stage where
   IfCondB ::
-    Located (Located (Exp 'TBool)) ->
+    Located (Located (Exp Raw 'TBool)) ->
     IfBuilder IfCond
   IfThenB ::
-    Located (Located (Exp 'TBool)) ->
-    Located (Located (Exp 'TAction)) ->
+    Located (Located (Exp Raw 'TBool)) ->
+    Located (Located (Exp Raw 'TAction)) ->
     IfBuilder IfThen
   IfThenElseB ::
-    Located (Located (Exp 'TBool)) ->
-    Located (Located (Exp 'TAction)) ->
-    Located (Located (Exp 'TAction)) ->
+    Located (Located (Exp Raw 'TBool)) ->
+    Located (Located (Exp Raw 'TAction)) ->
+    Located (Located (Exp Raw 'TAction)) ->
     IfBuilder IfThenElse
 
 -- | Make a policy conditional on something.
-if_ :: (HasCallStack) => Located (Exp 'TBool) -> IfBuilder IfCond
+if_ :: (HasCallStack) => Located (Exp Raw 'TBool) -> IfBuilder IfCond
 if_ cond = IfCondB (cond :@ captureSrcSpan)
 
 -- | Define what should happen if the condition holds.
-then_ :: (HasCallStack) => IfBuilder IfCond -> Located (Exp 'TAction) -> IfBuilder IfThen
+then_ :: (HasCallStack) => IfBuilder IfCond -> Located (Exp Raw 'TAction) -> IfBuilder IfThen
 then_ (IfCondB condExp) thenExp = IfThenB condExp (thenExp :@ captureSrcSpan)
 
 -- | Define what should happen if the condition fails.
-else_ :: (HasCallStack) => IfBuilder IfThen -> Located (Exp 'TAction) -> IfBuilder IfThenElse
+else_ :: (HasCallStack) => IfBuilder IfThen -> Located (Exp Raw 'TAction) -> IfBuilder IfThenElse
 else_ (IfThenB cond thenExp) elseExp = IfThenElseB cond thenExp (elseExp :@ captureSrcSpan)
 
 -- | Defines a stage at which the if-builder can construct a valid if expression.
 class BuildableIf stage where
-  buildIf :: (HasCallStack) => IfBuilder stage -> Located (Exp 'TAction)
+  buildIf :: (HasCallStack) => IfBuilder stage -> Located (Exp Raw 'TAction)
 
 -- | Fully qualified if-then-else expressions are valid.
 instance BuildableIf IfThenElse where

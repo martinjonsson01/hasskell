@@ -10,10 +10,10 @@ module Hasskell.Language.CallStack
 where
 
 import Data.Bifunctor (bimap)
+import Data.HashSet (HashSet)
+import Data.HashSet qualified as HS
 import Data.Hashable
 import Data.List qualified as List
-import Data.Set (Set)
-import Data.Set qualified as S
 import Error.Diagnose
 import GHC.Generics
 import GHC.Stack
@@ -35,10 +35,10 @@ stripLocation :: Located a -> a
 stripLocation (a :@ _) = a
 
 class HasLocations a where
-  extractLocations :: a -> Set Location
+  extractLocations :: a -> HashSet Location
 
 instance HasLocations (Located a) where
-  extractLocations (_ :@ pos) = S.singleton pos
+  extractLocations (_ :@ pos) = HS.singleton pos
 
 -- | Captures the current context, based on the current call stack.
 captureSrcSpan :: (HasCallStack) => Location

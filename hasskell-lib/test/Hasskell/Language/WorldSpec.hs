@@ -30,7 +30,7 @@ spec = do
         state <- forAll $ genToggleState
         (entity, _, observed) <- forAll $ genWorldWithToggled state
         let toggledState = toggle state
-            entityId = idOf entity
+            entityId = makeKnownEntityIdUnsafe (idOf entity)
             event = StateChanged entityId toggledState
             updatedObserved = updateWorld observed event
             updatedToggleables = worldToggleables . observedWorld $ updatedObserved

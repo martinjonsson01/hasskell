@@ -5,6 +5,7 @@ module Hasskell.Language.ProvenanceSpec (spec) where
 import Hasskell
 import Hasskell.Language.Reconciler
 import Hasskell.Language.Report
+import Hasskell.Language.Verifier
 import Hasskell.TestUtils.Gen
 import Hasskell.TestUtils.Specifications
 import Hasskell.TestUtils.Utils
@@ -25,7 +26,8 @@ spec = do
                   `then_` (lightB `shouldBe` off)
                   `else_` (lightB `shouldBe` on)
               )
-      let (plan, _) = reconcile observedOn boolPolicy
+      let (verifiedBoolPolicy, _) = verify observedOn boolPolicy
+          plan = reconcile observedOn verifiedBoolPolicy
       renderedPlan <- renderPlanTrace Plain plan
 
       goldenStage $ pureGoldenTextFile "test_resources/ProvenanceSpec/trace_if_and_boolean_derivation.golden" renderedPlan
@@ -36,7 +38,8 @@ spec = do
       observedWorld <- sample $ genWorldWithToggleds [(onEntity, On), (offEntity, Off)]
       let lightOnSpec = lightAlwaysOn offEntity
       lightsSpec <- sample $ genSpecWithPolicy observedWorld lightOnSpec
-      let (plan, _) = reconcile observedWorld lightsSpec
+      let (verifiedLightsSpec, _) = verify observedWorld lightsSpec
+          plan = reconcile observedWorld verifiedLightsSpec
 
       renderedPlan <- renderPlanTrace Plain plan
 
@@ -50,7 +53,8 @@ spec = do
               ( if_ (currentTime `is` time @14 @39)
                   `then_` (entity `shouldBe` on)
               )
-      let (plan, _) = reconcile observed timePolicy
+      let (verifiedTimePolicy, _) = verify observed timePolicy
+          plan = reconcile observed verifiedTimePolicy
 
       renderedPlan <- renderPlanTrace Plain plan
 
@@ -64,7 +68,8 @@ spec = do
               ( if_ (currentTime `isGreaterThan` time @14 @39)
                   `then_` (entity `shouldBe` on)
               )
-      let (plan, _) = reconcile observed timePolicy
+      let (verifiedTimePolicy, _) = verify observed timePolicy
+          plan = reconcile observed verifiedTimePolicy
 
       renderedPlan <- renderPlanTrace Plain plan
 
@@ -79,7 +84,8 @@ spec = do
                   `then_` (entity `shouldBe` off)
                   `else_` (entity `shouldBe` on)
               )
-      let (plan, _) = reconcile observed timePolicy
+      let (verifiedTimePolicy, _) = verify observed timePolicy
+          plan = reconcile observed verifiedTimePolicy
 
       renderedPlan <- renderPlanTrace Plain plan
 

@@ -1,6 +1,6 @@
 module Hasskell.Language.Diagnostic
   ( -- Reports
-    ReconciliationReport,
+    VerificationReport,
     reportFromList,
     ReconciliationDiagnostic,
     renderReport,
@@ -10,8 +10,6 @@ module Hasskell.Language.Diagnostic
     -- Warnings
     hasWarnings,
     warnUnknownEntity,
-    -- Errors
-    errorTypeMismatch,
   )
 where
 
@@ -34,11 +32,11 @@ import Hasskell.Language.Report
 import Prettyprinter
 
 -- | Non-fatal details about how the reconciliation went.
-newtype ReconciliationReport = MkReconciliationReport [ReconciliationDiagnostic] -- TODO: make into set
+newtype VerificationReport = MkVerificationReport [ReconciliationDiagnostic] -- TODO: make into set
   deriving (Semigroup, Monoid) via [ReconciliationDiagnostic]
 
-reportFromList :: [ReconciliationDiagnostic] -> ReconciliationReport
-reportFromList = MkReconciliationReport
+reportFromList :: [ReconciliationDiagnostic] -> VerificationReport
+reportFromList = MkVerificationReport
 
 -- | Info about a reconciliation occurrence.
 data ReconciliationDiagnostic = Diagnostic
@@ -48,11 +46,11 @@ data ReconciliationDiagnostic = Diagnostic
 
 -- | Converts the given report from a data representation into a pretty
 -- user-presentable representation.
-renderReport :: (MonadIO m) => ReportStyle -> ReconciliationReport -> m Text
+renderReport :: (MonadIO m) => ReportStyle -> VerificationReport -> m Text
 renderReport style = liftIO . runEff . File.runFileSystem . innerRenderReport style
 
-innerRenderReport :: (File.FileSystem :> es) => ReportStyle -> ReconciliationReport -> Eff es Text
-innerRenderReport style (MkReconciliationReport diagnostics) = do
+innerRenderReport :: (File.FileSystem :> es) => ReportStyle -> VerificationReport -> Eff es Text
+innerRenderReport style (MkVerificationReport diagnostics) = do
   let referencedLocation = map diagnosticLocation diagnostics
   baseDiagnostic <- loadReferencedFiles referencedLocation
 
@@ -61,15 +59,15 @@ innerRenderReport style (MkReconciliationReport diagnostics) = do
 
   pure (layoutDoc style $ annotateDoc style fullDiagnostic)
 
-hasWarnings :: ReconciliationReport -> Bool
-hasWarnings (MkReconciliationReport reports) = length (reports) > 0
+hasWarnings :: VerificationReport -> Bool
+hasWarnings (MkVerificationReport reports) = length (reports) > 0
 
 -- TODO: don't create a real report here, just store the data so
 -- that we can create a real one later on (where we're free to rewrite
 -- the file paths as we like)
-warnUnknownEntity :: [EntityId] -> Located EntityId -> ReconciliationReport
+warnUnknownEntity :: [KnownEntityId] -> Located EntityId -> VerificationReport
 warnUnknownEntity knownEntities (entityId :@ positions) =
-  MkReconciliationReport $
+  MkVerificationReport $
     List.singleton $
       Diagnostic
         positions
@@ -91,33 +89,8 @@ warnUnknownEntity knownEntities (entityId :@ positions) =
           . (<> "`?")
           <$> closestMatch
       where
-        closestMatch = findClosestMatch (unwrapEntityId entityId) (map unwrapEntityId knownEntities)
+        closestMatch = findClosestMatch (unwrapEntityId entityId) (map (unwrapEntityId . unwrapKnownEntityId) knownEntities)
     contextMarkers = map (,Where "via") (positionsSecondary positions)
-
-errorTypeMismatch :: T -> Located T -> ReconciliationReport
-errorTypeMismatch expectedT (actualT :@ loc) =
-  MkReconciliationReport $
-    List.singleton $
-      Diagnostic
-        loc
-        ( Err
-            Nothing
-            "Type mismatch"
-            (mainMarker : contextMarkers)
-            []
-        )
-  where
-    message =
-      This $
-        mconcat
-          [ "Expected `",
-            T.show expectedT,
-            "` but got `",
-            T.show actualT,
-            "`"
-          ]
-    mainMarker = (positionsPrimary loc, message)
-    contextMarkers = map (,Where "via") (positionsSecondary loc)
 
 findClosestMatch :: Text -> [Text] -> Maybe Text
 findClosestMatch text candidates =

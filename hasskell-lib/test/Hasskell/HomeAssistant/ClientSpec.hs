@@ -38,14 +38,14 @@ spec = do
 
     it "can get an entity's domains" $ do
       let entity = inputBoolean "input_boolean.test"
-          eId = idOf entity
+          eId = makeKnownEntityIdUnsafe (idOf entity)
       supportedServices <- runWithClient (getSupportedServicesOf eId)
       let domains = HM.keys supportedServices
       domains `shouldContain` [domainInputBoolean]
 
     it "can get an entity's supported services" $ do
       let entity = inputBoolean "input_boolean.test"
-          eId = idOf entity
+          eId = makeKnownEntityIdUnsafe (idOf entity)
       supportedServices <- runWithClient (getSupportedServicesOf eId)
       let services = mconcat (HM.elems supportedServices)
           expectedServices = HS.fromList [serviceTurnOff, serviceTurnOff, serviceToggle]
@@ -60,7 +60,7 @@ spec = do
               Just eventsNE -> pure eventsNE
               Nothing -> retry
           entity = inputBoolean "input_boolean.test"
-          entityId = idOf entity
+          entityId = makeKnownEntityIdUnsafe (idOf entity)
 
       events <-
         runWithClient $ do

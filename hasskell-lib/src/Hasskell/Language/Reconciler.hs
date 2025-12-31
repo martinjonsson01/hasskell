@@ -6,36 +6,27 @@ module Hasskell.Language.Reconciler
     ReconciliationAction (..),
     isPlanEmpty,
     reconcile,
-    -- Reports
-    ReconciliationReport,
-    hasWarnings,
-    renderReport,
     -- Traces
     renderPlanTrace,
   )
 where
 
 import Control.Applicative
-import Data.HashMap.Strict qualified as HMap
 import Data.Kind
 import Data.Maybe (catMaybes)
 import Data.Text (Text)
 import Data.Time
 import Data.Typeable
 import Effectful
-import Effectful.Error.Static (Error)
-import Effectful.Error.Static qualified as Error
 import Effectful.FileSystem qualified as File
 import Effectful.State.Static.Local (State)
 import Effectful.State.Static.Local qualified as State
-import Effectful.Writer.Static.Local (Writer)
-import Effectful.Writer.Static.Local qualified as Writer
 import Hasskell.HomeAssistant.API
 import Hasskell.Language.AST
 import Hasskell.Language.CallStack
-import Hasskell.Language.Diagnostic
 import Hasskell.Language.Provenance
 import Hasskell.Language.Report
+import Hasskell.Language.Verifier
 import Hasskell.Language.World
 import Prettyprinter
 import Prettyprinter.Render.Terminal
@@ -56,7 +47,7 @@ stepAction :: ReconciliationStep -> ReconciliationAction
 stepAction (action :£ _) = action
 
 -- | An action that can be taken to alter the world.
-data ReconciliationAction = SetEntityState EntityId HASSDomain ToggleState
+data ReconciliationAction = SetEntityState KnownEntityId HASSDomain ToggleState
   deriving (Eq, Ord, Show)
 
 -- | Pretty-prints the plan, displaying justification for each step.
@@ -85,18 +76,16 @@ instance Pretty ReconciliationAction where
 
 -- | Computes the steps necessary to transform
 -- the observed world state into the specified world state.
-reconcile :: ObservedWorld -> Specification -> (ReconciliationPlan, ReconciliationReport)
+reconcile :: ObservedWorld -> Specification Verified -> ReconciliationPlan
 reconcile observedWorld spec =
   runPureEff
-    . Writer.runWriter
     . State.evalState observedWorld
     . State.evalState spec
     $ reconcileInner
 
 reconcileInner ::
   ( State ObservedWorld :> es,
-    State Specification :> es,
-    Writer ReconciliationReport :> es
+    State (Specification Verified) :> es
   ) =>
   Eff es ReconciliationPlan
 reconcileInner = do
@@ -107,101 +96,52 @@ reconcileInner = do
 
 type Detailed a = Explained (Located a)
 
-data ReconciliationError where
-  UnknownEntity :: Located EntityId -> ReconciliationError
-  TypeMismatch :: T -> Located T -> ReconciliationError
-
-deriving instance Eq ReconciliationError
-
-deriving instance Ord ReconciliationError
-
-deriving instance Show ReconciliationError
-
-unknownEntity :: (Error ReconciliationError :> es) => Located EntityId -> Eff es a
-unknownEntity = Error.throwError . UnknownEntity
-
 type family Denote (t :: T) :: Type where
   Denote 'TBool = Bool
   Denote 'TState = ToggleState
   Denote 'TEntityLight = EntityId
   Denote 'TTime = TimeOfDay
 
-getToggleStateOf ::
-  ( State ObservedWorld :> es,
-    Error ReconciliationError :> es
-  ) =>
-  Located EntityId ->
-  Eff es ToggleState
-getToggleStateOf entity@(eId :@ _) = do
-  worldToggleables <- State.gets (worldToggleables . observedWorld)
-  case HMap.lookup eId worldToggleables of
-    Just state -> pure state
-    Nothing -> unknownEntity entity
-
-ensureEntityExists ::
-  ( State ObservedWorld :> es,
-    Error ReconciliationError :> es
-  ) =>
-  Located EntityId -> Eff es ()
-ensureEntityExists entity = getToggleStateOf entity >> pure () -- getToggleStateOf can throw
-
 computeDesiredState ::
-  ( State ObservedWorld :> es,
-    Writer ReconciliationReport :> es
-  ) =>
-  Located (Exp 'TAction) ->
+  (State ObservedWorld :> es) =>
+  Located (Exp Verified 'TAction) ->
   Eff es (Maybe ReconciliationStep)
 computeDesiredState action =
-  Error.runErrorNoCallStack
-    ( case action of
-        ESetState eEntity eDesiredState :@ loc -> do
-          (entity@(eId :@ _) :£ _, domain) <- evalToggleable eEntity
-          desiredState :@ _ :£ desiredStateExpl <- evalState eDesiredState
-          currentState <- getToggleStateOf entity
-          pure $
-            if desiredState == currentState
-              then empty
-              else
-                Just
-                  ( SetEntityState eId domain desiredState
-                      `because` (desired loc eId desiredState `explain` desiredStateExpl)
-                      `becauseMore` (observed eId currentState)
-                  )
-        EIf (condExp :@ _) (thenExp :@ thenLoc) (elseExp :@ elseLoc) :@ _ ->
-          evalBool condExp >>= \case
-            (True :@ _) :£ trueExpl -> evalBranch trueExpl thenLoc thenExp
-            (False :@ _) :£ falseExpl -> evalBranch falseExpl elseLoc elseExp
-        EDoNothing :@ _ -> pure empty
-    )
-    >>= \case
-      Left (UnknownEntity eId) -> do
-        knownEntities <- State.gets (HMap.keys . worldToggleables . observedWorld)
-        Writer.tell (warnUnknownEntity knownEntities eId)
-        pure Nothing
-      Left (TypeMismatch expectedT actualT) -> do
-        Writer.tell (errorTypeMismatch expectedT actualT)
-        pure Nothing
-      Right result -> pure result
+  case action of
+    ESetState eEntity eDesiredState :@ loc -> do
+      (eId :@ _ :£ _, domain, currentState) <- evalToggleable eEntity
+      desiredState :@ _ :£ desiredStateExpl <- evalState eDesiredState
+      pure $
+        if desiredState == currentState
+          then empty
+          else
+            Just
+              ( SetEntityState eId domain desiredState
+                  `because` (desired loc eId desiredState `explain` desiredStateExpl)
+                  `becauseMore` (observed eId currentState)
+              )
+    EIf (condExp :@ _) (thenExp :@ thenLoc) (elseExp :@ elseLoc) :@ _ ->
+      evalBool condExp >>= \case
+        (True :@ _) :£ trueExpl -> evalBranch trueExpl thenLoc thenExp
+        (False :@ _) :£ falseExpl -> evalBranch falseExpl elseLoc elseExp
+    EDoNothing :@ _ -> pure empty
 
 evalToggleable ::
-  ( Proved Toggleable t,
-    State ObservedWorld :> es,
-    Error ReconciliationError :> es
-  ) =>
-  Located (Exp t) ->
-  Eff es (Detailed EntityId, HASSDomain)
-evalToggleable @t expr =
-  case (auto @Toggleable @t) of
-    ToggleLight -> (,domainLight) <$> evalEntity expr
-    ToggleInputBoolean -> (,domainInputBoolean) <$> evalEntity expr
+  (Proved Toggleable t) =>
+  Located (Exp Verified t) ->
+  Eff es (Detailed KnownEntityId, HASSDomain, ToggleState)
+evalToggleable @t expr = do
+  (eId, state) <- evalEntity expr
+  let domain = case (auto @Toggleable @t) of
+        ToggleLight -> domainLight
+        ToggleInputBoolean -> domainInputBoolean
+  pure (eId, domain, state)
 
 evalBranch ::
-  ( State ObservedWorld :> es,
-    Writer ReconciliationReport :> es
-  ) =>
+  (State ObservedWorld :> es) =>
   Explanation ->
   Location ->
-  Located (Exp TAction) ->
+  Located (Exp Verified 'TAction) ->
   Eff es (Maybe ReconciliationStep)
 evalBranch conditionExplanation ifLoc expr = do
   maybeDesiredState <- computeDesiredState expr
@@ -211,10 +151,8 @@ evalBranch conditionExplanation ifLoc expr = do
         . (`becauseMore` (branched ifLoc `explain` conditionExplanation))
 
 evalBool ::
-  ( State ObservedWorld :> es,
-    Error ReconciliationError :> es
-  ) =>
-  Located (Exp 'TBool) ->
+  (State ObservedWorld :> es) =>
+  Located (Exp Verified 'TBool) ->
   Eff es (Detailed Bool)
 evalBool = \case
   EEqual e1 e2 :@ loc -> do
@@ -256,10 +194,9 @@ data Value t where
 
 evalEq ::
   ( Proved Equatable t,
-    State ObservedWorld :> es,
-    Error ReconciliationError :> es
+    State ObservedWorld :> es
   ) =>
-  Located (Exp t) ->
+  Located (Exp Verified t) ->
   Eff es (Value t)
 evalEq @t expr =
   case (auto @Equatable @t) of
@@ -270,30 +207,24 @@ evalComp ::
   ( Proved Comparable t,
     State ObservedWorld :> es
   ) =>
-  Located (Exp t) ->
+  Located (Exp Verified t) ->
   Eff es (Value t)
 evalComp @t expr =
   case (auto @Comparable @t) of
     CompTime -> Value <$> evalTime expr
 
 evalState ::
-  ( State ObservedWorld :> es,
-    Error ReconciliationError :> es
-  ) =>
-  Located (Exp 'TState) ->
+  Located (Exp Verified 'TState) ->
   Eff es (Detailed ToggleState)
 evalState = \case
   ELitState s :@ loc -> pure (s :@ loc `because` literal loc)
   EGetState entity :@ eloc -> do
-    eId :@ _ :£ _ <- evalEntity entity
-    worldToggleables <- State.gets (worldToggleables . observedWorld)
-    case HMap.lookup eId worldToggleables of
-      Just state -> pure (state :@ eloc `because` observed eId state)
-      Nothing -> unknownEntity (eId :@ eloc)
+    (eId :@ _ :£ _, currentState) <- evalEntity entity
+    pure (currentState :@ eloc `because` observed eId currentState)
 
 evalTime ::
   (State ObservedWorld :> es) =>
-  Located (Exp 'TTime) ->
+  Located (Exp Verified 'TTime) ->
   Eff es (Detailed TimeOfDay)
 evalTime = \case
   ELitTime timeOfDay :@ loc -> pure $ timeOfDay :@ loc `because` literal loc
@@ -302,12 +233,9 @@ evalTime = \case
     pure (timeOfDay :@ loc `because` observedTime timeOfDay)
 
 evalEntity ::
-  ( Proved IsEntity t,
-    State ObservedWorld :> es,
-    Error ReconciliationError :> es
-  ) =>
-  Located (Exp t) -> Eff es (Detailed EntityId)
+  (Proved IsEntity t) =>
+  Located (Exp Verified t) -> Eff es (Detailed KnownEntityId, ToggleState)
 evalEntity (entity :@ loc) = do
-  let eId = idOf entity
-  ensureEntityExists (eId :@ loc)
-  pure (eId :@ loc `because` literal loc)
+  let eId = knownIdOf entity
+      state = stateOf entity
+  pure (eId :@ loc `because` literal loc, state)

@@ -24,8 +24,8 @@ module Hasskell.Language.Provenance
   )
 where
 
+import Data.HashSet qualified as HS
 import Data.List qualified as List
-import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time
@@ -88,7 +88,7 @@ stripExplanation (a :£ _) = a
 
 instance HasLocations Explanation where
   extractLocations Explain {what = fact, why} =
-    extractLocations fact `S.union` foldMap extractLocations why
+    extractLocations fact `HS.union` foldMap extractLocations why
 
 -- | The answer to a "but why?" question.
 data Fact
@@ -98,12 +98,12 @@ data Fact
 
 instance HasLocations Fact where
   extractLocations = \case
-    DeclaredFact (_ :@ loc) -> S.singleton loc
+    DeclaredFact (_ :@ loc) -> HS.singleton loc
     SourcelessFact _ -> mempty
 
 -- | A fact stemming from the user's declarations.
 data DeclaredFact where
-  DesiredState :: EntityId -> ToggleState -> DeclaredFact
+  DesiredState :: KnownEntityId -> ToggleState -> DeclaredFact
   BranchTaken :: DeclaredFact
   Equality :: Bool -> DeclaredFact
   Compared :: PrettyVal -> ComparisonOp -> PrettyVal -> Bool -> DeclaredFact
@@ -130,7 +130,7 @@ instance Ord PrettyVal where
     Nothing -> compare (typeRepTyCon (typeOf a)) (typeRepTyCon (typeOf b))
 
 -- | There is a desired state for an entity.
-desired :: Location -> EntityId -> ToggleState -> Fact
+desired :: Location -> KnownEntityId -> ToggleState -> Fact
 desired loc eId = DeclaredFact . (:@ loc) . DesiredState eId
 
 -- | A branch was taken.
@@ -169,12 +169,12 @@ literal = DeclaredFact . (Literal :@)
 
 -- | A fact that does not stem from the user's declarations.
 data SourcelessFact
-  = ObservedState EntityId ToggleState
+  = ObservedState KnownEntityId ToggleState
   | ObservedTime TimeOfDay
   deriving (Eq, Ord, Show)
 
 -- | A specific state has been observed.
-observed :: EntityId -> ToggleState -> Fact
+observed :: KnownEntityId -> ToggleState -> Fact
 observed eId = SourcelessFact . ObservedState eId
 
 -- | A time has been observed.

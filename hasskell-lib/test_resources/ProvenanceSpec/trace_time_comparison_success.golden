@@ -1,18 +1,18 @@
 will turn input_boolean `KguJtIhd` on
 reason:
     entity `KguJtIhd` should be on
-         ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@65:35-65:45
+         ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@69:35-69:45
          │
-      65 │                   `then_` (entity `shouldBe` on)
+      69 │                   `then_` (entity `shouldBe` on)
          •                                   ┬───────── 
          •                                   ╰╸ entity `KguJtIhd` should be on
     ─────╯
 
         │
         ├─▶ because literal
-             ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@65:46-65:48
+             ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@69:46-69:48
              │
-          65 │                   `then_` (entity `shouldBe` on)
+          69 │                   `then_` (entity `shouldBe` on)
              •                                              ┬─ 
              •                                              ╰╸ literal
         ─────╯
@@ -21,27 +21,27 @@ reason:
         ├─▶ because entity `KguJtIhd` is currently off
         │
         ├─▶ because branch was taken
-             ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@65:19-65:26
+             ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@69:19-69:26
              │
-          65 │                   `then_` (entity `shouldBe` on)
+          69 │                   `then_` (entity `shouldBe` on)
              •                   ┬────── 
              •                   ╰╸ branch was taken
         ─────╯
 
             │
             ├─▶ because 14:40:00 > 14:39:00
-                 ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@64:34-64:49
+                 ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@68:34-68:49
                  │
-              64 │               ( if_ (currentTime `isGreaterThan` time @14 @39)
+              68 │               ( if_ (currentTime `isGreaterThan` time @14 @39)
                  •                                  ┬────────────── 
                  •                                  ╰╸ 14:40:00 > 14:39:00
             ─────╯
 
                 │
                 ├─▶ because 14:40:00
-                     ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@64:22-64:33
+                     ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@68:22-68:33
                      │
-                  64 │               ( if_ (currentTime `isGreaterThan` time @14 @39)
+                  68 │               ( if_ (currentTime `isGreaterThan` time @14 @39)
                      •                      ┬────────── 
                      •                      ╰╸ 14:40:00
                 ─────╯
@@ -50,18 +50,18 @@ reason:
                     ├─▶ because current time is 14:40:00
                 │
                 ├─▶ because 14:39:00
-                     ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@64:50-64:54
+                     ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@68:50-68:54
                      │
-                  64 │               ( if_ (currentTime `isGreaterThan` time @14 @39)
+                  68 │               ( if_ (currentTime `isGreaterThan` time @14 @39)
                      •                                                  ┬─── 
                      •                                                  ╰╸ 14:39:00
                 ─────╯
 
                     │
                     ├─▶ because literal
-                         ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@64:50-64:54
+                         ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@68:50-68:54
                          │
-                      64 │               ( if_ (currentTime `isGreaterThan` time @14 @39)
+                      68 │               ( if_ (currentTime `isGreaterThan` time @14 @39)
                          •                                                  ┬─── 
                          •                                                  ╰╸ literal
                     ─────╯

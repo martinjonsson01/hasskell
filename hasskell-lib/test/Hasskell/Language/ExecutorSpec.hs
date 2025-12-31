@@ -32,7 +32,7 @@ spec = do
     specify "turns on light" $
       property $ do
         let entity = light "entity"
-        let entityId = idOf entity
+        let entityId = makeKnownEntityIdUnsafe (idOf entity)
         let plan = MkReconciliationPlan [SetEntityState entityId domainLight On `because` NoExplanation]
         let (_, executedCommands) = recordHASSCommands (executePlan plan)
         executedCommands === [TurnOn entityId]
@@ -40,16 +40,16 @@ spec = do
     specify "turns off light" $
       property $ do
         let entity = light "entity"
-        let entityId = idOf entity
+        let entityId = makeKnownEntityIdUnsafe (idOf entity)
         let plan = MkReconciliationPlan [SetEntityState entityId domainLight Off `because` NoExplanation]
         let (_, executedCommands) = recordHASSCommands (executePlan plan)
         executedCommands === [TurnOff entityId]
 
 data HASSOp
   = Unknown
-  | TurnOn EntityId
-  | TurnOff EntityId
-  | EntitySubscribe EntityId
+  | TurnOn KnownEntityId
+  | TurnOff KnownEntityId
+  | EntitySubscribe KnownEntityId
   deriving (Eq, Show)
 
 recordHASSCommands :: Eff '[HASS] a -> (a, [HASSOp])

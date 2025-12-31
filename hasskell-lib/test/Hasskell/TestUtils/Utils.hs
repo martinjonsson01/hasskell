@@ -4,6 +4,7 @@ module Hasskell.TestUtils.Utils
     sampleDeterministic,
     sample,
     reconcileAnnotated,
+    verifyAnnotated,
     setTimeout,
     const2,
   )
@@ -17,6 +18,7 @@ import Hasskell.HomeAssistant.Client
 import Hasskell.Language.AST
 import Hasskell.Language.Reconciler
 import Hasskell.Language.Report
+import Hasskell.Language.Verifier
 import Hasskell.Language.World
 import Hedgehog
 import Hedgehog.Internal.Gen qualified as InternalGen
@@ -28,14 +30,20 @@ import Test.Syd.OptParse
 const2 :: a -> b -> c -> a
 const2 = const . const
 
-reconcileAnnotated :: (HasCallStack, MonadIO m, MonadTest m) => ObservedWorld -> Specification -> m (ReconciliationPlan, ReconciliationReport)
-reconcileAnnotated observed spec = do
-  let result@(plan, report) = reconcile observed spec
+verifyAnnotated :: (HasCallStack, MonadIO m, MonadTest m) => ObservedWorld -> RawSpecification -> m (VerifiedSpecification, VerificationReport)
+verifyAnnotated observed spec = do
+  let (verifiedSpec, report) = verify observed spec
   renderedReport <- renderReport Plain report
-  renderedPlan <- renderPlanTrace Plain plan
   withFrozenCallStack $ annotate (T.unpack renderedReport)
+  pure (verifiedSpec, report)
+
+reconcileAnnotated :: (HasCallStack, MonadIO m, MonadTest m) => ObservedWorld -> RawSpecification -> m (ReconciliationPlan, VerificationReport)
+reconcileAnnotated observed spec = do
+  (verifiedPlan, report) <- verifyAnnotated observed spec
+  let plan = reconcile observed verifiedPlan
+  renderedPlan <- renderPlanTrace Plain plan
   withFrozenCallStack $ annotate (T.unpack renderedPlan)
-  pure result
+  pure (plan, report)
 
 sample :: Gen a -> IO a
 sample = sampleDeterministic (Seed 0 1)

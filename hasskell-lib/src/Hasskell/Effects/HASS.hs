@@ -46,10 +46,10 @@ data HASS :: Effect where
   GetEntities :: HASS m [HASSEntity]
   GetDevices :: HASS m [HASSDevice]
   GetServices :: HASS m HASSServiceActions
-  GetSupportedServicesOf :: EntityId -> HASS m (HashMap HASSDomain (HashSet HASSServiceName))
-  TurnOn :: HASSDomain -> EntityId -> HASS m ()
-  TurnOff :: HASSDomain -> EntityId -> HASS m ()
-  SubscribeToStateOf :: EntityId -> StateChangeEventHandler -> HASS m ()
+  GetSupportedServicesOf :: KnownEntityId -> HASS m (HashMap HASSDomain (HashSet HASSServiceName))
+  TurnOn :: HASSDomain -> KnownEntityId -> HASS m ()
+  TurnOff :: HASSDomain -> KnownEntityId -> HASS m ()
+  SubscribeToStateOf :: KnownEntityId -> StateChangeEventHandler -> HASS m ()
 
 makeEffect ''HASS
 
@@ -98,7 +98,7 @@ runHASS action = do
 
 sendGetSupportedServicesOf ::
   (HASSConnection :> es) =>
-  EntityId ->
+  KnownEntityId ->
   Eff es (HashMap HASSDomain (HashSet HASSServiceName))
 sendGetSupportedServicesOf =
   (HM.fromList . map (mapSnd HS.fromList) . groupSort . mapMaybe splitQualifiedServiceName <$>)
@@ -111,7 +111,7 @@ createStateSubscription ::
     Concurrent :> es
   ) =>
   TVar (HashMap CorrelationId (Async ())) ->
-  EntityId ->
+  KnownEntityId ->
   StateChangeEventHandler ->
   Eff es ()
 createStateSubscription subscriptionsVar eId handler = do
@@ -135,7 +135,7 @@ createStateSubscription subscriptionsVar eId handler = do
 
   atomically $ modifyTVar subscriptionsVar (HM.insert subscriptionId eventListener)
 
-callService :: (HASSConnection :> es) => HASSDomain -> HASSServiceName -> EntityId -> Eff es ()
+callService :: (HASSConnection :> es) => HASSDomain -> HASSServiceName -> KnownEntityId -> Eff es ()
 callService domain service entityId =
   sendMessage
     ( CommandCallService

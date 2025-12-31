@@ -57,8 +57,8 @@ genWithInserted toInsert items = do
 -- | An arbitrary entity that can be toggled.
 data SomeToggleable where
   SomeToggleable ::
-    (SingI t, HasEntityId (Exp t), Proved Toggleable t) =>
-    Located (Exp t) ->
+    (SingI t, HasEntityId (Exp Raw t), Proved Toggleable t) =>
+    Located (Exp Raw t) ->
     SomeToggleable
 
 deriving instance (Show SomeToggleable)
@@ -93,10 +93,10 @@ genWorldWithToggledAndTime state (hours, mins) = do
 
 genWorldWithToggleds ::
   ( SingI t,
-    HasEntityId (Exp t),
+    HasEntityId (Exp Raw t),
     Proved Toggleable t
   ) =>
-  [(Located (Exp t), ToggleState)] ->
+  [(Located (Exp Raw t), ToggleState)] ->
   Gen ObservedWorld
 genWorldWithToggleds = genWorldWithToggleds' . map (mapFst SomeToggleable)
 
@@ -108,19 +108,19 @@ genWorldWithToggleds' entitiesAndStates = do
 genTimedWorldWithToggleds :: TimeOfDay -> [(SomeToggleable, ToggleState)] -> Gen ObservedWorld
 genTimedWorldWithToggleds timeOfDay entitiesAndStates = do
   world <- genWorld
-  let extractId = mapFst idOf
+  let extractId = mapFst (makeKnownEntityIdUnsafe . idOf)
       toggleables = HMap.fromList (map extractId $ map (uncurry (,)) entitiesAndStates)
       newToggleables = toggleables `HMap.union` (worldToggleables world)
   pure $ MkObserved timeOfDay world {worldToggleables = newToggleables}
 
-genWorldWithEntity :: (HasEntityId (Exp t)) => Located (Exp t) -> Gen ObservedWorld
+genWorldWithEntity :: (HasEntityId (Exp Raw t)) => Located (Exp Raw t) -> Gen ObservedWorld
 genWorldWithEntity = genWorldWithKnownEntities . List.singleton
 
-genWorldWithKnownEntities :: (HasEntityId (Exp t)) => [Located (Exp t)] -> Gen ObservedWorld
+genWorldWithKnownEntities :: (HasEntityId (Exp Raw t)) => [Located (Exp Raw t)] -> Gen ObservedWorld
 genWorldWithKnownEntities known = do
   MkObserved timeOfDay world <- genObservedWorld
   let pairGen eId = (eId,) <$> genToggleState
-  knownEntityMap <- HMap.fromList <$> mapM pairGen (map idOf known)
+  knownEntityMap <- HMap.fromList <$> mapM pairGen (map (makeKnownEntityIdUnsafe . idOf) known)
   pure $ MkObserved timeOfDay world {worldToggleables = knownEntityMap <> (worldToggleables world)}
 
 genObservedWorld :: Gen ObservedWorld
@@ -133,7 +133,7 @@ genWorldWithoutEntity = do
   pure (entity, world)
 
 genWorld :: Gen World
-genWorld = MkWorld . HMap.fromList <$> Gen.list (Range.linear 0 10) genToggleable
+genWorld = MkWorld . HMap.fromList <$> Gen.list (Range.linear 0 10) (mapFst makeKnownEntityIdUnsafe <$> genToggleable)
 
 genTimeOfDay :: Gen TimeOfDay
 genTimeOfDay = genTime >>= pure . timeToTimeOfDay . utctDayTime
@@ -145,46 +145,46 @@ genTime =
 
 genUniqueEntity :: ObservedWorld -> Gen SomeToggleable
 genUniqueEntity (MkObserved _ MkWorld {worldToggleables}) =
-  let idExists eId = isJust $ HMap.lookup eId worldToggleables
+  let idExists eId = isJust $ HMap.lookup (makeKnownEntityIdUnsafe eId) worldToggleables
    in Gen.filter (not . idExists . idOf) genEntity
 
 genToggleable :: Gen (EntityId, ToggleState)
 genToggleable = (,) <$> genEntityId <*> genToggleState
 
 genEntityId :: Gen EntityId
-genEntityId = makeEntityIdUnsafe <$> Gen.text (Range.constant 1 10) Gen.alphaNum
+genEntityId = EntityId <$> Gen.text (Range.constant 1 10) Gen.alphaNum
 
 genToggleState :: Gen ToggleState
 genToggleState = Gen.choice [pure On, pure Off]
 
 ----------------------------------------------------------------------
 
-genSpecWithPolicy :: ObservedWorld -> Specification -> Gen Specification
+genSpecWithPolicy :: ObservedWorld -> RawSpecification -> Gen RawSpecification
 genSpecWithPolicy (MkObserved _ world) includePolicy = do
   let entitiesToExclude =
         HMap.fromList $
           S.toList $
-            S.map (,Off) (referencedEntitiesIn includePolicy)
+            S.map (\eId -> (makeKnownEntityIdUnsafe eId, Off)) (referencedEntitiesIn includePolicy)
       knownEntitiesMap = worldToggleables world `HMap.difference` entitiesToExclude
   case NE.nonEmpty (HMap.keys knownEntitiesMap) of
     Just knownEntities -> do
-      policies <- Gen.list (Range.constant 0 10) (genPolicy knownEntities)
+      policies <- Gen.list (Range.constant 0 10) (genPolicy (NE.map unwrapKnownEntityId knownEntities))
       mconcat <$> genWithInserted [includePolicy] policies
     Nothing -> pure mempty
 
-genPolicy :: NonEmpty EntityId -> Gen Specification
+genPolicy :: NonEmpty EntityId -> Gen RawSpecification
 genPolicy knownEntities = policy <$> genPolicyName <*> genVoidExp knownEntities
 
 genPolicyName :: Gen Text
 genPolicyName = Gen.text (Range.constant 1 10) Gen.alphaNum
 
-genStateExp :: Gen (Located (Exp 'TState))
+genStateExp :: Gen (Located (Exp Raw 'TState))
 genStateExp = do
   loc <- genLocation
   state <- genToggleState
   pure (ELitState state :@ loc)
 
-genVoidExp :: NonEmpty EntityId -> Gen (Located (Exp 'TAction))
+genVoidExp :: NonEmpty EntityId -> Gen (Located (Exp Raw 'TAction))
 genVoidExp knownEntities = do
   loc <- genLocation
   SomeToggleable expr <- genKnownEntity knownEntities

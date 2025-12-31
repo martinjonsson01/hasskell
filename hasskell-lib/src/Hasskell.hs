@@ -47,17 +47,18 @@ import Hasskell.Language.AST
 import Hasskell.Language.Executor
 import Hasskell.Language.Reconciler
 import Hasskell.Language.Report
+import Hasskell.Language.Verifier
 import Hasskell.Language.World
 import System.Directory qualified as Dir
 
 --------------------------------------------------------------------------------
 
-type ExprLight = Located (Exp 'TEntityLight)
+type ExprLight = Located (Exp Raw 'TEntityLight)
 
 ----------------------------------------------------------------------------------
 
 -- | Executes the given specification against the configured Home Assistant instance.
-runHasskell :: Config -> Specification -> IO ()
+runHasskell :: Config -> RawSpecification -> IO ()
 runHasskell config spec = do
   -- Need to set the working dir in order for call stack traces to be correctly
   -- captured (to be shown in diagnostics).
@@ -69,10 +70,11 @@ runHasskell config spec = do
     (innerRunHasskell spec)
     >>= liftEither . mapLeft (userError . show)
 
-innerRunHasskell :: Specification -> ClientM ()
+innerRunHasskell :: RawSpecification -> ClientM ()
 innerRunHasskell spec = do
   observed <- collectCurrentState
-  let (plan, report) = reconcile observed spec
+  let (verifiedPlan, report) = verify observed spec
+      plan = reconcile observed verifiedPlan
   reportText <- renderReport Rich report
   unless (T.null reportText) $ logInfo reportText
   renderedPlan <- renderPlanTrace Rich plan

@@ -5,6 +5,7 @@ module Hasskell.Language.World
     ObservedEvent (..),
     ObservedWorld (..),
     collectCurrentState,
+    lookupEntity,
     updateWorld,
   )
 where
@@ -22,7 +23,7 @@ import Prettyprinter
 -- | A distilled representation of entities and devices,
 -- based on data from Home Assistant.
 data World = MkWorld
-  { worldToggleables :: HashMap EntityId ToggleState
+  { worldToggleables :: HashMap KnownEntityId ToggleState
   }
   deriving (Eq, Ord, Show)
 
@@ -39,7 +40,7 @@ instance Pretty ToggleState where
   pretty Off = "off"
 
 -- | Something that has happened that may affect the world state.
-data ObservedEvent = StateChanged EntityId ToggleState
+data ObservedEvent = StateChanged KnownEntityId ToggleState
   deriving (Eq, Ord, Show)
 
 --------------------------------------------------------------------------------
@@ -70,7 +71,7 @@ collectCurrentState = do
         { worldToggleables = HMap.fromList (filterToggleables states)
         }
 
-filterToggleables :: [HASSState] -> [(EntityId, ToggleState)]
+filterToggleables :: [HASSState] -> [(KnownEntityId, ToggleState)]
 filterToggleables = mapMaybe $ \state -> do
   toggleState <- case stateState state of
     "on" -> pure On
@@ -92,3 +93,12 @@ updateWorld world@MkObserved {observedWorld = observedWorld@MkWorld {worldToggle
               HM.insert entity newState worldToggleables
           }
     }
+
+--------------------------------------------------------------------------------
+
+-- | Finds an entity in the world, if it exists.
+lookupEntity :: EntityId -> ObservedWorld -> Maybe (KnownEntityId, ToggleState)
+lookupEntity eId observed =
+  let toggleables = worldToggleables (observedWorld observed)
+      knownEntityId = makeKnownEntityIdUnsafe eId
+   in HM.lookup knownEntityId toggleables >>= pure . (knownEntityId,)
