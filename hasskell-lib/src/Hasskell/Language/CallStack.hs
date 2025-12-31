@@ -12,6 +12,8 @@ where
 import Data.Bifunctor (bimap)
 import Data.Hashable
 import Data.List qualified as List
+import Data.Set (Set)
+import Data.Set qualified as S
 import Error.Diagnose
 import GHC.Generics
 import GHC.Stack
@@ -33,10 +35,10 @@ stripLocation :: Located a -> a
 stripLocation (a :@ _) = a
 
 class HasLocations a where
-  extractLocations :: a -> [Location]
+  extractLocations :: a -> Set Location
 
 instance HasLocations (Located a) where
-  extractLocations (_ :@ pos) = pos : []
+  extractLocations (_ :@ pos) = S.singleton pos
 
 -- | Captures the current context, based on the current call stack.
 captureSrcSpan :: (HasCallStack) => Location

@@ -25,6 +25,7 @@ module Hasskell.Language.Provenance
 where
 
 import Data.List qualified as List
+import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time
@@ -87,7 +88,7 @@ stripExplanation (a :£ _) = a
 
 instance HasLocations Explanation where
   extractLocations Explain {what = fact, why} =
-    extractLocations fact ++ concatMap extractLocations why
+    extractLocations fact `S.union` foldMap extractLocations why
 
 -- | The answer to a "but why?" question.
 data Fact
@@ -97,8 +98,8 @@ data Fact
 
 instance HasLocations Fact where
   extractLocations = \case
-    DeclaredFact (_ :@ loc) -> [loc]
-    SourcelessFact _ -> []
+    DeclaredFact (_ :@ loc) -> S.singleton loc
+    SourcelessFact _ -> mempty
 
 -- | A fact stemming from the user's declarations.
 data DeclaredFact where

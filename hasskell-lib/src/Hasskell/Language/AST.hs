@@ -1,4 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NoOverloadedStrings #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
@@ -53,10 +54,14 @@ module Hasskell.Language.AST
   )
 where
 
+import Control.Applicative.HT
+import Control.Monad.Identity
 import Data.Eq.Singletons
 import Data.Kind
-import Data.List (singleton)
+import Data.List qualified as List
 import Data.Ord.Singletons
+import Data.Set (Set)
+import Data.Set qualified as S
 import Data.Singletons
 import Data.Singletons.Decide
 import Data.Singletons.TH
@@ -100,7 +105,7 @@ instance Semigroup Specification where
   (Specification policiesA) <> (Specification policiesB) = Specification $ policiesA <> policiesB
 
 instance Monoid Specification where
-  mempty = Specification []
+  mempty = Specification mempty
 
 data Policy = Policy {name :: Text, expression :: Located (Exp 'TAction)}
   deriving (Eq, Ord, Show)
@@ -117,53 +122,26 @@ instance IntoAction (Located (Exp 'TAction)) where
 
 -- | Declare a desired state.
 policy :: (IntoAction a) => Text -> a -> Specification
-policy name expr = Specification . singleton $ Policy name (toAction expr)
+policy name expr = Specification . List.singleton $ Policy name (toAction expr)
 
 class HasReferencedEntities a where
-  referencedEntitiesIn :: a -> [EntityId]
+  referencedEntitiesIn :: a -> Set EntityId
 
 instance (HasReferencedEntities a) => HasReferencedEntities (Located a) where
   referencedEntitiesIn (a :@ _) = referencedEntitiesIn a
 
 instance HasReferencedEntities Specification where
-  referencedEntitiesIn Specification {specPolicies} = concatMap referencedEntitiesIn specPolicies
+  referencedEntitiesIn Specification {specPolicies} = foldMap referencedEntitiesIn specPolicies
 
 instance HasReferencedEntities Policy where
   referencedEntitiesIn Policy {expression} = referencedEntitiesIn expression
 
 instance HasReferencedEntities (Exp t) where
-  referencedEntitiesIn = \case
-    ELitEntityLight eId -> [eId]
-    ELitEntityInputBoolean eId -> [eId]
-    ELitState _ -> []
-    ELitTime _ -> []
-    EGetState e -> referencedEntitiesIn e
-    EGetTime -> []
-    ESetState expr _ -> referencedEntitiesIn expr
-    EDoNothing -> []
-    EEqual e1 e2 -> referencedEntitiesIn e1 ++ referencedEntitiesIn e2
-    EIf eCond eThen eElse ->
-      referencedEntitiesIn eCond
-        ++ referencedEntitiesIn eThen
-        ++ referencedEntitiesIn eElse
-    ECompare _ e1 e2 -> referencedEntitiesIn e1 ++ referencedEntitiesIn e2
-
-instance HasLocations (Exp t) where
-  extractLocations = \case
-    ELitEntityLight _ -> []
-    ELitEntityInputBoolean _ -> []
-    ELitState _ -> []
-    ELitTime _ -> []
-    EGetState (_ :@ loc) -> [loc]
-    EGetTime -> []
-    ESetState expr _ -> extractLocations expr
-    EDoNothing -> []
-    EEqual e1 e2 -> extractLocations e1 ++ extractLocations e2
-    EIf eCond eThen eElse ->
-      extractLocations eCond
-        ++ extractLocations eThen
-        ++ extractLocations eElse
-    ECompare _ e1 e2 -> extractLocations e1 ++ extractLocations e2
+  referencedEntitiesIn = foldExp $ \expr referenced ->
+    case expr of
+      ELitEntityLight eId -> S.singleton eId
+      ELitEntityInputBoolean eId -> S.singleton eId
+      _ -> referenced
 
 data SomeExp :: Type where
   SomeExp :: (SingI (t :: T)) => Exp t -> SomeExp
@@ -322,6 +300,66 @@ instance Ord (Exp t) where
             compare
               (fromSing (sing @t1))
               (fromSing (sing @t2))
+
+-- | A general fold over expressions.
+foldExpM ::
+  forall m result t.
+  (Monad m, Monoid result) =>
+  (forall t'. Exp t' -> result -> m result) ->
+  Exp t ->
+  m result
+foldExpM step = go
+  where
+    go :: forall t'. Exp t' -> m result
+    go expr = case expr of
+      ELitEntityLight {} -> step expr mempty
+      ELitEntityInputBoolean {} -> step expr mempty
+      ELitState {} -> step expr mempty
+      ELitTime {} -> step expr mempty
+      EGetTime {} -> step expr mempty
+      EDoNothing {} -> step expr mempty
+      EGetState e ->
+        lift2
+          (<>)
+          (step expr mempty)
+          (go (stripLocation e))
+      ESetState e s ->
+        lift3
+          (\a b c -> a <> b <> c)
+          (step expr mempty)
+          (go (stripLocation e))
+          (go (stripLocation s))
+      EEqual e1 e2 ->
+        lift3
+          mconcat3
+          (step expr mempty)
+          (go (stripLocation e1))
+          (go (stripLocation e2))
+      EIf eCond eThen eElse ->
+        lift4
+          mconcat4
+          (step expr mempty)
+          (go (stripLocation . stripLocation $ eCond))
+          (go (stripLocation . stripLocation $ eThen))
+          (go (stripLocation . stripLocation $ eElse))
+      ECompare _ e1 e2 ->
+        lift3
+          mconcat3
+          (step expr mempty)
+          (go (stripLocation e1))
+          (go (stripLocation e2))
+      where
+        mconcat3 a b c = a <> b <> c
+        mconcat4 a b c d = a <> mconcat3 b c d
+
+-- | A general fold over an expression.
+foldExp ::
+  forall result t.
+  (Monoid result) =>
+  (forall t'. Exp t' -> result -> result) ->
+  Exp t ->
+  result
+foldExp step = runIdentity . foldExpM (\expr -> pure . step expr)
 
 --------------------------------------------------------------------------------
 

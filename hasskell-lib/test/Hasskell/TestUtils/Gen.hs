@@ -29,6 +29,7 @@ import Data.List qualified as List
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe
+import Data.Set qualified as S
 import Data.Singletons
 import Data.Text (Text)
 import Data.Time
@@ -160,7 +161,10 @@ genToggleState = Gen.choice [pure On, pure Off]
 
 genSpecWithPolicy :: ObservedWorld -> Specification -> Gen Specification
 genSpecWithPolicy (MkObserved _ world) includePolicy = do
-  let entitiesToExclude = HMap.fromList $ map (,Off) (referencedEntitiesIn includePolicy)
+  let entitiesToExclude =
+        HMap.fromList $
+          S.toList $
+            S.map (,Off) (referencedEntitiesIn includePolicy)
       knownEntitiesMap = worldToggleables world `HMap.difference` entitiesToExclude
   case NE.nonEmpty (HMap.keys knownEntitiesMap) of
     Just knownEntities -> do
