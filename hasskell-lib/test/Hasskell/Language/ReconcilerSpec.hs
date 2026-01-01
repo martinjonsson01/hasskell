@@ -22,18 +22,18 @@ spec = do
     specify "can identify when a world needs no reconciliation" $
       property $ do
         state <- forAll $ genToggleState
-        (SomeToggleable entity, _, observed) <- forAll $ genWorldWithToggled state
+        (SomeToggleable entity _, observed) <- forAll $ genWorldWithToggled state
         (MkReconciliationPlan steps, _) <- reconcileAnnotated observed (lightAlways state entity)
         steps === []
 
     specify "generates toggle command for light" $
       property $ do
         state <- forAll $ genToggleState
-        (SomeToggleable entity, domain, observed) <- forAll $ genWorldWithToggled state
-        let entityId = makeKnownEntityIdUnsafe (idOf entity)
-            opposite = if state == On then Off else On
-        (MkReconciliationPlan steps, _) <- reconcileAnnotated observed (lightAlways opposite entity)
-        (map stepAction steps) === [SetEntityState entityId domain opposite]
+        (SomeToggleable entityExpr (ObservedEntity eId domains _), observed) <- forAll $ genWorldWithToggled state
+        let opposite = if state == On then Off else On
+        (MkReconciliationPlan steps, _) <- reconcileAnnotated observed (lightAlways opposite entityExpr)
+        domain <- first domains
+        (map stepAction steps) === [SetEntityState eId domain opposite]
 
     specify "conditionally turns off a light when a boolean is on" $
       property $ do
@@ -41,9 +41,9 @@ spec = do
             booleanEntity = inputBoolean "boolean"
         observedOn <-
           forAll $
-            genWorldWithToggleds'
-              [ (SomeToggleable lightEntity, On),
-                (SomeToggleable booleanEntity, On)
+            genWorldWithToggleds
+              [ (observedLight lightEntity On),
+                (observedInputBoolean booleanEntity On)
               ]
         let boolPolicy =
               policy
@@ -58,7 +58,12 @@ spec = do
       property $ do
         let lightA = light "lightA"
             lightB = light "lightB"
-        observedOn <- forAll $ genWorldWithToggleds [(lightA, Off), (lightB, Off)]
+        observedOn <-
+          forAll $
+            genWorldWithToggleds
+              [ (observedLight lightA Off),
+                (observedLight lightB Off)
+              ]
         let boolPolicy =
               policy
                 "make lightB the inverse of lightA"
@@ -73,7 +78,12 @@ spec = do
       property $ do
         let lightA = light "lightA"
             lightB = light "lightB"
-        observedOn <- forAll $ genWorldWithToggleds [(lightA, Off), (lightB, On)]
+        observedOn <-
+          forAll $
+            genWorldWithToggleds
+              [ (observedLight lightA Off),
+                (observedLight lightB On)
+              ]
         let boolPolicy =
               policy
                 "if lightA is on, turn lightB off"
@@ -87,7 +97,12 @@ spec = do
       property $ do
         let lightA = light "lightA"
             lightB = light "lightB"
-        observedOn <- forAll $ genWorldWithToggleds [(lightA, Off), (lightB, On)]
+        observedOn <-
+          forAll $
+            genWorldWithToggleds
+              [ (observedLight lightA Off),
+                (observedLight lightB On)
+              ]
         let boolPolicy =
               policy
                 "mirror lightA state to lightB"
@@ -97,15 +112,16 @@ spec = do
 
     specify "sets state depending on current time" $
       property $ do
-        (SomeToggleable entity, domain, observed) <- forAll $ genWorldWithToggledAndTime Off (14, 39)
+        (SomeToggleable entityExpr (ObservedEntity eId domains _), observed) <- forAll $ genWorldWithToggledAndTime Off (14, 39)
         let timePolicy =
               policy
                 "turn light on at 14:39"
                 ( if_ (currentTime `is` time @14 @39)
-                    `then_` (entity `shouldBe` on)
+                    `then_` (entityExpr `shouldBe` on)
                 )
         (MkReconciliationPlan steps, _) <- reconcileAnnotated observed timePolicy
-        (map stepAction steps) === [SetEntityState (makeKnownEntityIdUnsafe (idOf entity)) domain On]
+        domain <- first domains
+        (map stepAction steps) === [SetEntityState eId domain On]
 
     specify "sets state in light domain for light entity" $
       toggleDomainProperty genWorldWithToggledLight domainLight
@@ -150,10 +166,9 @@ toggleDomainProperty ::
   Property
 toggleDomainProperty worldGen expectedDomain = property $ do
   state <- forAll $ genToggleState
-  (SomeToggleable lightEntity, observed) <- forAll $ worldGen state
-  let entityId = makeKnownEntityIdUnsafe (idOf lightEntity)
-      opposite = if state == On then Off else On
-  (MkReconciliationPlan steps, _) <- reconcileAnnotated observed (lightAlways opposite lightEntity)
+  (SomeToggleable lightEntityExpr (ObservedEntity entityId _ _), observed) <- forAll $ worldGen state
+  let opposite = if state == On then Off else On
+  (MkReconciliationPlan steps, _) <- reconcileAnnotated observed (lightAlways opposite lightEntityExpr)
   (map stepAction steps) === [SetEntityState entityId expectedDomain opposite]
 
 type ComparisonExp =
@@ -167,7 +182,7 @@ timeComparisonProperty ::
   (TimeOfDay -> TimeOfDay -> Bool) ->
   Property
 timeComparisonProperty name comparer compareOp = property $ do
-  (SomeToggleable entity, domain, observed) <- forAll $ genWorldWithToggled Off
+  (SomeToggleable entity (ObservedEntity entityId domains _), observed) <- forAll $ genWorldWithToggled Off
   let timePolicy =
         policy
           ("turn light on " <> name <> " 13:42")
@@ -177,14 +192,15 @@ timeComparisonProperty name comparer compareOp = property $ do
       observedTime = observedTimeOfDay observed
       cutoffTime = TimeOfDay 13 42 0
   (MkReconciliationPlan steps, _) <- reconcileAnnotated observed timePolicy
+  domain <- first domains
   (map stepAction steps)
     === if observedTime `compareOp` cutoffTime
-      then [SetEntityState (makeKnownEntityIdUnsafe (idOf entity)) domain On]
+      then [SetEntityState entityId domain On]
       else []
 
 timeEqualTest :: Text -> ComparisonExp -> (KnownEntityId -> HASSDomain -> [ReconciliationAction]) -> IO ()
 timeEqualTest name comparer expectedActions = do
-  (SomeToggleable entity, domain, observed) <- sample $ genWorldWithToggledAndTime Off (13, 42)
+  (SomeToggleable entity (ObservedEntity entityId domains _), observed) <- sample $ genWorldWithToggledAndTime Off (13, 42)
   let timePolicy =
         policy
           ("turn light on " <> name <> " 13:42")
@@ -193,4 +209,5 @@ timeEqualTest name comparer expectedActions = do
           )
       (verifiedTimePolicy, _) = verify observed timePolicy
       MkReconciliationPlan steps = reconcile observed verifiedTimePolicy
-  (map stepAction steps) `Syd.shouldBe` (expectedActions (makeKnownEntityIdUnsafe (idOf entity)) domain)
+  domain <- first domains
+  (map stepAction steps) `Syd.shouldBe` (expectedActions entityId domain)

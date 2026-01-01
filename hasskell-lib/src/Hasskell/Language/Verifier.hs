@@ -5,9 +5,6 @@ module Hasskell.Language.Verifier
     -- Verified types
     VerifiedSpecification,
     KnownEntityId,
-    -- Classes
-    HasKnownEntityId (..),
-    HasCurrentState (..),
     -- Reports
     VerificationReport,
     hasWarnings,
@@ -17,6 +14,8 @@ where
 
 import Control.Applicative
 import Data.HashMap.Strict qualified as HM
+import Data.HashSet (HashSet)
+import Data.HashSet qualified as HS
 import Data.Maybe
 import Data.Set qualified as S
 import Effectful
@@ -29,37 +28,30 @@ import Effectful.Writer.Static.Local qualified as Writer
 import Hasskell.HomeAssistant.API
 import Hasskell.Language.AST
 import Hasskell.Language.Diagnostic
+import Hasskell.Language.Entity
 import Hasskell.Language.World
 
 type VerifiedSpecification = Specification Verified
 
-type instance Params "ELitEntityLight" 'Verified = (KnownEntityId, ToggleState)
+type instance Params "ELitEntityLight" 'Verified = ObservedEntity
 
-type instance Params "ELitEntityInputBoolean" 'Verified = (KnownEntityId, ToggleState)
-
--- | Things that have a known-verified entity ID.
-class HasKnownEntityId a where
-  knownIdOf :: a -> KnownEntityId
+type instance Params "ELitEntityInputBoolean" 'Verified = ObservedEntity
 
 instance (Proved IsEntity t) => HasKnownEntityId (Exp Verified t) where
   knownIdOf = case (auto @IsEntity @t) of
-    LightIsEntity -> \(ELitEntityLight (eId, _)) -> eId
-    InputBooleanIsEntity -> \(ELitEntityInputBoolean (eId, _)) -> eId
-
--- | Things that have a known current state.
-class HasCurrentState a where
-  stateOf :: a -> ToggleState
+    LightIsEntity -> \(ELitEntityLight entity) -> knownIdOf entity
+    InputBooleanIsEntity -> \(ELitEntityInputBoolean entity) -> knownIdOf entity
 
 instance (Proved IsEntity t) => HasCurrentState (Exp Verified t) where
   stateOf = case (auto @IsEntity @t) of
-    LightIsEntity -> \(ELitEntityLight (_, s)) -> s
-    InputBooleanIsEntity -> \(ELitEntityInputBoolean (_, s)) -> s
+    LightIsEntity -> \(ELitEntityLight entity) -> stateOf entity
+    InputBooleanIsEntity -> \(ELitEntityInputBoolean entity) -> stateOf entity
 
 instance HasReferencedEntities (Exp Verified t) where
   referencedEntitiesIn = foldExp $ \expr referenced ->
     case expr of
-      ELitEntityLight (eId, _) -> S.singleton (idOf eId)
-      ELitEntityInputBoolean (eId, _) -> S.singleton (idOf eId)
+      ELitEntityLight entity -> S.singleton (idOf entity)
+      ELitEntityInputBoolean entity -> S.singleton (idOf entity)
       _ -> referenced
 
 verify :: ObservedWorld -> RawSpecification -> (VerifiedSpecification, VerificationReport)
@@ -79,12 +71,21 @@ verifyInner ::
 verifyInner =
   State.get >>= verifySpecification
 
-data VerificationError where
-  UnknownEntity :: Located EntityId -> VerificationError
+data VerificationError
+  = UnknownEntity (Located EntityId)
+  | DomainMismatch (Located KnownEntityId) (HashSet HASSDomain) HASSDomain
   deriving (Eq, Ord, Show)
 
 unknownEntity :: (Error VerificationError :> es) => Located EntityId -> Eff es a
 unknownEntity = Error.throwError . UnknownEntity
+
+domainMismatch ::
+  (Error VerificationError :> es) =>
+  Located KnownEntityId ->
+  (HashSet HASSDomain) ->
+  HASSDomain ->
+  Eff es a
+domainMismatch eId actual = Error.throwError . DomainMismatch eId actual
 
 verifySpecification ::
   ( State ObservedWorld :> es,
@@ -118,8 +119,11 @@ tryVerifyAction action =
     (verifyAction action)
     >>= \case
       Left (UnknownEntity eId) -> do
-        knownEntities <- State.gets (HM.keys . worldToggleables . observedWorld)
+        knownEntities <- State.gets (HM.keys . worldEntities . observedWorld)
         Writer.tell (warnUnknownEntity knownEntities eId)
+        pure Nothing
+      Left (DomainMismatch eId expected actual) -> do
+        Writer.tell (warnDomainMismatch eId expected actual)
         pure Nothing
       Right result -> pure $ Just result
 
@@ -204,22 +208,33 @@ verifyToggleable ::
   ) =>
   Located (Exp Raw t) ->
   Eff es (Located (Exp Verified t))
-verifyToggleable @t (e :@ loc) = do
-  let eId = idOf e
-  entityData <- verifyEntity (eId :@ loc)
-  let makeEntity = case (auto @Toggleable @t) of
-        ToggleLight -> ELitEntityLight
-        ToggleInputBoolean -> ELitEntityInputBoolean
-  pure (makeEntity entityData :@ loc)
+verifyToggleable = verifyEntity
 
 verifyEntity ::
-  ( State ObservedWorld :> es,
+  ( Proved IsEntity t,
+    State ObservedWorld :> es,
     Error VerificationError :> es
   ) =>
-  Located EntityId ->
-  Eff es (KnownEntityId, ToggleState)
-verifyEntity entity@(eId :@ _) = do
+  Located (Exp Raw t) ->
+  Eff es (Located (Exp Verified t))
+verifyEntity (expr :@ loc) = do
+  let eId = idOf expr
   mbEntity <- State.gets (lookupEntity eId)
   case mbEntity of
-    Just result -> pure result
-    Nothing -> unknownEntity entity
+    Just observed@(ObservedEntity knownEId actualDomains _) -> do
+      let expectedDomain = domainOf expr
+          mkEntity = getConstructorOf expr
+      if expectedDomain `HS.member` actualDomains
+        then
+          pure (mkEntity observed :@ loc)
+        else
+          domainMismatch (knownEId :@ loc) actualDomains expectedDomain
+    Nothing -> unknownEntity (eId :@ loc)
+
+getConstructorOf ::
+  (Proved IsEntity t) =>
+  Exp p t ->
+  (ObservedEntity -> Exp Verified t)
+getConstructorOf @t _ = case (auto @IsEntity @t) of
+  LightIsEntity -> ELitEntityLight
+  InputBooleanIsEntity -> ELitEntityInputBoolean

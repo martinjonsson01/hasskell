@@ -1,11 +1,11 @@
-will turn input_boolean `Rc` on
+will turn light `tI6qo1eoKx` on
 reason:
-    entity `Rc` should be on
+    entity `tI6qo1eoKx` should be on
          ╭──▶ Generated@-1:-1--1:-1
          │
       -1 │ <no line>
          • 
-         • ╰╸ entity `Rc` should be on
+         • ╰╸ entity `tI6qo1eoKx` should be on
     ─────╯
 
         │
@@ -18,67 +18,25 @@ reason:
         ─────╯
 
         │
-        ├─▶ because entity `Rc` is currently off
+        ├─▶ because entity `tI6qo1eoKx` is currently off
 will turn light `lightB` on
 reason:
     entity `lightB` should be on
-         ╭──▶ Specifications.hs@32:13-32:23
+         ╭──▶ Specifications.hs@33:13-33:23
          │
-      32 │     (entity `shouldBe` fromState state)
+      33 │     (entity `shouldBe` fromState state)
          •             ┬───────── 
          •             ╰╸ entity `lightB` should be on
     ─────╯
 
         │
         ├─▶ because literal
-             ╭──▶ Specifications.hs@32:24-32:33
+             ╭──▶ Specifications.hs@33:24-33:33
              │
-          32 │     (entity `shouldBe` fromState state)
+          33 │     (entity `shouldBe` fromState state)
              •                        ┬──────── 
              •                        ╰╸ literal
         ─────╯
 
         │
         ├─▶ because entity `lightB` is currently off
-will turn input_boolean `lightA` off
-reason:
-    entity `lightA` should be off
-         ╭──▶ Generated@-1:-1--1:-1
-         │
-      -1 │ <no line>
-         • 
-         • ╰╸ entity `lightA` should be off
-    ─────╯
-
-        │
-        ├─▶ because literal
-             ╭──▶ Generated@-1:-1--1:-1
-             │
-          -1 │ <no line>
-             • 
-             • ╰╸ literal
-        ─────╯
-
-        │
-        ├─▶ because entity `lightA` is currently on
-will turn light `5I7qqCg` off
-reason:
-    entity `5I7qqCg` should be off
-         ╭──▶ Generated@-1:-1--1:-1
-         │
-      -1 │ <no line>
-         • 
-         • ╰╸ entity `5I7qqCg` should be off
-    ─────╯
-
-        │
-        ├─▶ because literal
-             ╭──▶ Generated@-1:-1--1:-1
-             │
-          -1 │ <no line>
-             • 
-             • ╰╸ literal
-        ─────╯
-
-        │
-        ├─▶ because entity `5I7qqCg` is currently on

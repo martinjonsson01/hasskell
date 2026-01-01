@@ -72,7 +72,7 @@ runHasskell config spec = do
 
 innerRunHasskell :: RawSpecification -> ClientM ()
 innerRunHasskell spec = do
-  observed <- collectCurrentState
+  observed <- collectCurrentState spec
   let (verifiedPlan, report) = verify observed spec
       plan = reconcile observed verifiedPlan
   reportText <- renderReport Rich report

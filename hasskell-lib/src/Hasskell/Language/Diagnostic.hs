@@ -10,6 +10,7 @@ module Hasskell.Language.Diagnostic
     -- Warnings
     hasWarnings,
     warnUnknownEntity,
+    warnDomainMismatch,
   )
 where
 
@@ -45,11 +46,20 @@ reportFromList :: [ReconciliationDiagnostic] -> VerificationReport
 reportFromList = MkVerificationReport . HS.fromList
 
 -- | Info about a reconciliation occurrence.
-data ReconciliationDiagnostic = WarnUnknownEntity [KnownEntityId] (Located EntityId)
+data ReconciliationDiagnostic
+  = WarnUnknownEntity [KnownEntityId] (Located EntityId)
+  | WarnDomainMismatch (Located KnownEntityId) (HashSet HASSDomain) HASSDomain
   deriving (Eq, Ord, Show, Generic, Hashable)
 
 warnUnknownEntity :: [KnownEntityId] -> Located EntityId -> VerificationReport
 warnUnknownEntity known = MkVerificationReport . HS.singleton . WarnUnknownEntity known
+
+warnDomainMismatch ::
+  Located KnownEntityId ->
+  (HashSet HASSDomain) ->
+  HASSDomain ->
+  VerificationReport
+warnDomainMismatch eId actual = MkVerificationReport . HS.singleton . WarnDomainMismatch eId actual
 
 instance HasLocations VerificationReport where
   extractLocations (MkVerificationReport diagnostics) = foldMap extractLocations diagnostics
@@ -57,6 +67,7 @@ instance HasLocations VerificationReport where
 instance HasLocations ReconciliationDiagnostic where
   extractLocations = \case
     WarnUnknownEntity _ (_ :@ loc) -> HS.singleton loc
+    WarnDomainMismatch (_ :@ loc) _ _ -> HS.singleton loc
 
 -- | Converts the given report from a data representation into a pretty
 -- user-presentable representation.
@@ -75,6 +86,7 @@ innerRenderReport style report@(MkVerificationReport diagnostics) = do
 renderDiagnostic :: ReconciliationDiagnostic -> Report Text
 renderDiagnostic = \case
   WarnUnknownEntity knownEntities entityId -> renderUnknownEntity knownEntities entityId
+  WarnDomainMismatch entityId actual expected -> renderDomainMismatch entityId actual expected
 
 renderUnknownEntity :: [KnownEntityId] -> Located EntityId -> Report Text
 renderUnknownEntity knownEntities (entityId :@ positions) =
@@ -112,3 +124,34 @@ scoreSimilarities text candidates =
 
 computeSimilarity :: Text -> Text -> (Ratio Int, Text)
 computeSimilarity reference candidate = (jaroWinkler reference candidate, candidate)
+
+renderDomainMismatch :: Located KnownEntityId -> (HashSet HASSDomain) -> HASSDomain -> Report Text
+renderDomainMismatch (entityId :@ loc) actual expected =
+  Warn
+    Nothing
+    "Domains don't match"
+    [mainMarker, supplementaryMarker]
+    []
+  where
+    expectedMessage =
+      This $
+        T.show $
+          "expected entity"
+            <+> pretty entityId
+            <+> "to be"
+            <+> pretty expected
+    commaSeparatedList = concatWith (\a b -> a <> comma <> space <> b) . map pretty
+    pluralDomains = length actual > 1
+    actualMessage =
+      Where $
+        T.show $
+          "actual"
+            <+> ( if pluralDomains
+                    then
+                      "domains are"
+                    else "domain is"
+                )
+            <+> commaSeparatedList (toList actual)
+    mainPos = trimPos (positionsPrimary loc)
+    mainMarker = (mainPos, expectedMessage)
+    supplementaryMarker = (mainPos, actualMessage)

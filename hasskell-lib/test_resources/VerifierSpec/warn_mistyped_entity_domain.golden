@@ -1,0 +1,8 @@
+[warning]: Domains don't match
+     ╭──▶ VerifierSpec.hs@25:20-25:25
+     │
+  25 │       let entity = light "input_boolean.test"
+     •                    ┬──── 
+     •                    ├╸ expected entity `input_boolean.test` to be light
+     •                    ╰╸ actual domain is input_boolean
+─────╯

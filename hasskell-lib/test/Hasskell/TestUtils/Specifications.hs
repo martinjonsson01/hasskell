@@ -1,6 +1,7 @@
 module Hasskell.TestUtils.Specifications
   ( lightAlwaysOn,
     lightAlways,
+    realEntityAlwaysOn,
   )
 where
 
@@ -30,3 +31,6 @@ lightAlways state entity =
   policy
     ("light is always " <> if state == On then "on" else "off")
     (entity `shouldBe` fromState state)
+
+realEntityAlwaysOn :: RawSpecification
+realEntityAlwaysOn = lightAlwaysOn (inputBoolean "input_boolean.test")

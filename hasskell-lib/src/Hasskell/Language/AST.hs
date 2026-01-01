@@ -66,7 +66,6 @@ import Data.Eq.Singletons
 import Data.Kind
 import Data.List qualified as List
 import Data.Ord.Singletons
-import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Singletons
 import Data.Singletons.Decide
@@ -79,6 +78,7 @@ import GHC.TypeLits hiding (Text)
 import GHC.TypeLits qualified as TypeLits
 import Hasskell.HomeAssistant.API
 import Hasskell.Language.CallStack
+import Hasskell.Language.Entity
 import Hasskell.Language.World
 import Prelude.Singletons
 import Prettyprinter
@@ -140,12 +140,6 @@ instance IntoAction (Located (Exp Raw 'TAction)) where
 -- | Declare a desired state.
 policy :: (IntoAction a) => Text -> a -> Specification Raw
 policy name expr = Specification . List.singleton $ Policy name (toAction expr)
-
-class HasReferencedEntities a where
-  referencedEntitiesIn :: a -> Set EntityId
-
-instance (HasReferencedEntities a) => HasReferencedEntities (Located a) where
-  referencedEntitiesIn (a :@ _) = referencedEntitiesIn a
 
 instance HasReferencedEntities (Specification Raw) where
   referencedEntitiesIn Specification {specPolicies} = foldMap referencedEntitiesIn specPolicies
@@ -455,17 +449,12 @@ instance (Proved Toggleable t) => Proved IsEntity t where
     ToggleLight -> LightIsEntity
     ToggleInputBoolean -> InputBooleanIsEntity
 
+instance (Proved IsEntity t) => HasDomain (Exp p t) where
+  domainOf = case (auto @IsEntity @t) of
+    LightIsEntity -> const domainLight
+    InputBooleanIsEntity -> const domainInputBoolean
+
 --------------------------------------------------------------------------------
-
--- | Things that have an entity ID.
-class HasEntityId a where
-  idOf :: a -> EntityId
-
-instance (HasEntityId a) => HasEntityId (Located a) where
-  idOf (a :@ _) = idOf a
-
-instance HasEntityId KnownEntityId where
-  idOf = unwrapKnownEntityId
 
 -- | An entity representing a light.
 light :: (HasCallStack) => Text -> Located (Exp Raw 'TEntityLight)

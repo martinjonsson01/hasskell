@@ -18,7 +18,12 @@ spec = do
     it "includes if expression and boolean derivation" $ stagedGolden $ \goldenStage -> do
       let lightA = light "lightA"
           lightB = light "lightB"
-      observedOn <- sample $ genWorldWithToggleds [(lightA, Off), (lightB, Off)]
+      observedOn <-
+        sample $
+          genWorldWithToggleds
+            [ (observedLight lightA Off),
+              (observedLight lightB Off)
+            ]
       let boolPolicy =
             policy
               "make lightB the inverse of lightA"
@@ -35,7 +40,12 @@ spec = do
     it "includes shouldBe" $ stagedGolden $ \goldenStage -> do
       let onEntity = light "lightA"
           offEntity = light "lightB"
-      observedWorld <- sample $ genWorldWithToggleds [(onEntity, On), (offEntity, Off)]
+      observedWorld <-
+        sample $
+          genWorldWithToggleds
+            [ (observedLight onEntity On),
+              (observedLight offEntity Off)
+            ]
       let lightOnSpec = lightAlwaysOn offEntity
       lightsSpec <- sample $ genSpecWithPolicy observedWorld lightOnSpec
       let (verifiedLightsSpec, _) = verify observedWorld lightsSpec
@@ -46,7 +56,7 @@ spec = do
       goldenStage $ pureGoldenTextFile "test_resources/ProvenanceSpec/trace_shouldBe.golden" renderedPlan
 
     it "renders time references correctly" $ stagedGolden $ \goldenStage -> do
-      (SomeToggleable entity, _, observed) <- sample $ genWorldWithToggledAndTime Off (14, 39)
+      (SomeToggleable entity _, observed) <- sample $ genWorldWithToggledAndTime Off (14, 39)
       let timePolicy =
             policy
               "turn light on at 14:39"
@@ -61,7 +71,7 @@ spec = do
       goldenStage $ pureGoldenTextFile "test_resources/ProvenanceSpec/trace_time.golden" renderedPlan
 
     it "renders successful time comparison correctly" $ stagedGolden $ \goldenStage -> do
-      (SomeToggleable entity, _, observed) <- sample $ genWorldWithToggledAndTime Off (14, 40)
+      (SomeToggleable entity _, observed) <- sample $ genWorldWithToggledAndTime Off (14, 40)
       let timePolicy =
             policy
               "turn light on after 14:39"
@@ -76,7 +86,7 @@ spec = do
       goldenStage $ pureGoldenTextFile "test_resources/ProvenanceSpec/trace_time_comparison_success.golden" renderedPlan
 
     it "renders failed time comparison correctly" $ stagedGolden $ \goldenStage -> do
-      (SomeToggleable entity, _, observed) <- sample $ genWorldWithToggledAndTime Off (14, 20)
+      (SomeToggleable entity _, observed) <- sample $ genWorldWithToggledAndTime Off (14, 20)
       let timePolicy =
             policy
               "turn light on after 14:39"

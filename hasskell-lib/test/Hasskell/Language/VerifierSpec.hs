@@ -21,8 +21,15 @@ spec = do
       renderedReport <- renderReport Plain report
       goldenStage $ pureGoldenTextFile "test_resources/VerifierSpec/warn_unknown_entity.golden" renderedReport
 
+    it "warns when mistyping entity domain" $ stagedGolden $ \goldenStage -> do
+      let entity = light "input_boolean.test"
+      observed <- sample (genWorldWithEntity entity)
+      let (_, report) = verify observed (lightAlwaysOn entity)
+      renderedReport <- renderReport Plain report
+      goldenStage $ pureGoldenTextFile "test_resources/VerifierSpec/warn_mistyped_entity_domain.golden" renderedReport
+
     specify "does not warn when referencing known entity" $
       property $ do
-        (SomeToggleable offEntity, _, observed) <- forAll $ genWorldWithToggled Off
+        (SomeToggleable offEntity _, observed) <- forAll $ genWorldWithToggled Off
         (_, report) <- verifyAnnotated observed (lightAlwaysOn offEntity)
         assert (not . hasWarnings $ report)

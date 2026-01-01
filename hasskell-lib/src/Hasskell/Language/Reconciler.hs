@@ -24,9 +24,10 @@ import Effectful.State.Static.Local qualified as State
 import Hasskell.HomeAssistant.API
 import Hasskell.Language.AST
 import Hasskell.Language.CallStack
+import Hasskell.Language.Entity
 import Hasskell.Language.Provenance
 import Hasskell.Language.Report
-import Hasskell.Language.Verifier
+import Hasskell.Language.Verifier ()
 import Hasskell.Language.World
 import Prettyprinter
 import Prettyprinter.Render.Terminal
@@ -130,11 +131,9 @@ evalToggleable ::
   (Proved Toggleable t) =>
   Located (Exp Verified t) ->
   Eff es (Detailed KnownEntityId, HASSDomain, ToggleState)
-evalToggleable @t expr = do
+evalToggleable expr = do
   (eId, state) <- evalEntity expr
-  let domain = case (auto @Toggleable @t) of
-        ToggleLight -> domainLight
-        ToggleInputBoolean -> domainInputBoolean
+  let domain = domainOf expr
   pure (eId, domain, state)
 
 evalBranch ::

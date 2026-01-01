@@ -6,6 +6,7 @@ import Data.Text qualified as T
 import Hasskell.Language.AST
 import Hasskell.Language.Report
 import Hasskell.Language.Verifier
+import Hasskell.Language.World
 import Hasskell.TestUtils.Gen
 import Hasskell.TestUtils.Specifications
 import Hasskell.TestUtils.Utils
@@ -37,3 +38,12 @@ spec = do
         let expectedSuggestion = "did you mean `" <> expectedMatch <> "`?"
         annotate (T.unpack expectedSuggestion)
         assert (expectedSuggestion `T.isInfixOf` renderedReport)
+
+    specify "displays correct domain on mismatch" $
+      property $ do
+        let entity = light "input_boolean.test"
+        observed <- forAll (genWorldWithToggleds [observedInputBoolean entity On])
+        (_, report) <- verifyAnnotated observed (lightAlwaysOn entity)
+        renderedReport <- renderReport Plain report
+        assert ("expected entity `input_boolean.test` to be light" `T.isInfixOf` renderedReport)
+        assert ("actual domain is input_boolean" `T.isInfixOf` renderedReport)

@@ -7,9 +7,13 @@ module Hasskell.TestUtils.Utils
     verifyAnnotated,
     setTimeout,
     const2,
+    first,
   )
 where
 
+import Data.HashSet (HashSet)
+import Data.HashSet qualified as HS
+import Data.List qualified as L
 import Data.Text qualified as T
 import GHC.Stack (HasCallStack, withFrozenCallStack)
 import Hasskell.Config (Config (..), LoggingConfig (..))
@@ -30,6 +34,11 @@ import Test.Syd.OptParse
 const2 :: a -> b -> c -> a
 const2 = const . const
 
+first :: (MonadIO m, Show a) => HashSet a -> m a
+first set = case L.uncons (HS.toList set) of
+  Just (val, _) -> pure val
+  Nothing -> liftIO $ context (ppShow set) $ expectationFailure "set was empty"
+
 verifyAnnotated :: (HasCallStack, MonadIO m, MonadTest m) => ObservedWorld -> RawSpecification -> m (VerifiedSpecification, VerificationReport)
 verifyAnnotated observed spec = do
   let (verifiedSpec, report) = verify observed spec
@@ -39,7 +48,7 @@ verifyAnnotated observed spec = do
 
 reconcileAnnotated :: (HasCallStack, MonadIO m, MonadTest m) => ObservedWorld -> RawSpecification -> m (ReconciliationPlan, VerificationReport)
 reconcileAnnotated observed spec = do
-  (verifiedPlan, report) <- verifyAnnotated observed spec
+  (verifiedPlan, report) <- withFrozenCallStack $ verifyAnnotated observed spec
   let plan = reconcile observed verifiedPlan
   renderedPlan <- renderPlanTrace Plain plan
   withFrozenCallStack $ annotate (T.unpack renderedPlan)

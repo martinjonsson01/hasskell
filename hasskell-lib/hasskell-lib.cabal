@@ -35,6 +35,7 @@ library
       Hasskell.Language.AST
       Hasskell.Language.CallStack
       Hasskell.Language.Diagnostic
+      Hasskell.Language.Entity
       Hasskell.Language.Executor
       Hasskell.Language.Provenance
       Hasskell.Language.Reconciler

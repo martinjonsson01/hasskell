@@ -8,7 +8,6 @@ module Hasskell.TestUtils.Gen
     genWorldWithoutThisEntity,
     genWorldWithKnownEntities,
     genWorldWithToggleds,
-    genWorldWithToggleds',
     genObservedWorld,
     genWorld,
     genTime,
@@ -19,6 +18,9 @@ module Hasskell.TestUtils.Gen
     genUniqueEntity,
     genWorldWithToggledLight,
     genWorldWithToggledInputBoolean,
+    -- Entity helpers
+    observedLight,
+    observedInputBoolean,
     -- | Specification generators
     genSpecWithPolicy,
     genPolicy,
@@ -26,6 +28,8 @@ module Hasskell.TestUtils.Gen
 where
 
 import Data.HashMap.Strict qualified as HMap
+import Data.HashSet (HashSet)
+import Data.HashSet qualified as HS
 import Data.List qualified as List
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
@@ -35,7 +39,6 @@ import Data.Singletons
 import Data.Text (Text)
 import Data.Time
 import Data.Time.Clock.POSIX
-import Data.Tuple.HT
 import Error.Diagnose
 import Hasskell.HomeAssistant.API
 import Hasskell.Language.AST
@@ -59,60 +62,66 @@ genWithInserted toInsert items = do
 data SomeToggleable where
   SomeToggleable ::
     (SingI t, HasEntityId (Exp Raw t), Proved Toggleable t) =>
-    Located (Exp Raw t) ->
+    { someEntityExpr :: Located (Exp Raw t),
+      someObservedEntity :: ObservedEntity
+    } ->
     SomeToggleable
 
 deriving instance (Show SomeToggleable)
 
 instance HasEntityId SomeToggleable where
-  idOf (SomeToggleable e) = idOf e
+  idOf (SomeToggleable e _) = idOf e
 
-discardMiddle :: (a, b, c) -> (a, c)
-discardMiddle (a, _, c) = (a, c)
+instance HasKnownEntityId SomeToggleable where
+  knownIdOf = makeKnownEntityIdUnsafe . idOf
+
+observedLight :: (HasEntityId e) => e -> ToggleState -> ObservedEntity
+observedLight e state =
+  ObservedEntity
+    (makeKnownEntityIdUnsafe (idOf e))
+    (HS.singleton domainLight)
+    state
+
+observedInputBoolean :: (HasEntityId e) => e -> ToggleState -> ObservedEntity
+observedInputBoolean e state =
+  ObservedEntity
+    (makeKnownEntityIdUnsafe (idOf e))
+    (HS.singleton domainInputBoolean)
+    state
 
 genWorldWithToggledLight :: ToggleState -> Gen (SomeToggleable, ObservedWorld)
-genWorldWithToggledLight = (discardMiddle <$>) . genWorldWithToggled' genLight'
+genWorldWithToggledLight = genWorldWithToggled' genLightWithState
 
 genWorldWithToggledInputBoolean :: ToggleState -> Gen (SomeToggleable, ObservedWorld)
-genWorldWithToggledInputBoolean = (discardMiddle <$>) . genWorldWithToggled' genInputBoolean'
+genWorldWithToggledInputBoolean = genWorldWithToggled' genInputBooleanWithState
 
-genWorldWithToggled :: ToggleState -> Gen (SomeToggleable, HASSDomain, ObservedWorld)
-genWorldWithToggled = genWorldWithToggled' genEntity'
+genWorldWithToggled :: ToggleState -> Gen (SomeToggleable, ObservedWorld)
+genWorldWithToggled = genWorldWithToggled' genEntityWithState
 
-genWorldWithToggled' :: Gen (SomeToggleable, HASSDomain) -> ToggleState -> Gen (SomeToggleable, HASSDomain, ObservedWorld)
+genWorldWithToggled' :: (ToggleState -> Gen SomeToggleable) -> ToggleState -> Gen (SomeToggleable, ObservedWorld)
 genWorldWithToggled' entityGen state = do
-  (entityId, domain) <- entityGen
-  world <- genWorldWithToggleds' [(entityId, state)]
-  pure (entityId, domain, world)
+  entity <- entityGen state
+  world <- genWorldWithToggleds [someObservedEntity entity]
+  pure (entity, world)
 
-genWorldWithToggledAndTime :: ToggleState -> (Int, Int) -> Gen (SomeToggleable, HASSDomain, ObservedWorld)
+genWorldWithToggledAndTime :: ToggleState -> (Int, Int) -> Gen (SomeToggleable, ObservedWorld)
 genWorldWithToggledAndTime state (hours, mins) = do
-  (entity, domain) <- genEntity'
+  entity <- genEntityWithState state
   let timeOfDay = TimeOfDay hours mins 0
-  world <- genTimedWorldWithToggleds timeOfDay [(entity, state)]
-  pure (entity, domain, world)
+  world <- genTimedWorldWithToggleds timeOfDay [someObservedEntity entity]
+  pure (entity, world)
 
-genWorldWithToggleds ::
-  ( SingI t,
-    HasEntityId (Exp Raw t),
-    Proved Toggleable t
-  ) =>
-  [(Located (Exp Raw t), ToggleState)] ->
-  Gen ObservedWorld
-genWorldWithToggleds = genWorldWithToggleds' . map (mapFst SomeToggleable)
-
-genWorldWithToggleds' :: [(SomeToggleable, ToggleState)] -> Gen ObservedWorld
-genWorldWithToggleds' entitiesAndStates = do
+genWorldWithToggleds :: [ObservedEntity] -> Gen ObservedWorld
+genWorldWithToggleds entitiesAndStates = do
   timeOfDay <- genTimeOfDay
   genTimedWorldWithToggleds timeOfDay entitiesAndStates
 
-genTimedWorldWithToggleds :: TimeOfDay -> [(SomeToggleable, ToggleState)] -> Gen ObservedWorld
+genTimedWorldWithToggleds :: TimeOfDay -> [ObservedEntity] -> Gen ObservedWorld
 genTimedWorldWithToggleds timeOfDay entitiesAndStates = do
   world <- genWorld
-  let extractId = mapFst (makeKnownEntityIdUnsafe . idOf)
-      toggleables = HMap.fromList (map extractId $ map (uncurry (,)) entitiesAndStates)
-      newToggleables = toggleables `HMap.union` (worldToggleables world)
-  pure $ MkObserved timeOfDay world {worldToggleables = newToggleables}
+  let toggleables = HMap.fromList (map toPairedWithId entitiesAndStates)
+      newToggleables = toggleables `HMap.union` (worldEntities world)
+  pure $ MkObserved timeOfDay world {worldEntities = newToggleables}
 
 genWorldWithEntity :: (HasEntityId (Exp Raw t)) => Located (Exp Raw t) -> Gen ObservedWorld
 genWorldWithEntity = genWorldWithKnownEntities . List.singleton
@@ -120,9 +129,9 @@ genWorldWithEntity = genWorldWithKnownEntities . List.singleton
 genWorldWithKnownEntities :: (HasEntityId (Exp Raw t)) => [Located (Exp Raw t)] -> Gen ObservedWorld
 genWorldWithKnownEntities known = do
   MkObserved timeOfDay world <- genObservedWorld
-  let pairGen eId = (eId,) <$> genToggleState
+  let pairGen eId = (eId,) <$> genObservedEntityWithId eId
   knownEntityMap <- HMap.fromList <$> mapM pairGen (map (makeKnownEntityIdUnsafe . idOf) known)
-  pure $ MkObserved timeOfDay world {worldToggleables = knownEntityMap <> (worldToggleables world)}
+  pure $ MkObserved timeOfDay world {worldEntities = knownEntityMap <> (worldEntities world)}
 
 genObservedWorld :: Gen ObservedWorld
 genObservedWorld = MkObserved <$> genTimeOfDay <*> genWorld
@@ -131,12 +140,12 @@ genWorldWithoutThisEntity :: (Proved IsEntity t) => Located (Exp Raw t) -> Gen O
 genWorldWithoutThisEntity entity = do
   world <- genObservedWorld
   let observed = observedWorld world
-      observedEntities = worldToggleables observed
+      observedEntities = worldEntities observed
       knownEntityId = makeKnownEntityIdUnsafe (idOf entity)
       worldWithoutEntity =
         world
           { observedWorld =
-              observed {worldToggleables = HMap.delete knownEntityId observedEntities}
+              observed {worldEntities = HMap.delete knownEntityId observedEntities}
           }
   pure worldWithoutEntity
 
@@ -147,7 +156,14 @@ genWorldWithoutEntity = do
   pure (entity, world)
 
 genWorld :: Gen World
-genWorld = MkWorld . HMap.fromList <$> Gen.list (Range.linear 0 10) (mapFst makeKnownEntityIdUnsafe <$> genToggleable)
+genWorld =
+  MkWorld . HMap.fromList
+    <$> Gen.list
+      (Range.linear 0 10)
+      (toPairedWithId <$> genObservedEntity)
+
+toPairedWithId :: ObservedEntity -> (KnownEntityId, ObservedEntity)
+toPairedWithId entity = (knownIdOf entity, entity)
 
 genTimeOfDay :: Gen TimeOfDay
 genTimeOfDay = genTime >>= pure . timeToTimeOfDay . utctDayTime
@@ -158,15 +174,33 @@ genTime =
     <$> Gen.integral (Range.constant 0 (60 * 60 * 24 * 365 * 200)) -- up to year 2169
 
 genUniqueEntity :: ObservedWorld -> Gen SomeToggleable
-genUniqueEntity (MkObserved _ MkWorld {worldToggleables}) =
-  let idExists eId = isJust $ HMap.lookup (makeKnownEntityIdUnsafe eId) worldToggleables
+genUniqueEntity (MkObserved _ MkWorld {worldEntities}) =
+  let idExists eId = isJust $ HMap.lookup (makeKnownEntityIdUnsafe eId) worldEntities
    in Gen.filter (not . idExists . idOf) genEntity
+
+genObservedEntity :: Gen ObservedEntity
+genObservedEntity = genKnownEntityId >>= genObservedEntityWithId
+
+genObservedEntityWithId :: KnownEntityId -> Gen ObservedEntity
+genObservedEntityWithId eId =
+  ObservedEntity eId
+    <$> genDomains
+    <*> genToggleState
+
+genDomains :: Gen (HashSet HASSDomain)
+genDomains = HS.fromList <$> (Gen.list (Range.constant 0 3) genDomain)
+
+genDomain :: Gen HASSDomain
+genDomain = Gen.choice [pure domainLight, pure domainInputBoolean]
 
 genToggleable :: Gen (EntityId, ToggleState)
 genToggleable = (,) <$> genEntityId <*> genToggleState
 
 genEntityId :: Gen EntityId
 genEntityId = EntityId <$> Gen.text (Range.constant 1 10) Gen.alphaNum
+
+genKnownEntityId :: Gen KnownEntityId
+genKnownEntityId = makeKnownEntityIdUnsafe <$> genEntityId
 
 genToggleState :: Gen ToggleState
 genToggleState = Gen.choice [pure On, pure Off]
@@ -179,7 +213,7 @@ genSpecWithPolicy (MkObserved _ world) includePolicy = do
         HMap.fromList $
           S.toList $
             S.map (\eId -> (makeKnownEntityIdUnsafe eId, Off)) (referencedEntitiesIn includePolicy)
-      knownEntitiesMap = worldToggleables world `HMap.difference` entitiesToExclude
+      knownEntitiesMap = worldEntities world `HMap.difference` entitiesToExclude
   case NE.nonEmpty (HMap.keys knownEntitiesMap) of
     Just knownEntities -> do
       policies <- Gen.list (Range.constant 0 10) (genPolicy (NE.map unwrapKnownEntityId knownEntities))
@@ -187,7 +221,7 @@ genSpecWithPolicy (MkObserved _ world) includePolicy = do
     Nothing -> pure mempty
 
 genPolicy :: NonEmpty EntityId -> Gen RawSpecification
-genPolicy knownEntities = policy <$> genPolicyName <*> genVoidExp knownEntities
+genPolicy knownEntities = policy <$> genPolicyName <*> genActionExp knownEntities
 
 genPolicyName :: Gen Text
 genPolicyName = Gen.text (Range.constant 1 10) Gen.alphaNum
@@ -198,60 +232,66 @@ genStateExp = do
   state <- genToggleState
   pure (ELitState state :@ loc)
 
-genVoidExp :: NonEmpty EntityId -> Gen (Located (Exp Raw 'TAction))
-genVoidExp knownEntities = do
+genActionExp :: NonEmpty EntityId -> Gen (Located (Exp Raw 'TAction))
+genActionExp knownEntities = do
   loc <- genLocation
-  SomeToggleable expr <- genKnownEntity knownEntities
+  SomeToggleable expr _ <- genKnownEntity knownEntities
   state <- genStateExp
   pure (ESetState expr state :@ loc)
 
 genKnownEntity :: NonEmpty EntityId -> Gen SomeToggleable
 genKnownEntity knownEntities = do
-  eId <- genKnownEntityId knownEntities
+  eId <- genEntityIdOneOf knownEntities
   genEntityWithId eId
 
-genEntityWithId' :: EntityId -> Gen (SomeToggleable, HASSDomain)
-genEntityWithId' eId =
-  Gen.choice
-    [ genLightWithId' eId,
-      genInputBooleanWithId' eId
-    ]
+genLight' :: EntityId -> ToggleState -> Gen SomeToggleable
+genLight' eId state = do
+  loc <- genLocation
+  let expr = ELitEntityLight eId :@ loc
+  pure
+    ( SomeToggleable
+        expr
+        (observedLight expr state)
+    )
 
-genEntityWithId :: EntityId -> Gen SomeToggleable
-genEntityWithId eId = Gen.choice [genLightWithId eId, genInputBooleanWithId eId]
+genInputBoolean' :: EntityId -> ToggleState -> Gen SomeToggleable
+genInputBoolean' eId state = do
+  loc <- genLocation
+  let expr = ELitEntityInputBoolean eId :@ loc
+  pure
+    ( SomeToggleable
+        expr
+        (observedInputBoolean expr state)
+    )
 
-genLightWithId' :: EntityId -> Gen (SomeToggleable, HASSDomain)
-genLightWithId' eId =
-  (,domainLight)
-    <$> SomeToggleable . (ELitEntityLight eId :@)
-    <$> genLocation
-
-genLightWithId :: EntityId -> Gen SomeToggleable
-genLightWithId = (fst <$>) . genLightWithId'
-
-genInputBooleanWithId :: EntityId -> Gen SomeToggleable
-genInputBooleanWithId = (fst <$>) . genInputBooleanWithId'
-
-genInputBooleanWithId' :: EntityId -> Gen (SomeToggleable, HASSDomain)
-genInputBooleanWithId' eId =
-  (,domainInputBoolean)
-    <$> SomeToggleable . (ELitEntityInputBoolean eId :@)
-    <$> genLocation
-
-genEntity' :: Gen (SomeToggleable, HASSDomain)
-genEntity' = genEntityId >>= genEntityWithId'
+genEntity' :: EntityId -> ToggleState -> Gen SomeToggleable
+genEntity' eId state = Gen.choice [genLight' eId state, genInputBoolean' eId state]
 
 genEntity :: Gen SomeToggleable
-genEntity = fst <$> genEntity'
+genEntity = genEntityId >>= genEntityWithId
 
-genLight' :: Gen (SomeToggleable, HASSDomain)
-genLight' = genEntityId >>= genLightWithId'
+genEntityWithId :: EntityId -> Gen SomeToggleable
+genEntityWithId eId = do
+  state <- genToggleState
+  genEntity' eId state
 
-genInputBoolean' :: Gen (SomeToggleable, HASSDomain)
-genInputBoolean' = genEntityId >>= genInputBooleanWithId'
+genEntityWithState :: ToggleState -> Gen SomeToggleable
+genEntityWithState state = do
+  eId <- genEntityId
+  genEntity' eId state
 
-genKnownEntityId :: NonEmpty EntityId -> Gen EntityId
-genKnownEntityId knownEntities = do
+genLightWithState :: ToggleState -> Gen SomeToggleable
+genLightWithState state = do
+  eId <- genEntityId
+  genLight' eId state
+
+genInputBooleanWithState :: ToggleState -> Gen SomeToggleable
+genInputBooleanWithState state = do
+  eId <- genEntityId
+  genInputBoolean' eId state
+
+genEntityIdOneOf :: NonEmpty EntityId -> Gen EntityId
+genEntityIdOneOf knownEntities = do
   index <- Gen.int (Range.constant 0 (length knownEntities - 1))
   pure $ knownEntities NE.!! index
 

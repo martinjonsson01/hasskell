@@ -318,7 +318,8 @@ newtype EntityId = EntityId {unwrapEntityId :: Text}
 
 -- | An entity ID that has been confirmed to refer to an existing entity.
 newtype KnownEntityId = Known {unwrapKnownEntityId :: EntityId}
-  deriving (Eq, Ord, Show, Pretty) via EntityId
+  deriving (Eq, Ord, Show)
+  deriving (Pretty) via EntityId
   deriving (FromJSON, ToJSON, Hashable) via Text
 
 -- | Creates an entity ID without any verification that it is valid.

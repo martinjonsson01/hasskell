@@ -2,34 +2,47 @@ module Hasskell.Language.World
   ( World (..),
     ToggleState (..),
     toggle,
+    -- Observations
     ObservedEvent (..),
     ObservedWorld (..),
+    ObservedEntity (..),
+    -- Operations
     collectCurrentState,
     lookupEntity,
     updateWorld,
+    -- Classes
+    HasKnownEntityId (..),
+    HasCurrentState (..),
   )
 where
 
+import Control.Monad
+import Data.Foldable
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HM
-import Data.HashMap.Strict qualified as HMap
+import Data.HashSet (HashSet)
+import Data.Hashable
 import Data.Maybe (mapMaybe)
+import Data.Set (Set)
+import Data.Set qualified as S
 import Data.Time
 import Effectful
+import GHC.Generics
 import Hasskell.Effects.HASS
 import Hasskell.HomeAssistant.API
+import Hasskell.Language.Entity
 import Prettyprinter
 
 -- | A distilled representation of entities and devices,
 -- based on data from Home Assistant.
 data World = MkWorld
-  { worldToggleables :: HashMap KnownEntityId ToggleState
+  { worldEntities :: HashMap KnownEntityId ObservedEntity
   }
   deriving (Eq, Ord, Show)
 
 -- | On or off.
 data ToggleState = On | Off
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic, Hashable)
 
 toggle :: ToggleState -> ToggleState
 toggle On = Off
@@ -56,49 +69,101 @@ data ObservedWorld = MkObserved
 --
 -- The returned `World` is a snapshot of the moment in time at which the function
 -- was invoked.
-collectCurrentState :: (IOE :> es, HASS :> es) => Eff es ObservedWorld
-collectCurrentState = do
-  states <- getStates
+collectCurrentState :: (IOE :> es, HASS :> es, HasReferencedEntities eIds) => eIds -> Eff es ObservedWorld
+collectCurrentState entitySource = do
+  let interestingEntities = referencedEntitiesIn entitySource
+  allStates <- getStates
   time <- liftIO $ do
     time <- getCurrentTime
     timeZone <- getTimeZone time
     let utcTimeOfDay = timeToTimeOfDay (utctDayTime time)
         (_dayOffset, timeOfDay) = localToUTCTimeOfDay timeZone utcTimeOfDay
     pure timeOfDay
+  let states = filterStates interestingEntities allStates
+  supportedServices <- HM.fromList <$> mapM (getServicesOf) (toList interestingEntities)
+
   pure $
     MkObserved time $
       MkWorld
-        { worldToggleables = HMap.fromList (filterToggleables states)
+        { worldEntities = constructEntities states supportedServices
         }
 
-filterToggleables :: [HASSState] -> [(KnownEntityId, ToggleState)]
-filterToggleables = mapMaybe $ \state -> do
-  toggleState <- case stateState state of
-    "on" -> pure On
-    "off" -> pure Off
-    _ -> Nothing
+getServicesOf ::
+  (HASS :> es) =>
+  EntityId ->
+  Eff
+    es
+    (KnownEntityId, HashMap HASSDomain (HashSet HASSServiceName))
+getServicesOf eId = (knownEId,) <$> getSupportedServicesOf knownEId
+  where
+    knownEId = makeKnownEntityIdUnsafe eId
 
-  pure $
-    ( stateEntityId state,
-      toggleState
+constructEntities ::
+  HashMap KnownEntityId ToggleState ->
+  HashMap KnownEntityId (HashMap HASSDomain (HashSet HASSServiceName)) ->
+  HashMap KnownEntityId ObservedEntity
+constructEntities =
+  HM.intersectionWithKey
+    ( \eId state supportedServices ->
+        ObservedEntity
+          eId
+          (HM.keysSet supportedServices)
+          state
     )
+
+filterStates :: Set EntityId -> [HASSState] -> HashMap KnownEntityId ToggleState
+filterStates interestingEntities =
+  HM.fromList
+    . mapMaybe
+      ( \state -> do
+          toggleState <- case stateState state of
+            "on" -> pure On
+            "off" -> pure Off
+            _ -> Nothing
+
+          let eId = stateEntityId state
+          unless (idOf eId `S.member` interestingEntities) $ Nothing
+
+          pure $
+            ( stateEntityId state,
+              toggleState
+            )
+      )
 
 -- | Updates the state of the world with a new observation.
 updateWorld :: ObservedWorld -> ObservedEvent -> ObservedWorld
-updateWorld world@MkObserved {observedWorld = observedWorld@MkWorld {worldToggleables}} (StateChanged entity newState) =
+updateWorld world@MkObserved {observedWorld = observedWorld@MkWorld {worldEntities}} (StateChanged eId newState) =
   world
     { observedWorld =
         observedWorld
-          { worldToggleables =
-              HM.insert entity newState worldToggleables
+          { worldEntities =
+              HM.adjust (\entity -> entity {entityState = newState}) eId worldEntities
           }
     }
 
 --------------------------------------------------------------------------------
 
+-- | An entity that exists in the world.
+data ObservedEntity = ObservedEntity
+  { entityId :: KnownEntityId,
+    entityDomains :: HashSet HASSDomain,
+    entityState :: ToggleState
+  }
+  deriving (Eq, Ord, Show, Generic, Hashable)
+
+instance HasKnownEntityId ObservedEntity where
+  knownIdOf (ObservedEntity eId _ _) = eId
+
+-- | Things that have a known current state.
+class HasCurrentState a where
+  stateOf :: a -> ToggleState
+
+instance HasCurrentState ObservedEntity where
+  stateOf (ObservedEntity _ _ state) = state
+
 -- | Finds an entity in the world, if it exists.
-lookupEntity :: EntityId -> ObservedWorld -> Maybe (KnownEntityId, ToggleState)
+lookupEntity :: EntityId -> ObservedWorld -> Maybe ObservedEntity
 lookupEntity eId observed =
-  let toggleables = worldToggleables (observedWorld observed)
-      knownEntityId = makeKnownEntityIdUnsafe eId
-   in HM.lookup knownEntityId toggleables >>= pure . (knownEntityId,)
+  HM.lookup
+    (makeKnownEntityIdUnsafe eId)
+    (worldEntities (observedWorld observed))

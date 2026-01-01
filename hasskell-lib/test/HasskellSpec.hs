@@ -13,8 +13,7 @@ spec = do
 
   describe "Hasskell" $ do
     it "runs specification without error" $ do
-      let entity = inputBoolean "input_boolean.test"
-      runHasskell config (lightAlwaysOn entity)
+      runHasskell config realEntityAlwaysOn
 
 getConfig :: IO Config
 getConfig = do
