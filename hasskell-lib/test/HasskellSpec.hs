@@ -25,6 +25,7 @@ getConfig = do
         Logging
           { debugLogger = if enableDebug then putStrLn . T.unpack else pure . const (),
             infoLogger = putStrLn . T.unpack,
+            warningLogger = putStrLn . T.unpack,
             errorLogger = putStrLn . T.unpack
           }
   pure (Config {baseUrl = envBaseUrl, token = envApiToken, logging = logging, workingDir = Nothing})

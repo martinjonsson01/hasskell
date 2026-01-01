@@ -89,6 +89,7 @@ runWithClient' action =
           Logging
             { debugLogger = \_ -> pure (), -- putStrLn . T.unpack,
               infoLogger = \_ -> pure (), -- putStrLn . T.unpack,
+              warningLogger = putStrLn . T.unpack,
               errorLogger = putStrLn . T.unpack
             }
     runClient

@@ -76,7 +76,7 @@ innerRunHasskell spec = do
   let (verifiedPlan, report) = verify observed spec
       plan = reconcile observed verifiedPlan
   reportText <- renderReport Rich report
-  unless (T.null reportText) $ logInfo reportText
+  unless (T.null reportText) $ logWarn reportText
   renderedPlan <- renderPlanTrace Rich plan
   logDebug renderedPlan
   _ <- executePlan plan

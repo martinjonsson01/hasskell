@@ -6,6 +6,7 @@ module Hasskell.Effects.Logging
     Logger,
     logDebug,
     logInfo,
+    logWarn,
     logError,
     runLogger,
     runDefaultLogger,
@@ -24,12 +25,14 @@ import Effectful.TH
 data LoggingConfig = Logging
   { debugLogger :: !(Text -> IO ()),
     infoLogger :: !(Text -> IO ()),
+    warningLogger :: !(Text -> IO ()),
     errorLogger :: !(Text -> IO ())
   }
 
 data Logger :: Effect where
   LogDebug :: Text -> Logger m ()
   LogInfo :: Text -> Logger m ()
+  LogWarn :: Text -> Logger m ()
   LogError :: Text -> Logger m ()
 
 makeEffect ''Logger
@@ -42,9 +45,10 @@ runLogger ::
   LoggingConfig ->
   Eff (Logger : Error LogError : es) a ->
   Eff (Error LogError : es) a
-runLogger Logging {debugLogger, infoLogger, errorLogger} = interpret_ $ \case
+runLogger Logging {debugLogger, infoLogger, warningLogger, errorLogger} = interpret_ $ \case
   LogDebug text -> adapt $ debugLogger text
   LogInfo text -> adapt $ infoLogger text
+  LogWarn text -> adapt $ warningLogger text
   LogError text -> adapt $ errorLogger text
   where
     adapt action = liftIO action `catchIO` (throwError . LogException)
@@ -60,5 +64,6 @@ runDefaultLogger = runLogger defaultLogging
       Logging
         { debugLogger = putStrLn . T.unpack,
           infoLogger = putStrLn . T.unpack,
+          warningLogger = putStrLn . T.unpack,
           errorLogger = putStrLn . T.unpack
         }

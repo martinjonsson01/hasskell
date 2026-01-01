@@ -21,6 +21,7 @@ run = do
         Logging
           { debugLogger = \message -> runRIO app (logDebug $ display message),
             infoLogger = \message -> runRIO app (logInfo $ display message),
+            warningLogger = \message -> runRIO app (logWarn $ display message),
             errorLogger = \message -> runRIO app (logError $ display message)
           }
   currentDir <- liftIO Dir.getCurrentDirectory
