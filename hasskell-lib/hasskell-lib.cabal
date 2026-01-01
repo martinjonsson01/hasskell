@@ -156,6 +156,7 @@ test-suite hasskell-lib-test
       Hasskell.Language.VerifierSpec
       Hasskell.Language.WorldSpec
       Hasskell.TestUtils.Gen
+      Hasskell.TestUtils.MockHASS
       Hasskell.TestUtils.Specifications
       Hasskell.TestUtils.Utils
       HasskellSpec
