@@ -41,6 +41,7 @@ library
       Hasskell.Language.Reconciler
       Hasskell.Language.Report
       Hasskell.Language.Verifier
+      Hasskell.Language.Watcher
       Hasskell.Language.World
   other-modules:
       Paths_hasskell_lib
@@ -154,6 +155,7 @@ test-suite hasskell-lib-test
       Hasskell.Language.ProvenanceSpec
       Hasskell.Language.ReconcilerSpec
       Hasskell.Language.VerifierSpec
+      Hasskell.Language.WatcherSpec
       Hasskell.Language.WorldSpec
       Hasskell.TestUtils.Gen
       Hasskell.TestUtils.MockHASS

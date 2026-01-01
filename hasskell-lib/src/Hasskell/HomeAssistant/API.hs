@@ -27,6 +27,7 @@ module Hasskell.HomeAssistant.API
     HASSEvent (..),
     HASSVariables (..),
     HASSTriggered (..),
+    HASSContext (..),
     -- Targeting
     HASSTarget (..),
     targetEntity,

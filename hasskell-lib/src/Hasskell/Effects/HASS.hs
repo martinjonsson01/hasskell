@@ -4,6 +4,7 @@ module Hasskell.Effects.HASS
   ( -- Interactions with Home Assistant
     HASS (..),
     runHASS,
+    StateChangeEventHandler,
     -- Actions
     getConfig,
     getStates,

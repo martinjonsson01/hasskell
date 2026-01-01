@@ -1,7 +1,10 @@
 module Hasskell.TestUtils.MockHASS
   ( HASSOp (..),
     recordHASSCommands,
+    recordConcurrentHASSCommands,
     NoExplanation (..),
+    TestStateChangeEventHandler (..),
+    anyHandler,
   )
 where
 
@@ -11,6 +14,7 @@ import Data.HashMap.Strict qualified as HM
 import Data.Map qualified as M
 import Data.Maybe
 import Effectful
+import Effectful.Concurrent
 import Effectful.Dispatch.Dynamic
 import Effectful.State.Static.Local
 import Hasskell.Effects.HASS (HASS)
@@ -22,8 +26,19 @@ data HASSOp
   = Unknown
   | TurnOn KnownEntityId
   | TurnOff KnownEntityId
-  | EntitySubscribe KnownEntityId
+  | EntitySubscribe KnownEntityId TestStateChangeEventHandler
   deriving (Eq, Show)
+
+newtype TestStateChangeEventHandler = Handler HASS.StateChangeEventHandler
+
+instance Eq TestStateChangeEventHandler where
+  (Handler _) == (Handler _) = True
+
+instance Show TestStateChangeEventHandler where
+  show _ = "Some state change event handler"
+
+recordConcurrentHASSCommands :: Eff '[HASS, Concurrent, IOE] a -> IO (a, [HASSOp])
+recordConcurrentHASSCommands = runEff . runConcurrent . runWithFakeHASS
 
 recordHASSCommands :: Eff '[HASS] a -> (a, [HASSOp])
 recordHASSCommands = runPureEff . runWithFakeHASS
@@ -54,9 +69,12 @@ runWithFakeHASS = reinterpret_ (runState []) $ \action -> case action of
   HASS.TurnOff _ entity -> do
     modify $ (TurnOff entity :)
     pure ()
-  HASS.SubscribeToStateOf entity _ -> do
-    modify (EntitySubscribe entity :)
+  HASS.SubscribeToStateOf entity handler -> do
+    modify (EntitySubscribe entity (Handler handler) :)
     pure ()
+
+anyHandler :: TestStateChangeEventHandler
+anyHandler = Handler $ const (pure ())
 
 data NoExplanation = NoExplanation
 

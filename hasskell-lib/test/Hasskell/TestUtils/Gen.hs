@@ -12,7 +12,10 @@ module Hasskell.TestUtils.Gen
     genWorld,
     genTime,
     -- | Entity generators
+    genEntities,
     genEntityId,
+    genEntityWithState,
+    genEntity,
     genToggleState,
     genToggleable,
     genUniqueEntity,
@@ -24,9 +27,12 @@ module Hasskell.TestUtils.Gen
     -- | Specification generators
     genSpecWithPolicy,
     genPolicy,
+    -- | API response generators
+    genStateChangeEvent,
   )
 where
 
+import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HMap
 import Data.HashSet (HashSet)
 import Data.HashSet qualified as HS
@@ -37,6 +43,7 @@ import Data.Maybe
 import Data.Set qualified as S
 import Data.Singletons
 import Data.Text (Text)
+import Data.Text qualified as T
 import Data.Time
 import Data.Time.Clock.POSIX
 import Error.Diagnose
@@ -47,6 +54,7 @@ import Hasskell.Language.World
 import Hedgehog
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
+import Prettyprinter (pretty)
 
 ----------------------------------------------------------------------
 
@@ -156,8 +164,11 @@ genWorldWithoutEntity = do
   pure (entity, world)
 
 genWorld :: Gen World
-genWorld =
-  MkWorld . HMap.fromList
+genWorld = MkWorld <$> genEntities
+
+genEntities :: Gen (HashMap KnownEntityId ObservedEntity)
+genEntities =
+  HMap.fromList
     <$> Gen.list
       (Range.linear 0 10)
       (toPairedWithId <$> genObservedEntity)
@@ -300,3 +311,39 @@ genLocation = Location <$> genPosition <*> pure mempty
 
 genPosition :: Gen Position
 genPosition = pure $ Position {begin = (-1, -1), end = (-1, -1), file = "Generated"}
+
+--------------------------------------------------------------------------------
+
+genStateChangeEvent :: KnownEntityId -> ToggleState -> ToggleState -> Gen HASSEvent
+genStateChangeEvent eId from to = Event <$> genVariables eId from to
+
+genVariables :: KnownEntityId -> ToggleState -> ToggleState -> Gen HASSVariables
+genVariables eId from to = Variables <$> genTriggered eId from to
+
+genTriggered :: KnownEntityId -> ToggleState -> ToggleState -> Gen HASSTriggered
+genTriggered eId from to =
+  Triggered
+    mempty
+    mempty
+    mempty
+    mempty
+    eId
+    mempty
+    mempty
+    mempty
+    <$> genState eId from
+    <*> genState eId to
+
+genState :: KnownEntityId -> ToggleState -> Gen HASSState
+genState eId state =
+  State
+    eId
+    (T.show $ pretty state)
+    mempty
+    <$> genTime
+    <*> genTime
+    <*> genTime
+    <*> genContext
+
+genContext :: Gen HASSContext
+genContext = pure $ HASSContext mempty mempty mempty
