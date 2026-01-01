@@ -184,8 +184,7 @@ observedTime = SourcelessFact . ObservedTime
 -- | Converts the given explanation into a human-readable format.
 prettifyExplanation :: (File.FileSystem :> es) => ReportStyle -> Explanation -> Eff es (Doc AnsiStyle)
 prettifyExplanation style explanation = do
-  let positions = extractLocations explanation
-  baseDiagnostic <- loadReferencedFiles positions
+  baseDiagnostic <- loadReferencedFiles explanation
   pure (prettifyExplanationTree style baseDiagnostic explanation)
 
 -- Hacky way to remove the "warnings" that we can't get rid of from Diagnostics.
@@ -217,7 +216,7 @@ renderFact style baseDiagnostic fact = case fact of
         `addReport` Warn
           Nothing
           fact
-          [(positionsPrimary loc, This fact)]
+          [(positionsPrimary (trimLoc loc), This fact)]
           []
   SourcelessFact _ -> pretty fact
 

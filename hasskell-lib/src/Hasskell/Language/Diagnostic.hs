@@ -14,9 +14,11 @@ module Hasskell.Language.Diagnostic
 where
 
 import Data.Foldable
+import Data.HashSet (HashSet)
+import Data.HashSet qualified as HS
+import Data.Hashable
 import Data.Heap (MaxPrioHeap)
 import Data.Heap qualified as Heap
-import Data.List qualified as List
 import Data.Maybe
 import Data.Ratio
 import Data.Text (Text)
@@ -25,6 +27,7 @@ import Data.Text.Metrics
 import Effectful
 import Effectful.FileSystem qualified as File
 import Error.Diagnose
+import GHC.Generics
 import Hasskell.HomeAssistant.API
 import Hasskell.Language.AST
 import Hasskell.Language.CallStack
@@ -32,17 +35,28 @@ import Hasskell.Language.Report
 import Prettyprinter
 
 -- | Non-fatal details about how the reconciliation went.
-newtype VerificationReport = MkVerificationReport [ReconciliationDiagnostic] -- TODO: make into set
-  deriving (Semigroup, Monoid) via [ReconciliationDiagnostic]
+newtype VerificationReport = MkVerificationReport (HashSet ReconciliationDiagnostic)
+  deriving newtype (Semigroup, Monoid)
+
+hasWarnings :: VerificationReport -> Bool
+hasWarnings (MkVerificationReport reports) = length (reports) > 0
 
 reportFromList :: [ReconciliationDiagnostic] -> VerificationReport
-reportFromList = MkVerificationReport
+reportFromList = MkVerificationReport . HS.fromList
 
 -- | Info about a reconciliation occurrence.
-data ReconciliationDiagnostic = Diagnostic
-  { diagnosticLocation :: Location,
-    diagnosticReport :: Report Text
-  }
+data ReconciliationDiagnostic = WarnUnknownEntity [KnownEntityId] (Located EntityId)
+  deriving (Eq, Ord, Show, Generic, Hashable)
+
+warnUnknownEntity :: [KnownEntityId] -> Located EntityId -> VerificationReport
+warnUnknownEntity known = MkVerificationReport . HS.singleton . WarnUnknownEntity known
+
+instance HasLocations VerificationReport where
+  extractLocations (MkVerificationReport diagnostics) = foldMap extractLocations diagnostics
+
+instance HasLocations ReconciliationDiagnostic where
+  extractLocations = \case
+    WarnUnknownEntity _ (_ :@ loc) -> HS.singleton loc
 
 -- | Converts the given report from a data representation into a pretty
 -- user-presentable representation.
@@ -50,39 +64,32 @@ renderReport :: (MonadIO m) => ReportStyle -> VerificationReport -> m Text
 renderReport style = liftIO . runEff . File.runFileSystem . innerRenderReport style
 
 innerRenderReport :: (File.FileSystem :> es) => ReportStyle -> VerificationReport -> Eff es Text
-innerRenderReport style (MkVerificationReport diagnostics) = do
-  let referencedLocation = map diagnosticLocation diagnostics
-  baseDiagnostic <- loadReferencedFiles referencedLocation
+innerRenderReport style report@(MkVerificationReport diagnostics) = do
+  baseDiagnostic <- loadReferencedFiles report
 
-  let reports = map diagnosticReport diagnostics
+  let reports = map renderDiagnostic (toList diagnostics)
       fullDiagnostic = foldl' addReport baseDiagnostic reports
 
   pure (layoutDoc style $ annotateDoc style fullDiagnostic)
 
-hasWarnings :: VerificationReport -> Bool
-hasWarnings (MkVerificationReport reports) = length (reports) > 0
+renderDiagnostic :: ReconciliationDiagnostic -> Report Text
+renderDiagnostic = \case
+  WarnUnknownEntity knownEntities entityId -> renderUnknownEntity knownEntities entityId
 
--- TODO: don't create a real report here, just store the data so
--- that we can create a real one later on (where we're free to rewrite
--- the file paths as we like)
-warnUnknownEntity :: [KnownEntityId] -> Located EntityId -> VerificationReport
-warnUnknownEntity knownEntities (entityId :@ positions) =
-  MkVerificationReport $
-    List.singleton $
-      Diagnostic
-        positions
-        ( Warn
-            Nothing
-            "Unknown entity referenced"
-            (mainMarker : contextMarkers <> suggestionMarker)
-            ["The entity ID may be misspelled."]
-        )
+renderUnknownEntity :: [KnownEntityId] -> Located EntityId -> Report Text
+renderUnknownEntity knownEntities (entityId :@ positions) =
+  Warn
+    Nothing
+    "Unknown entity referenced"
+    (mainMarker : contextMarkers <> suggestionMarker)
+    ["The entity ID may be misspelled."]
   where
     message = This $ T.show $ "Unknown entity ID" <+> pretty entityId
-    mainMarker = (positionsPrimary positions, message)
+    mainPos = trimPos (positionsPrimary positions)
+    mainMarker = (mainPos, message)
     suggestionMarker =
       maybeToList $
-        (positionsPrimary positions,)
+        (mainPos,)
           . Where
           . T.show
           . ("did you mean `" <>)

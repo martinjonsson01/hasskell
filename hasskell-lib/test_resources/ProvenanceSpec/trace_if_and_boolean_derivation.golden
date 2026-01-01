@@ -1,7 +1,7 @@
 will turn light `lightB` on
 reason:
     entity `lightB` should be on
-         ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@27:35-27:45
+         ╭──▶ ProvenanceSpec.hs@27:35-27:45
          │
       27 │                   `else_` (lightB `shouldBe` on)
          •                                   ┬───────── 
@@ -10,7 +10,7 @@ reason:
 
         │
         ├─▶ because literal
-             ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@27:46-27:48
+             ╭──▶ ProvenanceSpec.hs@27:46-27:48
              │
           27 │                   `else_` (lightB `shouldBe` on)
              •                                              ┬─ 
@@ -21,7 +21,7 @@ reason:
         ├─▶ because entity `lightB` is currently off
         │
         ├─▶ because branch was taken
-             ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@27:19-27:26
+             ╭──▶ ProvenanceSpec.hs@27:19-27:26
              │
           27 │                   `else_` (lightB `shouldBe` on)
              •                   ┬────── 
@@ -30,7 +30,7 @@ reason:
 
             │
             ├─▶ because False
-                 ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@25:44-25:48
+                 ╭──▶ ProvenanceSpec.hs@25:44-25:48
                  │
               25 │               ( if_ (toggledStateOf lightA `is` on)
                  •                                            ┬─── 
@@ -39,7 +39,7 @@ reason:
 
                 │
                 ├─▶ because off
-                     ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@25:22-25:36
+                     ╭──▶ ProvenanceSpec.hs@25:22-25:36
                      │
                   25 │               ( if_ (toggledStateOf lightA `is` on)
                      •                      ┬───────────── 
@@ -50,7 +50,7 @@ reason:
                     ├─▶ because entity `lightA` is currently off
                 │
                 ├─▶ because on
-                     ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@25:49-25:51
+                     ╭──▶ ProvenanceSpec.hs@25:49-25:51
                      │
                   25 │               ( if_ (toggledStateOf lightA `is` on)
                      •                                                 ┬─ 
@@ -59,7 +59,7 @@ reason:
 
                     │
                     ├─▶ because literal
-                         ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@25:49-25:51
+                         ╭──▶ ProvenanceSpec.hs@25:49-25:51
                          │
                       25 │               ( if_ (toggledStateOf lightA `is` on)
                          •                                                 ┬─ 

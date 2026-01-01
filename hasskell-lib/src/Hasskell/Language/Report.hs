@@ -1,5 +1,8 @@
 module Hasskell.Language.Report
   ( loadReferencedFiles,
+    trimPath,
+    trimLoc,
+    trimPos,
     annotateDoc,
     defaultStyle,
     unadornedStyle,
@@ -20,12 +23,13 @@ import Hasskell.Language.CallStack
 import Prettyprinter
 import Prettyprinter.Render.Terminal qualified as Terminal
 import Prettyprinter.Render.Text qualified as PrettyText
+import System.FilePath
 
 -- | Loads all the files referenced in the given positions into an empty diagnostic.
-loadReferencedFiles :: (File.FileSystem :> es, Foldable f) => f Location -> Eff es (Diagnostic msg)
+loadReferencedFiles :: (File.FileSystem :> es, HasLocations l) => l -> Eff es (Diagnostic msg)
 loadReferencedFiles allLocations = do
   let getFilesIn (Location primary secondary) = (file primary) : map file secondary
-      files = List.nub $ foldMap getFilesIn allLocations
+      files = List.nub $ foldMap getFilesIn (extractLocations allLocations)
 
   foldM loadAndAddFile mempty files
   where
@@ -37,7 +41,23 @@ loadReferencedFiles allLocations = do
         if exists
           then BS8.toString <$> File8.readFile absolutePath
           else pure "file does not exist"
-      pure $ addFile diagnostic path contents
+      pure $ addFile diagnostic (trimPath path) contents
+
+-- | Trims away the irrelevant parts of the path, for displaying it.
+trimLoc :: Location -> Location
+trimLoc Location {positionsPrimary, positionsSecondary} =
+  Location
+    { positionsPrimary = trimPos positionsPrimary,
+      positionsSecondary = map trimPos positionsSecondary
+    }
+
+-- | Trims away the irrelevant parts of the path, for displaying it.
+trimPos :: Position -> Position
+trimPos pos@Position {file} = pos {file = trimPath file}
+
+-- | Trims away the irrelevant parts of the path, for displaying it.
+trimPath :: FilePath -> FilePath
+trimPath = takeFileName
 
 toAnnotatedDoc :: (Pretty msg) => Diagnostic msg -> Doc (Annotation ann)
 toAnnotatedDoc = prettyDiagnostic WithUnicode (TabSize 2)

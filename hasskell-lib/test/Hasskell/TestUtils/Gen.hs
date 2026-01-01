@@ -5,6 +5,7 @@ module Hasskell.TestUtils.Gen
     genWorldWithToggledAndTime,
     genWorldWithEntity,
     genWorldWithoutEntity,
+    genWorldWithoutThisEntity,
     genWorldWithKnownEntities,
     genWorldWithToggleds,
     genWorldWithToggleds',
@@ -125,6 +126,19 @@ genWorldWithKnownEntities known = do
 
 genObservedWorld :: Gen ObservedWorld
 genObservedWorld = MkObserved <$> genTimeOfDay <*> genWorld
+
+genWorldWithoutThisEntity :: (Proved IsEntity t) => Located (Exp Raw t) -> Gen ObservedWorld
+genWorldWithoutThisEntity entity = do
+  world <- genObservedWorld
+  let observed = observedWorld world
+      observedEntities = worldToggleables observed
+      knownEntityId = makeKnownEntityIdUnsafe (idOf entity)
+      worldWithoutEntity =
+        world
+          { observedWorld =
+              observed {worldToggleables = HMap.delete knownEntityId observedEntities}
+          }
+  pure worldWithoutEntity
 
 genWorldWithoutEntity :: Gen (SomeToggleable, ObservedWorld)
 genWorldWithoutEntity = do

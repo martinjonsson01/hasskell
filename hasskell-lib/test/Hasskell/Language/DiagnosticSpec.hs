@@ -16,12 +16,6 @@ import Test.Syd.Hedgehog ()
 spec :: Spec
 spec = do
   describe "Verifier diagnostic" $ do
-    it "warns about unknown entity" $ stagedGolden $ \goldenStage -> do
-      (SomeToggleable unknownEntity, observed) <- sample genWorldWithoutEntity
-      let (_, report) = verify observed (lightAlwaysOn unknownEntity)
-      renderedReport <- renderReport Plain report
-      goldenStage $ pureGoldenTextFile "test_resources/DiagnosticSpec/warn_unknown_entity.golden" renderedReport
-
     specify "suggests correct entity on typos" $
       property $ do
         let expectedMatch = "some_entity_name"

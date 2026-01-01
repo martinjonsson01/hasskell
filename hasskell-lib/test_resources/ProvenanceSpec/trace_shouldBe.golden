@@ -22,7 +22,7 @@ reason:
 will turn light `lightB` on
 reason:
     entity `lightB` should be on
-         ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/TestUtils/Specifications.hs@32:13-32:23
+         ╭──▶ Specifications.hs@32:13-32:23
          │
       32 │     (entity `shouldBe` fromState state)
          •             ┬───────── 
@@ -31,7 +31,7 @@ reason:
 
         │
         ├─▶ because literal
-             ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/TestUtils/Specifications.hs@32:24-32:33
+             ╭──▶ Specifications.hs@32:24-32:33
              │
           32 │     (entity `shouldBe` fromState state)
              •                        ┬──────── 

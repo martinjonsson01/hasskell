@@ -1,7 +1,7 @@
 will turn input_boolean `KguJtIhd` on
 reason:
     entity `KguJtIhd` should be on
-         ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@54:35-54:45
+         ╭──▶ ProvenanceSpec.hs@54:35-54:45
          │
       54 │                   `then_` (entity `shouldBe` on)
          •                                   ┬───────── 
@@ -10,7 +10,7 @@ reason:
 
         │
         ├─▶ because literal
-             ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@54:46-54:48
+             ╭──▶ ProvenanceSpec.hs@54:46-54:48
              │
           54 │                   `then_` (entity `shouldBe` on)
              •                                              ┬─ 
@@ -21,7 +21,7 @@ reason:
         ├─▶ because entity `KguJtIhd` is currently off
         │
         ├─▶ because branch was taken
-             ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@54:19-54:26
+             ╭──▶ ProvenanceSpec.hs@54:19-54:26
              │
           54 │                   `then_` (entity `shouldBe` on)
              •                   ┬────── 
@@ -30,7 +30,7 @@ reason:
 
             │
             ├─▶ because True
-                 ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@53:34-53:38
+                 ╭──▶ ProvenanceSpec.hs@53:34-53:38
                  │
               53 │               ( if_ (currentTime `is` time @14 @39)
                  •                                  ┬─── 
@@ -39,7 +39,7 @@ reason:
 
                 │
                 ├─▶ because 14:39:00
-                     ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@53:22-53:33
+                     ╭──▶ ProvenanceSpec.hs@53:22-53:33
                      │
                   53 │               ( if_ (currentTime `is` time @14 @39)
                      •                      ┬────────── 
@@ -50,7 +50,7 @@ reason:
                     ├─▶ because current time is 14:39:00
                 │
                 ├─▶ because 14:39:00
-                     ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@53:39-53:43
+                     ╭──▶ ProvenanceSpec.hs@53:39-53:43
                      │
                   53 │               ( if_ (currentTime `is` time @14 @39)
                      •                                       ┬─── 
@@ -59,7 +59,7 @@ reason:
 
                     │
                     ├─▶ because literal
-                         ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@53:39-53:43
+                         ╭──▶ ProvenanceSpec.hs@53:39-53:43
                          │
                       53 │               ( if_ (currentTime `is` time @14 @39)
                          •                                       ┬─── 

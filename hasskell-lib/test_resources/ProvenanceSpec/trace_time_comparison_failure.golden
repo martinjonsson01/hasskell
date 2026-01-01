@@ -1,7 +1,7 @@
 will turn input_boolean `KguJtIhd` on
 reason:
     entity `KguJtIhd` should be on
-         ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@85:35-85:45
+         ╭──▶ ProvenanceSpec.hs@85:35-85:45
          │
       85 │                   `else_` (entity `shouldBe` on)
          •                                   ┬───────── 
@@ -10,7 +10,7 @@ reason:
 
         │
         ├─▶ because literal
-             ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@85:46-85:48
+             ╭──▶ ProvenanceSpec.hs@85:46-85:48
              │
           85 │                   `else_` (entity `shouldBe` on)
              •                                              ┬─ 
@@ -21,7 +21,7 @@ reason:
         ├─▶ because entity `KguJtIhd` is currently off
         │
         ├─▶ because branch was taken
-             ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@85:19-85:26
+             ╭──▶ ProvenanceSpec.hs@85:19-85:26
              │
           85 │                   `else_` (entity `shouldBe` on)
              •                   ┬────── 
@@ -30,7 +30,7 @@ reason:
 
             │
             ├─▶ because 14:20:00 <= 14:39:00
-                 ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@83:34-83:49
+                 ╭──▶ ProvenanceSpec.hs@83:34-83:49
                  │
               83 │               ( if_ (currentTime `isGreaterThan` time @14 @39)
                  •                                  ┬────────────── 
@@ -39,7 +39,7 @@ reason:
 
                 │
                 ├─▶ because 14:20:00
-                     ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@83:22-83:33
+                     ╭──▶ ProvenanceSpec.hs@83:22-83:33
                      │
                   83 │               ( if_ (currentTime `isGreaterThan` time @14 @39)
                      •                      ┬────────── 
@@ -50,7 +50,7 @@ reason:
                     ├─▶ because current time is 14:20:00
                 │
                 ├─▶ because 14:39:00
-                     ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@83:50-83:54
+                     ╭──▶ ProvenanceSpec.hs@83:50-83:54
                      │
                   83 │               ( if_ (currentTime `isGreaterThan` time @14 @39)
                      •                                                  ┬─── 
@@ -59,7 +59,7 @@ reason:
 
                     │
                     ├─▶ because literal
-                         ╭──▶ /home/martin/Projects/hasskell/hasskell-lib/test/Hasskell/Language/ProvenanceSpec.hs@83:50-83:54
+                         ╭──▶ ProvenanceSpec.hs@83:50-83:54
                          │
                       83 │               ( if_ (currentTime `isGreaterThan` time @14 @39)
                          •                                                  ┬─── 

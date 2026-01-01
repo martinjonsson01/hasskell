@@ -1,0 +1,9 @@
+[warning]: Unknown entity referenced
+     ╭──▶ VerifierSpec.hs@18:27-18:32
+     │
+  18 │       let unknownEntity = light "some_unknown_entity"
+     •                           ┬──── 
+     •                           ╰╸ Unknown entity ID `some_unknown_entity`
+     •
+     │ Note: The entity ID may be misspelled.
+─────╯
