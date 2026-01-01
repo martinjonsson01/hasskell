@@ -34,11 +34,13 @@ module Hasskell.Language.AST
     HasEntityId (..),
     light,
     inputBoolean,
-    -- State
-    fromState,
+    -- Actions
     on,
     off,
     shouldBe,
+    nothing,
+    -- State
+    fromState,
     toggledStateOf,
     -- Logic
     if_,
@@ -489,6 +491,12 @@ shouldBe ::
   Located (Exp Raw 'TAction)
 shouldBe entity state = ESetState entity state :@ captureSrcSpan
 
+-- | A noop.
+nothing :: (HasCallStack) => Located (Exp Raw 'TAction)
+nothing = EDoNothing :@ captureSrcSpan
+
+--------------------------------------------------------------------------------
+
 -- | Gets the current toggle state of the given entity.
 toggledStateOf ::
   ( HasCallStack,
@@ -650,6 +658,6 @@ instance BuildableIf IfThenElse where
 -- | If-then expressions can be valid as well (the else is just a null action).
 instance BuildableIf IfThen where
   buildIf (IfThenB condExp thenExp) =
-    EIf condExp thenExp (EDoNothing :@ captureSrcSpan :@ captureSrcSpan) :@ captureSrcSpan
+    EIf condExp thenExp (nothing :@ captureSrcSpan) :@ captureSrcSpan
 
 --------------------------------------------------------------------------------

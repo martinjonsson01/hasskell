@@ -11,12 +11,14 @@ module Hasskell
     HasEntityId (..),
     light,
     inputBoolean,
-    -- State
-    ToggleState (..),
-    fromState,
+    -- Actions
     on,
     off,
     shouldBe,
+    nothing,
+    -- State
+    ToggleState (..),
+    fromState,
     toggledStateOf,
     -- Logic
     if_,
