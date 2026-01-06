@@ -77,6 +77,11 @@
             diagnose = jailbreakUnbreak hprev.diagnose;
             # Fails due to "`cc' failed in phase `Haskell C pre-processor'."
             path = hlib.dontCheck hprev.path;
+            # Fails due to "ghc-9.10.3: Haskell pre-processor: could not execute: doctest-discover"
+            doctest-discover = hlib.dontCheck hprev.doctest-discover;
+            # Tests don't compile.
+            xmlgen = hlib.dontCheck hprev.xmlgen;
+            HTF = hlib.dontCheck hprev.HTF;
           })
         ];
       });
