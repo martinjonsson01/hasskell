@@ -52,27 +52,27 @@ spec = do
       context ("expected: " <> ppShow expectedServices) $
         services `shouldSatisfy` HS.isSubsetOf expectedServices
 
-    setTimeout 1 . it "can subscribe to event updates" $ do
-      eventsVar <- STM.atomically $ newTVar []
-      let retryUntilEvent = do
-            events <- readTVar eventsVar
-            case NE.nonEmpty events of
-              Just eventsNE -> pure eventsNE
+    setTimeout 1 . it "can subscribe to changes" $ do
+      changesVar <- STM.atomically $ newTVar []
+      let retryUntilChange = do
+            changes <- readTVar changesVar
+            case NE.nonEmpty changes of
+              Just changesNE -> pure changesNE
               Nothing -> retry
           entity = inputBoolean "input_boolean.test"
           entityId = makeKnownEntityIdUnsafe (idOf entity)
 
-      events <-
+      changes <-
         runWithClient $ do
           -- Start with the boolean off.
           turnOff domainInputBoolean entityId
           -- Set up the subscriber.
-          subscribeToStateOf entityId (modifyTVar eventsVar . (:))
-          -- Trigger a change in the entity, so an event is generated.
+          subscribeToStateOf entityId (modifyTVar changesVar . (:))
+          -- Trigger an update in the entity, so a change is generated.
           turnOn domainInputBoolean entityId
-          -- Wait until the event is received.
-          atomically retryUntilEvent
+          -- Wait until the change is received.
+          atomically retryUntilChange
 
-      let event = NE.head events
-          getEventEntityId = triggeredEntityId . variablesTrigger . eventVariables
-      (getEventEntityId event) `Syd.shouldBe` entityId
+      let change = NE.head changes
+          getchangeEntityId = triggeredEntityId . variablesTrigger . changeVariables
+      (getchangeEntityId change) `Syd.shouldBe` entityId

@@ -4,7 +4,7 @@ module Hasskell.Effects.HASS
   ( -- Interactions with Home Assistant
     HASS (..),
     runHASS,
-    StateChangeEventHandler,
+    StateChangeHandler,
     -- Actions
     getConfig,
     getStates,
@@ -39,7 +39,7 @@ import Hasskell.Effects.Profiling
 import Hasskell.HomeAssistant.API
 import Prettyprinter
 
-type StateChangeEventHandler = HASSEvent -> STM ()
+type StateChangeHandler = HASSChange -> STM ()
 
 data HASS :: Effect where
   GetConfig :: HASS m HASSConfig
@@ -50,7 +50,7 @@ data HASS :: Effect where
   GetSupportedServicesOf :: KnownEntityId -> HASS m (HashMap HASSDomain (HashSet HASSServiceName))
   TurnOn :: HASSDomain -> KnownEntityId -> HASS m ()
   TurnOff :: HASSDomain -> KnownEntityId -> HASS m ()
-  SubscribeToStateOf :: KnownEntityId -> StateChangeEventHandler -> HASS m ()
+  SubscribeToStateOf :: KnownEntityId -> StateChangeHandler -> HASS m ()
 
 makeEffect ''HASS
 
@@ -86,13 +86,18 @@ runHASS action = do
     GetSupportedServicesOf entity -> sendGetSupportedServicesOf entity
     TurnOn domain entity -> callService domain serviceTurnOn entity
     TurnOff domain entity -> callService domain serviceTurnOff entity
-    SubscribeToStateOf entity handler -> createStateSubscription subscriptionsVar entity handler
+    SubscribeToStateOf entity handler ->
+      createSubscription
+        subscriptionsVar
+        platformState
+        entity
+        handler
 
   subscriptions <- atomically $ readTVar subscriptionsVar
   logDebug $
     "HASS interpreter finished, cancelling "
       <> T.show (HM.size subscriptions)
-      <> " subscription event handlers..."
+      <> " subscription change handlers..."
   cancelMany (HM.elems subscriptions)
 
   pure result
@@ -107,21 +112,22 @@ sendGetSupportedServicesOf =
     . CommandGetServicesForTarget
     . targetEntity
 
-createStateSubscription ::
+createSubscription ::
   ( HASSConnection :> es,
     Concurrent :> es
   ) =>
   TVar (HashMap CorrelationId (Async ())) ->
+  HASSPlatform ->
   KnownEntityId ->
-  StateChangeEventHandler ->
+  StateChangeHandler ->
   Eff es ()
-createStateSubscription subscriptionsVar eId handler = do
+createSubscription subscriptionsVar platform eId handler = do
   (subscriptionId, ()) <-
     sendMessageGetId
       ( CommandSubscribeTrigger
           { commandTrigger =
               Trigger
-                { triggerPlatform = "state",
+                { triggerPlatform = platform,
                   triggerEntityId = eId,
                   triggerFrom = Nothing,
                   triggerTo = Nothing
@@ -129,12 +135,12 @@ createStateSubscription subscriptionsVar eId handler = do
           }
       )
 
-  eventListener <- async $ do
-    event <- receiveEvent subscriptionId
-    atomically $ handler event
-  link eventListener
+  changeListener <- async $ do
+    change <- receiveChange subscriptionId
+    atomically $ handler change
+  link changeListener
 
-  atomically $ modifyTVar subscriptionsVar (HM.insert subscriptionId eventListener)
+  atomically $ modifyTVar subscriptionsVar (HM.insert subscriptionId changeListener)
 
 callService :: (HASSConnection :> es) => HASSDomain -> HASSServiceName -> KnownEntityId -> Eff es ()
 callService domain service entityId =

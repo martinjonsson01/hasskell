@@ -17,10 +17,10 @@ watchStates ::
     HasReferencedEntities e
   ) =>
   e ->
-  Eff es (TBQueue HASSEvent)
+  Eff es (TBQueue HASSChange)
 watchStates toWatch = do
-  eventQueue <- atomically $ newTBQueue 100
+  changeQueue <- atomically $ newTBQueue 100
   let entities = referencedEntitiesIn toWatch
   forM_ entities $ \entity -> do
-    subscribeToStateOf (makeKnownEntityIdUnsafe entity) (writeTBQueue eventQueue)
-  pure eventQueue
+    subscribeToStateOf (makeKnownEntityIdUnsafe entity) (writeTBQueue changeQueue)
+  pure changeQueue

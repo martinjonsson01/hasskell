@@ -3,7 +3,7 @@ module Hasskell.TestUtils.MockHASS
     recordHASSCommands,
     recordConcurrentHASSCommands,
     NoExplanation (..),
-    TestStateChangeEventHandler (..),
+    TestStateChangeHandler (..),
     anyHandler,
   )
 where
@@ -26,16 +26,16 @@ data HASSOp
   = Unknown
   | TurnOn KnownEntityId
   | TurnOff KnownEntityId
-  | EntitySubscribe KnownEntityId TestStateChangeEventHandler
+  | EntitySubscribe KnownEntityId TestStateChangeHandler
   deriving (Eq, Show)
 
-newtype TestStateChangeEventHandler = Handler HASS.StateChangeEventHandler
+newtype TestStateChangeHandler = Handler HASS.StateChangeHandler
 
-instance Eq TestStateChangeEventHandler where
+instance Eq TestStateChangeHandler where
   (Handler _) == (Handler _) = True
 
-instance Show TestStateChangeEventHandler where
-  show _ = "Some state change event handler"
+instance Show TestStateChangeHandler where
+  show _ = "Some state change handler"
 
 recordConcurrentHASSCommands :: Eff '[HASS, Concurrent, IOE] a -> IO (a, [HASSOp])
 recordConcurrentHASSCommands = runEff . runConcurrent . runWithFakeHASS
@@ -73,7 +73,7 @@ runWithFakeHASS = reinterpret_ (runState []) $ \action -> case action of
     modify (EntitySubscribe entity (Handler handler) :)
     pure ()
 
-anyHandler :: TestStateChangeEventHandler
+anyHandler :: TestStateChangeHandler
 anyHandler = Handler $ const (pure ())
 
 data NoExplanation = NoExplanation

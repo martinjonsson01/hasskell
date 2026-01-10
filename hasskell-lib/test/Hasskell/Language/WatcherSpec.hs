@@ -32,16 +32,16 @@ spec = do
         executedCommands === [EntitySubscribe eId anyHandler]
 
     setTimeout 1 $
-      specify "adds state change events to queue" $
+      specify "adds state changes to queue" $
         property $ do
           state <- forAll genToggleState
           SomeToggleable entity (ObservedEntity eId _ _) <- forAll genEntity
           let lightPolicy = lightAlways state entity
-          (eventQueue, executedCommands) <- liftIO $ recordConcurrentHASSCommands (watchStates lightPolicy)
+          (changeQueue, executedCommands) <- liftIO $ recordConcurrentHASSCommands (watchStates lightPolicy)
           case fromJust $ L.uncons executedCommands of
-            (EntitySubscribe _ (Handler triggerEvent), _) -> do
-              event <- forAll (genStateChangeEvent eId Off On)
-              liftIO $ STM.atomically $ triggerEvent event
-              queuedEvents <- liftIO $ STM.atomically $ STM.readTBQueue eventQueue
-              queuedEvents === event
+            (EntitySubscribe _ (Handler triggerChange), _) -> do
+              change <- forAll (genStateChange eId Off On)
+              liftIO $ STM.atomically $ triggerChange change
+              queuedChanges <- liftIO $ STM.atomically $ STM.readTBQueue changeQueue
+              queuedChanges === change
             _ -> failure

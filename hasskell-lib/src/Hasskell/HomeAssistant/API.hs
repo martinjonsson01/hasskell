@@ -12,22 +12,38 @@ module Hasskell.HomeAssistant.API
     HASSResult (..),
     HASSFailure (..),
     HASSConfig (..),
+    HASSState (..),
+    HASSActionResult (..),
+    HASSUnitSystem (..),
+    HASSTrigger (..),
+    HASSStateValue,
+    HASSVariables (..),
+    HASSTriggered (..),
+    HASSContext (..),
+    -- | Entities
     EntityId (..),
     KnownEntityId,
     makeKnownEntityIdUnsafe,
     unwrapKnownEntityId,
     HASSEntity (..),
+    -- | Devices
+    DeviceId (..),
+    KnownDeviceId,
+    makeKnownDeviceIdUnsafe,
+    unwrapKnownDeviceId,
     HASSDevice (..),
-    HASSState (..),
-    HASSActionResult (..),
-    HASSUnitSystem (..),
-    HASSTrigger (..),
+    HASSDeviceConnection (..),
+    HASSIdentifier (..),
+    -- | Subscriptions
+    HASSChange (..),
     HASSPlatform,
-    HASSStateValue,
+    platformEvent,
+    platformState,
+    -- | Events
     HASSEvent (..),
-    HASSVariables (..),
-    HASSTriggered (..),
-    HASSContext (..),
+    HASSEventType,
+    eventTypeEntityRegistryUpdated,
+    eventTypeDeviceRegistryUpdated,
     -- Targeting
     HASSTarget (..),
     targetEntity,
@@ -57,6 +73,7 @@ import Data.Aeson.Types (typeMismatch)
 import Data.Char (toLower)
 import Data.Coerce
 import Data.Foldable (toList)
+import Data.HashMap.Strict (HashMap)
 import Data.Hashable
 import Data.List qualified as L
 import Data.Map.Lazy qualified as M
@@ -193,7 +210,18 @@ instance WS.WebSocketsData HASSCommand where
   fromDataMessage = unimplemented
   toLazyByteString = encode
 
-type HASSPlatform = Text
+newtype HASSPlatform = Platform {platformName :: Text}
+  deriving (Show, Eq, Ord)
+  deriving (FromJSON, ToJSON, Hashable) via Text
+
+instance Pretty HASSPlatform where
+  pretty Platform {platformName} = pretty platformName
+
+platformState :: HASSPlatform
+platformState = Platform "state"
+
+platformEvent :: HASSPlatform
+platformEvent = Platform "event"
 
 type HASSStateValue = Text
 
@@ -209,7 +237,7 @@ data HASSTrigger = Trigger
 
 data HASSTarget = Target
   { targetEntityId :: [KnownEntityId],
-    targetDeviceId :: [Text],
+    targetDeviceId :: [KnownDeviceId],
     targetAreaId :: [Text],
     targetLabelId :: [Text]
   }
@@ -226,7 +254,7 @@ targetEntity eId =
       targetAreaId = mempty
     }
 
-data HASSResponse = ResponseResult (HASSResult Value) | ResponseEvent HASSEvent
+data HASSResponse = ResponseResult (HASSResult Value) | ResponseChange HASSChange
   deriving (Eq, Show)
 
 instance FromJSON HASSResponse where
@@ -234,7 +262,9 @@ instance FromJSON HASSResponse where
     t :: String <- o .: "type"
     case t of
       "result" -> ResponseResult <$> parseJSON (Object o)
-      "event" -> o .: "event" >>= (ResponseEvent <$>) . parseJSON
+      -- The api calls these "events", but they're separate from the "event" platform
+      -- so in order to not confuse them, we refer to them as "changes".
+      "event" -> o .: "event" >>= (ResponseChange <$>) . parseJSON
       other -> fail $ "Expected type=result|event, got: " ++ show other
 
 data HASSResult a = Result {value :: Either HASSFailure a}
@@ -343,7 +373,7 @@ data HASSEntity = MkEntity
     entityModifiedAt :: UnixUTC,
     entityOptions :: KeyMap Value,
     entityLabels :: [Text],
-    entityDeviceId :: Maybe Text,
+    entityDeviceId :: Maybe KnownDeviceId,
     entityConfigEntryId :: Maybe Text,
     entityAreaId :: Maybe Text,
     entityConfigSubentryId :: Maybe Text,
@@ -374,17 +404,78 @@ instance ToJSON HASSSoftwareVersion where
   toJSON (MkSwVersion [t]) = String t
   toJSON (MkSwVersion ts) = toJSON ts
 
+-- | Each connection uniquely defines a device entry, meaning another device can't have the same connection.
+data HASSDeviceConnection = Connection
+  { connectionType :: Text,
+    connectionIdentifier :: Text
+  }
+  deriving (Eq, Show)
+
+instance ToJSON HASSDeviceConnection where
+  toJSON (Connection t i) = toJSON (t, i)
+  toEncoding (Connection t i) = toEncoding (t, i)
+
+instance FromJSON HASSDeviceConnection where
+  parseJSON v = do
+    (connType, connId) <- parseJSON v
+    pure $ Connection connType connId
+
+instance Pretty HASSDeviceConnection where
+  pretty Connection {connectionType, connectionIdentifier} =
+    pretty connectionType <> ":" <+> pretty connectionIdentifier
+
+-- | Identifiers identify the device in the outside world. An example is a serial number.
+data HASSIdentifier = Identifier
+  { identifierDomain :: HASSDomain,
+    identifier :: Text
+  }
+  deriving (Eq, Show)
+
+instance ToJSON HASSIdentifier where
+  toJSON (Identifier t i) = toJSON (t, i)
+  toEncoding (Identifier t i) = toEncoding (t, i)
+
+instance FromJSON HASSIdentifier where
+  parseJSON v = do
+    (idDomain, identifier) <- parseJSON v
+    pure $ Identifier idDomain identifier
+
+instance Pretty HASSIdentifier where
+  pretty Identifier {identifierDomain, identifier} =
+    pretty identifierDomain <> ":" <+> pretty identifier
+
+-- | A device ID that may or may not refer to a real device.
+newtype DeviceId = DeviceId {unwrapDeviceId :: Text}
+  deriving (Show, Eq, Ord)
+  deriving (FromJSON, ToJSON, Hashable) via Text
+
+-- | A device ID that has been confirmed to refer to an existing device.
+newtype KnownDeviceId = KnownDevice {unwrapKnownDeviceId :: DeviceId}
+  deriving (Eq, Ord, Show)
+  deriving (Pretty) via DeviceId
+  deriving (FromJSON, ToJSON, Hashable) via Text
+
+-- | Creates a device ID without any verification that it is valid.
+makeKnownDeviceIdUnsafe :: DeviceId -> KnownDeviceId
+makeKnownDeviceIdUnsafe = coerce
+
+instance Pretty DeviceId where
+  pretty (DeviceId dId) = enclose leftBracket rightBracket (pretty dId)
+    where
+      leftBracket = pretty ("[" :: Text)
+      rightBracket = pretty ("]" :: Text)
+
 -- | Represents a Home Assistant device.
 data HASSDevice = MkDevice
   { deviceName :: Text,
-    deviceId :: Text,
+    deviceId :: DeviceId,
     deviceModifiedAt :: UnixUTC,
     deviceCreatedAt :: UnixUTC,
     deviceSwVersion :: HASSSoftwareVersion,
     deviceLabels :: [Text],
     deviceConfigEntries :: [Text],
-    deviceConnections :: [[Text]],
-    deviceIdentifiers :: [[Text]],
+    deviceConnections :: [HASSIdentifier],
+    deviceIdentifiers :: [HASSDeviceConnection],
     deviceConfigEntriesSubentries :: KeyMap Value,
     devicePrimaryConfigEntry :: Maybe Text,
     deviceAreaId :: Maybe Text,
@@ -461,12 +552,59 @@ data HASSService = Service
   deriving (Generic, Eq, Show)
   deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "service") HASSService
 
--- | An event emitted by a subscription.
-data HASSEvent = Event
-  { eventVariables :: HASSVariables
-  }
+-- | A notification emitted by a subscription.
+data HASSChange = Change {changeVariables :: HASSVariables}
+  deriving (Generic, Eq, Show)
+  deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "change") HASSChange
+
+-- | The different types of possible event types.
+newtype HASSEventType = EventType Text
+  deriving (Show, Eq, Ord)
+  deriving (FromJSON, ToJSON, Hashable) via Text
+
+-- | Emitted when the entity registry changes (entity deleted, added, updated).
+eventTypeEntityRegistryUpdated :: HASSEventType
+eventTypeEntityRegistryUpdated = EventType "entity_registry_updated"
+
+-- | Emitted when the device registry changes (device deleted, added, updated).
+eventTypeDeviceRegistryUpdated :: HASSEventType
+eventTypeDeviceRegistryUpdated = EventType "device_registry_updated"
+
+-- | Not all events have the "event_type" discriminator, but these do and are thus uniform.
+data HASSEvent
+  = EventEntityRegistryUpdated
+      { eventEntityData :: HASSRegistryUpdate KnownEntityId,
+        eventOrigin :: HASSEventOrigin,
+        eventTimeFired :: UTCTime,
+        eventContext :: HASSContext
+      }
+  | EventDeviceRegistryUpdated
+      { eventDeviceData :: HASSRegistryUpdate KnownDeviceId,
+        eventOrigin :: HASSEventOrigin,
+        eventTimeFired :: UTCTime,
+        eventContext :: HASSContext
+      }
   deriving (Generic, Eq, Show)
   deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "event") HASSEvent
+
+-- | Data associated with an object (i.e. entity/device) registry update event.
+data HASSRegistryUpdate id = EntityEventData
+  { registryAction :: HASSRegistryAction,
+    registryObjectId :: id,
+    registryChanges :: HashMap Text Text
+  }
+  deriving (Generic, Eq, Show)
+  deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "entityEvent") (HASSRegistryUpdate id)
+
+-- | Where an event originated from.
+data HASSEventOrigin = OriginLocal
+  deriving (Generic, Eq, Show)
+  deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "origin") HASSEventOrigin
+
+-- | Possible changes to an entity or device registry.
+data HASSRegistryAction = RegistryCreate | RegistryUpdate | RegistryRemove
+  deriving (Generic, Eq, Show)
+  deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "registry") HASSRegistryAction
 
 -- | Variables associated with an event.
 data HASSVariables = Variables

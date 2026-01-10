@@ -5,7 +5,7 @@ module Hasskell.Effects.HASSConnection
     HASSConnection,
     sendMessage,
     sendMessageGetId,
-    receiveEvent,
+    receiveChange,
     runWithHASSWebSocket,
     HASSWebSocketError (..),
   )
@@ -43,7 +43,7 @@ data SomeHASSMessage = forall a. (ToJSON a) => SomeMessage a
 data HASSConnection :: Effect where
   SendMessage :: (ToJSON a, FromJSON b) => a -> HASSConnection m b
   SendMessageGetId :: (ToJSON a, FromJSON b) => a -> HASSConnection m (CorrelationId, b)
-  ReceiveEvent :: CorrelationId -> HASSConnection m HASSEvent
+  ReceiveChange :: CorrelationId -> HASSConnection m HASSChange
 
 makeEffect ''HASSConnection
 
@@ -72,15 +72,15 @@ runWithHASSWebSocket ::
   Eff es a
 runWithHASSWebSocket action = do
   receiveMap <- BM.newBoundedMap 100
-  eventMap <- BM.newBoundedMap 100
+  changeMap <- BM.newBoundedMap 100
   sendQueue <- atomically $ newTBQueue 100
 
-  let websocket = runWebSocket receiveMap eventMap sendQueue
+  let websocket = runWebSocket receiveMap changeMap sendQueue
       interpreter =
         interpretWith_ action $ \case
           SendMessage message -> snd <$> handleSendMessage sendQueue receiveMap message
           SendMessageGetId message -> handleSendMessage sendQueue receiveMap message
-          ReceiveEvent subscriptionId -> BM.remove subscriptionId eventMap
+          ReceiveChange subscriptionId -> BM.remove subscriptionId changeMap
 
   race websocket interpreter >>= \result -> do
     case result of
@@ -131,10 +131,10 @@ runWebSocket ::
     IOE :> es
   ) =>
   BoundedMap CorrelationId (HASSResult Value) ->
-  BoundedMap CorrelationId HASSEvent ->
+  BoundedMap CorrelationId HASSChange ->
   TBQueue (Envelope SomeHASSMessage) ->
   Eff es ()
-runWebSocket receiveMap eventMap sendQueue = do
+runWebSocket receiveMap changeMap sendQueue = do
   config <- getConfig
   let logConfig = logging config
       socketUrl = T.unpack $ baseUrl config
@@ -145,7 +145,7 @@ runWebSocket receiveMap eventMap sendQueue = do
           . runMapError WebSocketLogError
           . runLogger logConfig
           . runConcurrent
-          . handleWebsocket receiveMap eventMap sendQueue
+          . handleWebsocket receiveMap changeMap sendQueue
   logDebug "starting websocket..."
   ( liftIO $
       WS.runClient
@@ -164,11 +164,11 @@ handleWebsocket ::
     Error HASSWebSocketError :> es
   ) =>
   BoundedMap CorrelationId (HASSResult Value) ->
-  BoundedMap CorrelationId HASSEvent ->
+  BoundedMap CorrelationId HASSChange ->
   TBQueue (Envelope SomeHASSMessage) ->
   WS.Connection ->
   Eff es ()
-handleWebsocket receiveMap eventMap sendQueue connection = do
+handleWebsocket receiveMap changeMap sendQueue connection = do
   logDebug "authenticating..."
   authenticate connection
   logDebug "authenticated!"
@@ -179,7 +179,7 @@ handleWebsocket receiveMap eventMap sendQueue connection = do
           Envelope responseId response <- liftEither responseData
           case response :: HASSResponse of
             ResponseResult result -> BM.insert responseId result receiveMap
-            ResponseEvent event -> BM.insert responseId event eventMap
+            ResponseChange change -> BM.insert responseId change changeMap
 
       sender = forever $ do
         Envelope envelopeId (SomeMessage message) <- atomically $ readTBQueue sendQueue
