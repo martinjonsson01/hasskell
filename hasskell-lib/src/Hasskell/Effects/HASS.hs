@@ -18,6 +18,7 @@ module Hasskell.Effects.HASS
   )
 where
 
+import Control.Monad
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HM
 import Data.HashSet (HashSet)
@@ -135,7 +136,7 @@ createSubscription subscriptionsVar platform eId handler = do
           }
       )
 
-  changeListener <- async $ do
+  changeListener <- async $ forever $ do
     change <- receiveChange subscriptionId
     atomically $ handler change
   link changeListener
