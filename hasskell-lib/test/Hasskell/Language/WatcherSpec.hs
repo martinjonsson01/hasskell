@@ -41,7 +41,8 @@ spec = do
           case fromJust $ L.uncons executedCommands of
             (EntitySubscribe _ (Handler triggerChange), _) -> do
               change <- forAll (genStateChange eId Off On)
+              observedChange <- forAll (genObservedChange eId On)
               liftIO $ STM.atomically $ triggerChange change
               queuedChanges <- liftIO $ STM.atomically $ STM.readTBQueue changeQueue
-              queuedChanges === change
+              queuedChanges === observedChange
             _ -> failure

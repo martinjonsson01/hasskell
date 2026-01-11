@@ -3,7 +3,7 @@ module Hasskell.Language.World
     ToggleState (..),
     toggle,
     -- Observations
-    ObservedEvent (..),
+    ObservedChange (..),
     ObservedWorld (..),
     ObservedEntity (..),
     -- Operations
@@ -53,7 +53,7 @@ instance Pretty ToggleState where
   pretty Off = "off"
 
 -- | Something that has happened that may affect the world state.
-data ObservedEvent = StateChanged KnownEntityId ToggleState
+data ObservedChange = StateChanged KnownEntityId ToggleState
   deriving (Eq, Ord, Show)
 
 --------------------------------------------------------------------------------
@@ -131,7 +131,7 @@ filterStates interestingEntities =
       )
 
 -- | Updates the state of the world with a new observation.
-updateWorld :: ObservedWorld -> ObservedEvent -> ObservedWorld
+updateWorld :: ObservedWorld -> ObservedChange -> ObservedWorld
 updateWorld world@MkObserved {observedWorld = observedWorld@MkWorld {worldEntities}} (StateChanged eId newState) =
   world
     { observedWorld =

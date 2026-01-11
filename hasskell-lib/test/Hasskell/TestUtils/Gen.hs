@@ -29,6 +29,7 @@ module Hasskell.TestUtils.Gen
     genPolicy,
     -- | API response generators
     genStateChange,
+    genObservedChange,
   )
 where
 
@@ -313,6 +314,9 @@ genPosition :: Gen Position
 genPosition = pure $ Position {begin = (-1, -1), end = (-1, -1), file = "Generated"}
 
 --------------------------------------------------------------------------------
+
+genObservedChange :: KnownEntityId -> ToggleState -> Gen ObservedChange
+genObservedChange eId to = pure $ StateChanged eId to
 
 genStateChange :: KnownEntityId -> ToggleState -> ToggleState -> Gen HASSChange
 genStateChange eId from to = Change <$> genVariables eId from to

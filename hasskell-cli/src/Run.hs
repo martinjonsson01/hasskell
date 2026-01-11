@@ -12,6 +12,9 @@ import System.IO.Error (userError)
 flaktlampa :: ExprLight
 flaktlampa = light "light.flaktlampa"
 
+test :: ExprInputBoolean
+test = inputBoolean "input_boolean.test"
+
 run :: RIO App ()
 run = do
   maybeToken <- optionsHassToken <$> asks appOptions
@@ -36,7 +39,7 @@ run = do
       )
     $ policy
       "toggle light"
-      ( if_ (toggledStateOf flaktlampa `is` on)
-          `then_` (flaktlampa `shouldBe` off)
-          `else_` (flaktlampa `shouldBe` on)
+      ( if_ (toggledStateOf test `is` on)
+          `then_` (flaktlampa `shouldBe` on)
+          `else_` (flaktlampa `shouldBe` off)
       )

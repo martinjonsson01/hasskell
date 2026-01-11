@@ -1,6 +1,7 @@
 module Hasskell
   ( -- Main entrypoint
     runHasskell,
+    runHasskellOnce,
     -- Configuration
     Config (..),
     LoggingConfig (..),
@@ -35,6 +36,7 @@ module Hasskell
     time,
     -- Expression types
     ExprLight,
+    ExprInputBoolean,
   )
 where
 
@@ -42,6 +44,7 @@ import Control.Monad
 import Control.Monad.Except
 import Data.Either.HT
 import Data.Text qualified as T
+import Effectful.Concurrent.STM
 import Hasskell.Config
 import Hasskell.Effects.Logging
 import Hasskell.HomeAssistant.Client
@@ -50,6 +53,7 @@ import Hasskell.Language.Executor
 import Hasskell.Language.Reconciler
 import Hasskell.Language.Report
 import Hasskell.Language.Verifier
+import Hasskell.Language.Watcher
 import Hasskell.Language.World
 import System.Directory qualified as Dir
 
@@ -57,11 +61,21 @@ import System.Directory qualified as Dir
 
 type ExprLight = Located (Exp Raw 'TEntityLight)
 
+type ExprInputBoolean = Located (Exp Raw 'TEntityInputBoolean)
+
 ----------------------------------------------------------------------------------
 
--- | Executes the given specification against the configured Home Assistant instance.
+-- | Executes the given specification against the configured Home Assistant instance once.
+runHasskellOnce :: Config -> RawSpecification -> IO ()
+runHasskellOnce = runHasskell' (void . innerRunHasskellOnce)
+
+-- | Executes the given specification against the configured Home Assistant instance,
+-- re-running on every relevant change in Home Assistant.
 runHasskell :: Config -> RawSpecification -> IO ()
-runHasskell config spec = do
+runHasskell = runHasskell' innerRunHasskellLoop
+
+runHasskell' :: (RawSpecification -> ClientM ()) -> Config -> RawSpecification -> IO ()
+runHasskell' inner config spec = do
   -- Need to set the working dir in order for call stack traces to be correctly
   -- captured (to be shown in diagnostics).
   case workingDir config of
@@ -69,14 +83,39 @@ runHasskell config spec = do
     Nothing -> pure ()
   runClient
     config
-    (innerRunHasskell spec)
+    (inner spec)
     >>= liftEither . mapLeft (userError . show)
 
-innerRunHasskell :: RawSpecification -> ClientM ()
-innerRunHasskell spec = do
-  observed <- collectCurrentState spec
-  let (verifiedPlan, report) = verify observed spec
-      plan = reconcile observed verifiedPlan
+innerRunHasskellOnce :: RawSpecification -> ClientM ObservedWorld
+innerRunHasskellOnce spec = do
+  initialWorld <- collectCurrentState spec
+  syncWorld spec initialWorld
+  pure initialWorld
+
+innerRunHasskellLoop :: RawSpecification -> ClientM ()
+innerRunHasskellLoop spec = do
+  changeQueue <- watchStates spec
+  initialWorld <- innerRunHasskellOnce spec
+  reconciliationLoop changeQueue initialWorld spec
+
+reconciliationLoop ::
+  TBQueue ObservedChange ->
+  ObservedWorld ->
+  RawSpecification ->
+  ClientM ()
+reconciliationLoop changeQueue initialWorld spec = do
+  let loop world = do
+        -- Block until there's been a change.
+        change <- atomically $ readTBQueue changeQueue
+        let updatedWorld = updateWorld world change
+        syncWorld spec updatedWorld
+        loop updatedWorld
+  loop initialWorld
+
+syncWorld :: RawSpecification -> ObservedWorld -> ClientM ()
+syncWorld spec world = do
+  let (verifiedPlan, report) = verify world spec
+      plan = reconcile world verifiedPlan
   reportText <- renderReport Rich report
   unless (T.null reportText) $ logWarn reportText
   renderedPlan <- renderPlanTrace Rich plan

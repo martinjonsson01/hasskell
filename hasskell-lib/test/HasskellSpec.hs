@@ -13,7 +13,7 @@ spec = do
 
   describe "Hasskell" $ do
     it "runs specification without error" $ do
-      runHasskell config realEntityAlwaysOn
+      runHasskellOnce config realEntityAlwaysOn
 
 getConfig :: IO Config
 getConfig = do
