@@ -1,5 +1,24 @@
 # TODO
 
+## Home Assistant feature parity
+
+- reading sensors
+  - temperature types
+  - occupancy types
+- triggers
+  - clock time
+  - been in state n for x duration
+- derived sensors
+  - don't use HASS implementations
+  - reimplement in hasskell
+  - e.g.
+    - statistics
+    - helpers
+    - bayesian
+- setting light
+  - color temperature
+  - brightness
+
 ## QoL
 
 - check device connection type, and if they're wifi and all wifi devices
