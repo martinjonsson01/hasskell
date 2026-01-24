@@ -5,6 +5,7 @@ module Hasskell.Effects.HASSConnection
     HASSConnection,
     sendMessage,
     sendMessageGetId,
+    sendRequest,
     receiveChange,
     runWithHASSWebSocket,
     HASSWebSocketError (..),
@@ -15,27 +16,36 @@ import Control.Monad
 import Control.Placeholder
 import Data.Aeson
 import Data.Aeson.Encode.Pretty (encodePretty)
+import Data.ByteString qualified as B
+import Data.ByteString.Char8 qualified as C8
 import Data.ByteString.Lazy qualified as BL
+import Data.List qualified as L
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TLE
+import Data.Time
+import Data.Time.Format.ISO8601
 import Effectful
 import Effectful.Concurrent
 import Effectful.Concurrent.Async
 import Effectful.Concurrent.STM
 import Effectful.Dispatch.Dynamic (interpretWith_)
 import Effectful.Error.Static
+import Effectful.Exception
 import Effectful.TH
 import Hasskell.Config
 import Hasskell.Effects.BoundedMap (BoundedMap)
 import Hasskell.Effects.BoundedMap qualified as BM
 import Hasskell.Effects.Counter
 import Hasskell.Effects.Logging
+import Hasskell.Effects.Time
 import Hasskell.Effects.Utils
 import Hasskell.HomeAssistant.API
 import Hasskell.HomeAssistant.Version
+import Network.HTTP.Client.Conduit
+import Network.HTTP.Simple
 import Network.WebSockets qualified as WS
 
 data SomeHASSMessage = forall a. (ToJSON a) => SomeMessage a
@@ -43,6 +53,7 @@ data SomeHASSMessage = forall a. (ToJSON a) => SomeMessage a
 data HASSConnection :: Effect where
   SendMessage :: (ToJSON a, FromJSON b) => a -> HASSConnection m b
   SendMessageGetId :: (ToJSON a, FromJSON b) => a -> HASSConnection m (CorrelationId, b)
+  SendRequest :: (FromJSON b) => HASSRequest -> HASSConnection m b
   ReceiveChange :: CorrelationId -> HASSConnection m HASSChange
 
 makeEffect ''HASSConnection
@@ -56,12 +67,14 @@ data HASSWebSocketError
   | InvalidAuthentication Text
   | WebSocketLogError LogError
   | CommandFailure HASSFailure
+  | HttpRequestFailure HttpException
   | IncompatibleVersion HASSVersion
   | WebSocketDied
-  deriving (Eq, Show)
+  deriving (Show)
 
 runWithHASSWebSocket ::
   ( IOE :> es,
+    Time :> es,
     Counter :> es,
     Concurrent :> es,
     Error HASSWebSocketError :> es,
@@ -80,6 +93,7 @@ runWithHASSWebSocket action = do
         interpretWith_ action $ \case
           SendMessage message -> snd <$> handleSendMessage sendQueue receiveMap message
           SendMessageGetId message -> handleSendMessage sendQueue receiveMap message
+          SendRequest request -> handleSendRequest request
           ReceiveChange subscriptionId -> BM.remove subscriptionId changeMap
 
   race websocket interpreter >>= \result -> do
@@ -90,6 +104,59 @@ runWithHASSWebSocket action = do
       Right b -> do
         logDebug "HASSConnection interpreter finished, killing web socket..."
         pure b
+
+handleSendRequest ::
+  ( Error HASSWebSocketError :> es,
+    IOE :> es,
+    Time :> es,
+    Configured :> es,
+    FromJSON b
+  ) =>
+  HASSRequest ->
+  Eff es b
+handleSendRequest = \case
+  RequestStateHistory offset entities -> do
+    let entityFilter = T.intercalate "," (map (unwrapEntityId . unwrapKnownEntityId) entities)
+    currentTime <- getCurrentUTCTime
+    let periodStart = addUTCTime (-offset) currentTime
+        periodEnd = C8.pack (toUTCString currentTime)
+    response <-
+      sendHttpRequest
+        ["/api/history/period/" <> toUTCString periodStart]
+        [ ("filter_entity_id", Just (TE.encodeUtf8 entityFilter)),
+          ("end_time", Just periodEnd), -- history up until now
+          ("minimal_response", Nothing), -- only return last_changed and state (much faster)
+          ("no_attributes", Nothing) -- skip returning attributes (much faster)
+        ]
+    responseValue <- liftEither (parseEither (getResponseBody response))
+    convertFromJSON responseValue
+
+toUTCString :: UTCTime -> String
+toUTCString =
+  formatShow
+    ( utcTimeFormat
+        (calendarFormat ExtendedFormat)
+        (timeOfDayFormat ExtendedFormat)
+    )
+
+sendHttpRequest ::
+  ( Error HASSWebSocketError :> es,
+    IOE :> es,
+    Configured :> es
+  ) =>
+  [String] ->
+  [(B.ByteString, Maybe B.ByteString)] ->
+  Eff es (Response BL.ByteString)
+sendHttpRequest pathSegments queryParams = do
+  base <- baseUrl <$> getConfig
+  let path = L.intercalate "/" pathSegments
+  result <- try $ do
+    request <- parseUrlThrow ("https://" <> T.unpack base <> path)
+    token <- TE.encodeUtf8 . token <$> getConfig
+    let authorizedRequest = applyBearerAuth token request
+        authorizedQueryRequest = setQueryString queryParams authorizedRequest
+    httpLBS authorizedQueryRequest
+  liftEither $ leftMap HttpRequestFailure $ result
 
 handleSendMessage ::
   ( ToJSON a,
@@ -112,13 +179,17 @@ handleSendMessage sendQueue receiveMap message = do
 
   result <- liftEither $ leftMap CommandFailure $ value response
 
-  case fromJSON result of
+  (requestId,) <$> convertFromJSON result
+
+convertFromJSON :: (Error HASSWebSocketError :> es, FromJSON b) => Value -> Eff es b
+convertFromJSON string =
+  case fromJSON string of
     Error errorMessage ->
       throwError $
         ParserError
-          (TE.decodeUtf8 $ BL.toStrict $ encodePretty result)
+          (TE.decodeUtf8 $ BL.toStrict $ encodePretty string)
           (T.pack errorMessage)
-    Success value -> pure (requestId, value)
+    Success value -> pure value
 
 leftMap :: (a -> c) -> Either a b -> Either c b
 leftMap f (Left l) = Left (f l)

@@ -5,6 +5,7 @@ import Data.HashMap.Strict qualified as HM
 import Data.HashSet qualified as HS
 import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
+import Data.Time.Clock
 import Effectful.Concurrent.STM
 import Hasskell.Effects.HASS
 import Hasskell.HomeAssistant.API
@@ -51,6 +52,17 @@ spec = do
           expectedServices = HS.fromList [serviceTurnOff, serviceTurnOff, serviceToggle]
       context ("expected: " <> ppShow expectedServices) $
         services `shouldSatisfy` HS.isSubsetOf expectedServices
+
+    it "can get entities' state history" $ do
+      let entity1 = inputBoolean "input_boolean.test"
+          entity2 = light "light.flaktlampa"
+          eId1 = makeKnownEntityIdUnsafe (idOf entity1)
+          eId2 = makeKnownEntityIdUnsafe (idOf entity2)
+      entityStates <- runWithClient (getStateHistoryOf nominalDay [eId1, eId2])
+      let states1 = entityStates HM.! eId1
+          states2 = entityStates HM.! eId2
+      length states1 `shouldNotBe` 0
+      length states2 `shouldNotBe` 0
 
     setTimeout 1 . it "can subscribe to changes" $ do
       changesVar <- STM.atomically $ newTVar []

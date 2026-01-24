@@ -2,7 +2,10 @@
 
 -- | Types used by Home Assistant.
 module Hasskell.HomeAssistant.API
-  ( HASSAuthMessage (..),
+  ( -- REST API
+    HASSRequest (..),
+    -- WebSocket API
+    HASSAuthMessage (..),
     HASSAuthResponse (..),
     Envelope (..),
     HASSCommand (..),
@@ -12,14 +15,16 @@ module Hasskell.HomeAssistant.API
     HASSResult (..),
     HASSFailure (..),
     HASSConfig (..),
-    HASSState (..),
     HASSActionResult (..),
     HASSUnitSystem (..),
     HASSTrigger (..),
-    HASSStateValue,
     HASSVariables (..),
     HASSTriggered (..),
     HASSContext (..),
+    -- | State
+    HASSStateValue,
+    HASSState (..),
+    HASSHistoricalState (..),
     -- | Entities
     EntityId (..),
     KnownEntityId,
@@ -79,7 +84,7 @@ import Data.List qualified as L
 import Data.Map.Lazy qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Time (UTCTime)
+import Data.Time (NominalDiffTime, UTCTime)
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime, utcTimeToPOSIXSeconds)
 import Deriving.Aeson
 import GHC.TypeLits
@@ -165,6 +170,12 @@ instance (ToJSON a) => WS.WebSocketsData (Envelope a) where
   fromLazyByteString = unimplemented
   fromDataMessage = unimplemented
   toLazyByteString = encode
+
+-------------------------------------------------------------------------------
+
+-- | A REST API request to Home Assistant.
+data HASSRequest = RequestStateHistory NominalDiffTime [KnownEntityId]
+  deriving (Eq, Ord, Show)
 
 -------------------------------------------------------------------------------
 
@@ -289,6 +300,14 @@ data HASSActionResult = ActionResult
   }
   deriving (Generic, Eq, Show)
   deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "actionResult") HASSActionResult
+
+data HASSHistoricalState = HistoricalState
+  { historyEntityId :: Maybe KnownEntityId,
+    historyLastChanged :: UTCTime,
+    historyState :: HASSStateValue
+  }
+  deriving (Generic, Eq, Show)
+  deriving (FromJSON, ToJSON) via CustomJSON (HASSValueJSONOptions "history") HASSHistoricalState
 
 data HASSState = State
   { stateEntityId :: KnownEntityId,

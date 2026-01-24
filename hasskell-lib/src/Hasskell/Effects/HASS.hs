@@ -12,6 +12,7 @@ module Hasskell.Effects.HASS
     getDevices,
     getServices,
     getSupportedServicesOf,
+    getStateHistoryOf,
     turnOn,
     turnOff,
     subscribeToStateOf,
@@ -19,6 +20,7 @@ module Hasskell.Effects.HASS
 where
 
 import Control.Monad
+import Data.Foldable
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HM
 import Data.HashSet (HashSet)
@@ -26,6 +28,8 @@ import Data.HashSet qualified as HS
 import Data.List.Extra
 import Data.Maybe
 import Data.Text qualified as T
+import Data.Time
+import Data.Time.Format.ISO8601
 import Data.Tuple.HT
 import Effectful
 import Effectful.Concurrent
@@ -49,6 +53,11 @@ data HASS :: Effect where
   GetDevices :: HASS m [HASSDevice]
   GetServices :: HASS m HASSServiceActions
   GetSupportedServicesOf :: KnownEntityId -> HASS m (HashMap HASSDomain (HashSet HASSServiceName))
+  GetStateHistoryOf ::
+    (Foldable f) =>
+    NominalDiffTime ->
+    f KnownEntityId ->
+    HASS m (HashMap KnownEntityId [HASSHistoricalState])
   TurnOn :: HASSDomain -> KnownEntityId -> HASS m ()
   TurnOff :: HASSDomain -> KnownEntityId -> HASS m ()
   SubscribeToStateOf :: KnownEntityId -> StateChangeHandler -> HASS m ()
@@ -63,9 +72,17 @@ instance Pretty (HASS a b) where
     GetDevices -> "get devices"
     GetServices -> "get services"
     GetSupportedServicesOf eId -> "get supported services of" <+> pretty eId
+    GetStateHistoryOf offset eIds ->
+      "get state history of"
+        <+> pretty (toList eIds)
+        <+> prettyTime offset
+        <+> "in the past"
     TurnOn domain eId -> "turn on" <+> pretty domain <+> pretty eId
     TurnOff domain eId -> "turn off" <+> pretty domain <+> pretty eId
     SubscribeToStateOf eId _ -> "subscribe to state of" <+> pretty eId
+
+prettyTime :: NominalDiffTime -> Doc ann
+prettyTime = pretty . formatShow durationTimeFormat . calendarTimeTime
 
 runHASS ::
   ( HASSConnection :> es,
@@ -85,6 +102,7 @@ runHASS action = do
     GetDevices -> sendMessage CommandGetDeviceRegistry
     GetServices -> sendMessage CommandGetServices
     GetSupportedServicesOf entity -> sendGetSupportedServicesOf entity
+    GetStateHistoryOf offset entities -> sendGetStateHistoryOf offset entities
     TurnOn domain entity -> callService domain serviceTurnOn entity
     TurnOff domain entity -> callService domain serviceTurnOff entity
     SubscribeToStateOf entity handler ->
@@ -102,6 +120,24 @@ runHASS action = do
   cancelMany (HM.elems subscriptions)
 
   pure result
+
+sendGetStateHistoryOf ::
+  ( HASSConnection :> es,
+    Foldable f
+  ) =>
+  NominalDiffTime ->
+  f KnownEntityId ->
+  Eff es (HashMap KnownEntityId [HASSHistoricalState])
+sendGetStateHistoryOf offset =
+  (HM.fromList . groupSort . concatMap (extractKey historyEntityId) <$>)
+    . sendRequest @[[HASSHistoricalState]]
+    . RequestStateHistory offset
+    . toList
+
+extractKey :: (a -> Maybe k) -> [a] -> [(k, a)]
+extractKey getKey values = case firstJust getKey values of
+  Just key -> map (key,) values
+  Nothing -> []
 
 sendGetSupportedServicesOf ::
   (HASSConnection :> es) =>

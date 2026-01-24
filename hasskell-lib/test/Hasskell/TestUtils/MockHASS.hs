@@ -63,6 +63,9 @@ runWithFakeHASS = reinterpret_ (runState []) $ \action -> case action of
   HASS.GetSupportedServicesOf _ -> do
     modify $ (Unknown :)
     pure HM.empty
+  HASS.GetStateHistoryOf _ _ -> do
+    modify $ (Unknown :)
+    pure HM.empty
   HASS.TurnOn _ entity -> do
     modify $ (TurnOn entity :)
     pure ()

@@ -29,6 +29,7 @@ import Data.Time
 import Effectful
 import GHC.Generics
 import Hasskell.Effects.HASS
+import Hasskell.Effects.Time
 import Hasskell.HomeAssistant.API
 import Hasskell.Language.Entity
 import Prettyprinter
@@ -69,16 +70,11 @@ data ObservedWorld = MkObserved
 --
 -- The returned `World` is a snapshot of the moment in time at which the function
 -- was invoked.
-collectCurrentState :: (IOE :> es, HASS :> es, HasReferencedEntities eIds) => eIds -> Eff es ObservedWorld
+collectCurrentState :: (Time :> es, HASS :> es, HasReferencedEntities eIds) => eIds -> Eff es ObservedWorld
 collectCurrentState entitySource = do
   let interestingEntities = referencedEntitiesIn entitySource
   allStates <- getStates
-  time <- liftIO $ do
-    time <- getCurrentTime
-    timeZone <- getTimeZone time
-    let utcTimeOfDay = timeToTimeOfDay (utctDayTime time)
-        (_dayOffset, timeOfDay) = localToUTCTimeOfDay timeZone utcTimeOfDay
-    pure timeOfDay
+  time <- getCurrentTimeOfDay
   let states = filterStates interestingEntities allStates
   supportedServices <- HM.fromList <$> mapM (getServicesOf) (toList interestingEntities)
 

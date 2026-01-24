@@ -19,6 +19,7 @@ import Hasskell.Effects.HASS
 import Hasskell.Effects.HASSConnection
 import Hasskell.Effects.Logging
 import Hasskell.Effects.Profiling
+import Hasskell.Effects.Time
 import Hasskell.Effects.Utils
 import Hasskell.HomeAssistant.API
 
@@ -32,13 +33,14 @@ type ClientM =
        Profiling,
        HASSConnection,
        HASS,
+       Time,
        IOE
      ]
 
 data ClientError
   = ClientLogError LogError
   | ClientWebSocketError HASSWebSocketError
-  deriving (Eq, Show)
+  deriving (Show)
 
 instance Exception ClientError
 
@@ -47,6 +49,7 @@ runClient config client =
   let logConfig = logging config
    in runEff
         . runConcurrent
+        . runTimeIO
         . runErrorNoCallStack @ClientError
         . runMapError ClientLogError
         . runLogger logConfig
